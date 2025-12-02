@@ -1,171 +1,548 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { collection, onSnapshot, query, where, doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { ActiveRun, Procedure, AtomicStep, UserProfile } from "@/types/schema";
+import { 
+  Play, Clock, AlertCircle, CheckCircle2, Mail, Calendar, 
+  Filter, Search, ArrowRight, TrendingUp, Zap, User
+} from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowUpRight, CircleDot, ListChecks, UsersRound, CheckCircle2 } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
-import { useInboxRuns } from "@/hooks/use-inbox-runs";
-import { useNotifications } from "@/hooks/use-notifications";
 
-const tabs = [
-  { id: "mine", label: "My Tasks", icon: ListChecks },
-  { id: "team", label: "Team Active Runs", icon: UsersRound },
-  { id: "completed", label: "Completed", icon: CheckCircle2 },
-];
+export default function OperatorInbox() {
+  const [pendingTasks, setPendingTasks] = useState<ActiveRun[]>([]);
+  const [selectedTask, setSelectedTask] = useState<ActiveRun | null>(null);
+  const [procedures, setProcedures] = useState<Record<string, Procedure>>({});
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filter, setFilter] = useState<"all" | "in_progress" | "flagged">("all");
+  const [userId] = useState("user-1"); // TODO: Get from auth context
+  const [organizationId] = useState("default-org"); // TODO: Get from auth context
+  const [isMobile, setIsMobile] = useState(false);
 
-export default function InboxPage() {
-  const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<"mine" | "team" | "completed">("mine");
-  const { myTasks, teamRuns, completedTasks, loading } = useInboxRuns();
-  const { notifications, unreadCount, markAsRead } = useNotifications();
-  const reminder = notifications.find((note) => !note.read);
+  useEffect(() => {
+    // Fetch active runs assigned to this user
+    const q = query(
+      collection(db, "active_runs"),
+      where("organizationId", "==", organizationId),
+      where("status", "in", ["IN_PROGRESS", "FLAGGED"])
+    );
 
-  const runs = activeTab === "mine" ? myTasks : activeTab === "team" ? teamRuns : completedTasks;
+    const unsubscribe = onSnapshot(
+      q,
+      async (snapshot) => {
+        const runs = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            startedAt: data.startedAt?.toDate() || new Date(),
+            completedAt: data.completedAt?.toDate(),
+            logs: (data.logs || []).map((log: any) => ({
+              ...log,
+              timestamp: log.timestamp?.toDate() || new Date(),
+            })),
+          } as ActiveRun;
+        });
 
-  const emptyState = useMemo(() => {
-    if (loading) return "Loading tasks…";
-    if (!runs.length) {
-      if (activeTab === "mine") return "You have no tasks assigned right now.";
-      if (activeTab === "team") return "Your team has no active runs.";
-      if (activeTab === "completed") return "You have no completed tasks yet.";
+        // Filter by assignee: Only show runs assigned to this user or their team
+        const userTasks = runs.filter((run) => {
+          // Check status first
+          if (run.status !== "IN_PROGRESS" && run.status !== "FLAGGED") {
+            return false;
+          }
+
+          // Check if assigned to this user
+          if ((run as any).assigneeId === userId && (run as any).assigneeType === "USER") {
+            return true;
+          }
+
+          // TODO: Check if assigned to user's team
+          // For now, if no assignee is set, show it (backward compatibility)
+          if (!(run as any).assigneeId) {
+            return true;
+          }
+
+          return false;
+        });
+
+        setPendingTasks(userTasks);
+        setLoading(false);
+
+        // Fetch procedures for context
+        const procIds = [...new Set(userTasks.map((t) => t.procedureId))];
+        const procMap: Record<string, Procedure> = {};
+        for (const procId of procIds) {
+          const procDoc = await import("firebase/firestore").then((m) =>
+            m.getDoc(m.doc(db, "procedures", procId))
+          );
+          if (procDoc.exists()) {
+            const data = procDoc.data();
+            procMap[procId] = {
+              id: procDoc.id,
+              ...data,
+              createdAt: data.createdAt?.toDate() || new Date(),
+              updatedAt: data.updatedAt?.toDate() || new Date(),
+              steps: data.steps || [],
+            } as Procedure;
+          }
+        }
+        setProcedures(procMap);
+      },
+      (error) => {
+        console.error("Error fetching tasks:", error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [userId, organizationId]);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const getCurrentStep = (run: ActiveRun): AtomicStep | null => {
+    const procedure = procedures[run.procedureId];
+    if (!procedure) return null;
+    return procedure.steps[run.currentStepIndex] || null;
+  };
+
+  const getTimeElapsed = (startedAt: Date): string => {
+    const now = new Date();
+    const diff = now.getTime() - startedAt.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+    const minutes = Math.floor(diff / (1000 * 60));
+
+    if (days > 0) {
+      return `${days}d ago`;
+    } else if (hours > 0) {
+      return `${hours}h ago`;
+    } else {
+      return `${minutes}m ago`;
     }
-    return null;
-  }, [activeTab, loading, runs.length]);
+  };
+
+  const canAccessTask = (run: ActiveRun): boolean => {
+    const currentStep = getCurrentStep(run);
+    if (!currentStep || !userProfile) return false;
+
+    if (currentStep.assigneeType === "STARTER") {
+      return true;
+    } else if (currentStep.assigneeType === "SPECIFIC_USER") {
+      return currentStep.assigneeId === userId;
+    } else if (currentStep.assigneeType === "TEAM") {
+      return currentStep.assigneeId ? userProfile.teamIds.includes(currentStep.assigneeId) : false;
+    }
+
+    return true;
+  };
+
+  // Filter and search tasks
+  const filteredTasks = useMemo(() => {
+    return pendingTasks.filter((task) => {
+      // Filter by status
+      if (filter === "in_progress" && task.status !== "IN_PROGRESS") return false;
+      if (filter === "flagged" && task.status !== "FLAGGED") return false;
+
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const procedure = procedures[task.procedureId];
+        const currentStep = getCurrentStep(task);
+        return (
+          task.procedureTitle.toLowerCase().includes(query) ||
+          currentStep?.title.toLowerCase().includes(query) ||
+          procedure?.description?.toLowerCase().includes(query)
+        );
+      }
+
+      return true;
+    });
+  }, [pendingTasks, filter, searchQuery, procedures]);
+
+  // Calculate stats
+  const stats = useMemo(() => {
+    return {
+      total: pendingTasks.length,
+      inProgress: pendingTasks.filter(t => t.status === "IN_PROGRESS").length,
+      flagged: pendingTasks.filter(t => t.status === "FLAGGED").length,
+    };
+  }, [pendingTasks]);
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center">
+          <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-900"></div>
+          <p className="text-sm text-slate-600">Loading inbox...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const handleTaskClick = (task: ActiveRun) => {
+    if (isMobile && canAccessTask(task)) {
+      window.location.href = `/run/${task.id}`;
+    } else {
+      setSelectedTask(task);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      {reminder && (
-        <div className="apple-card flex items-center justify-between p-4">
-          <div>
-            <p className="font-semibold text-ink">{reminder.title}</p>
-            <p className="text-sm text-ink-secondary">{reminder.body}</p>
+    <div className="flex h-full bg-slate-50">
+      {/* Left: Task List */}
+      <div className={`${isMobile ? "w-full" : "w-96"} border-r border-slate-200 bg-white flex flex-col ${isMobile && selectedTask ? "hidden" : ""}`}>
+        {/* Header */}
+        <div className="border-b border-slate-200 bg-white p-6 flex-shrink-0">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">My Tasks</h1>
+              <p className="mt-1 text-sm text-slate-600">
+                {stats.total} {stats.total === 1 ? "task" : "tasks"} pending
+              </p>
+            </div>
           </div>
+
+          {/* Search */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search tasks..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+            />
+          </div>
+
+          {/* Filter Tabs */}
           <div className="flex gap-2">
-            {reminder.actionLink && (
-              <Link 
-                href={reminder.actionLink} 
-                className="rounded-xl border border-muted-light bg-base px-4 py-2 text-xs font-medium text-ink transition-colors hover:bg-base-secondary"
-              >
-                View
-              </Link>
-            )}
             <button
-              onClick={() => markAsRead(reminder.id)}
-              className="rounded-xl border border-muted-light bg-base px-4 py-2 text-xs font-medium text-ink transition-colors hover:bg-base-secondary"
+              onClick={() => setFilter("all")}
+              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+                filter === "all"
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
             >
-              Dismiss
+              All ({stats.total})
+            </button>
+            <button
+              onClick={() => setFilter("in_progress")}
+              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+                filter === "in_progress"
+                  ? "bg-blue-600 text-white"
+                  : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+              }`}
+            >
+              Active ({stats.inProgress})
+            </button>
+            <button
+              onClick={() => setFilter("flagged")}
+              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+                filter === "flagged"
+                  ? "bg-rose-600 text-white"
+                  : "bg-rose-50 text-rose-700 hover:bg-rose-100"
+              }`}
+            >
+              Flagged ({stats.flagged})
             </button>
           </div>
         </div>
-      )}
-      <header>
-        <h1 className="mb-2 text-4xl font-semibold tracking-tight text-ink">Tasks waiting on you</h1>
-        <p className="text-base text-ink-secondary">
-          {profile?.displayName
-            ? `${profile.displayName}, stay focused on what needs your judgment.`
-            : "Stay focused on what needs your judgment."}
-        </p>
-        {unreadCount > 0 && (
-          <p className="mt-2 text-sm font-medium text-accent">{unreadCount} reminder(s) pending.</p>
-        )}
-        <div className="mt-6 inline-flex gap-1 rounded-xl border border-muted-light bg-base p-1">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const selected = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                  selected 
-                    ? "bg-[#1d1d1f] text-white" 
-                    : "text-ink-secondary hover:text-ink"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </header>
 
-      {emptyState ? (
-        <div className="apple-card p-12 text-center">
-          <p className="text-base text-muted">{emptyState}</p>
-        </div>
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {runs.map((run) => (
-            <motion.article
-              key={run.id}
-              layout
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="apple-card p-6"
-            >
-              <div className="mb-4 flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <h2 className="mb-1 text-lg font-semibold text-ink">{run.procedureName}</h2>
-                  <p className="text-sm text-ink-secondary">
-                    {run.status === "COMPLETED" || run.isProcedureCompleted
-                      ? "Completed"
-                      : `Current Step · ${run.currentStep?.title || "N/A"}`}
-                  </p>
-                  {run.procedureAssignmentName && (
-                    <p className="mt-1 text-xs text-muted">
-                      Part of: {run.procedureAssignmentName}
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <span
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
-                      run.status === "IN_PROGRESS"
-                        ? "bg-amber-100 text-amber-700"
-                        : run.status === "COMPLETED"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-rose-100 text-rose-700"
+        {/* Task List */}
+        <div className="flex-1 overflow-y-auto">
+          {filteredTasks.length === 0 ? (
+            <div className="p-8 text-center">
+              <CheckCircle2 className="mx-auto h-12 w-12 text-slate-300" />
+              <p className="mt-4 text-sm font-medium text-slate-900">
+                {searchQuery ? "No tasks found" : "All caught up!"}
+              </p>
+              <p className="mt-1 text-xs text-slate-600">
+                {searchQuery ? "Try a different search term" : "No pending tasks"}
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {filteredTasks.map((task, index) => {
+                const currentStep = getCurrentStep(task);
+                const isSelected = selectedTask?.id === task.id;
+                const isFlagged = task.status === "FLAGGED";
+                const timeElapsed = getTimeElapsed(task.startedAt);
+                const procedure = procedures[task.procedureId];
+                const progress = procedure 
+                  ? Math.round(((task.currentStepIndex + 1) / procedure.steps.length) * 100)
+                  : 0;
+
+                return (
+                  <motion.button
+                    key={task.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    onClick={() => handleTaskClick(task)}
+                    className={`w-full p-5 text-left transition-all touch-manipulation ${
+                      isSelected
+                        ? "bg-slate-100 border-l-4 border-slate-900"
+                        : isFlagged
+                        ? "bg-rose-50/50 hover:bg-rose-50"
+                        : "hover:bg-slate-50"
                     }`}
                   >
-                    <CircleDot className="h-3 w-3" />
-                    {run.status.replace(/_/g, " ")}
-                  </span>
-                  {run.logs?.some((log) => log.outcome === "FLAGGED") && (
-                    <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-medium text-rose-700">
-                      Flagged
+                    <div className="flex items-start gap-4">
+                      <div
+                        className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${
+                          isFlagged
+                            ? "bg-rose-100 text-rose-600"
+                            : "bg-blue-100 text-blue-600"
+                        }`}
+                      >
+                        {isFlagged ? (
+                          <AlertCircle className="h-6 w-6" />
+                        ) : (
+                          <Clock className="h-6 w-6" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <h3 className="font-semibold text-slate-900 truncate text-sm">
+                            {task.procedureTitle}
+                          </h3>
+                          {isFlagged && (
+                            <span className="flex-shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700">
+                              Flagged
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-slate-700 truncate font-medium mb-2">
+                          {currentStep?.title || "Step " + (task.currentStepIndex + 1)}
+                        </p>
+                        
+                        {/* Progress Bar */}
+                        {procedure && (
+                          <div className="mb-2">
+                            <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+                              <span>Progress</span>
+                              <span>{progress}%</span>
+                            </div>
+                            <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${progress}%` }}
+                                transition={{ duration: 0.5 }}
+                                className={`h-full rounded-full ${
+                                  isFlagged ? "bg-rose-500" : "bg-blue-500"
+                                }`}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-3 text-xs text-slate-500 mt-2">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>{timeElapsed}</span>
+                          </div>
+                          {procedure && (
+                            <div className="flex items-center gap-1">
+                              <Zap className="h-3 w-3" />
+                              <span>
+                                {task.currentStepIndex + 1} / {procedure.steps.length}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right: Task Preview */}
+      <div className={`${isMobile ? "hidden" : "flex-1"} overflow-y-auto bg-white`}>
+        {selectedTask ? (
+          <div className="h-full flex flex-col">
+            {/* Header */}
+            <div className="border-b border-slate-200 bg-gradient-to-br from-slate-50 to-white p-8 flex-shrink-0">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <h1 className="text-3xl font-bold text-slate-900 mb-2">
+                    {selectedTask.procedureTitle}
+                  </h1>
+                  {selectedTask.status === "FLAGGED" && (
+                    <span className="inline-flex items-center gap-2 rounded-full bg-rose-100 px-4 py-1.5 text-sm font-semibold text-rose-700 border border-rose-200">
+                      <AlertCircle className="h-4 w-4" />
+                      Flagged - Requires Review
                     </span>
                   )}
                 </div>
               </div>
-
-              <div className="mb-4 rounded-xl border border-muted-light bg-base-secondary p-4">
-                <p className="mb-1 text-xs font-medium text-muted">Assignment</p>
-                <p className="text-sm text-ink-secondary">
-                  {run.assignmentCopy}
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="text-xs text-muted">
-                  Started {run.startedAtCopy}
-                  <br />
-                  Last activity {run.updatedAtCopy}
+              <div className="flex items-center gap-6 text-sm text-slate-600">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <span>Started {selectedTask.startedAt.toLocaleDateString()}</span>
                 </div>
-                <Link
-                  href={`/run/${run.runId}`}
-                  className="apple-button inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white"
-                >
-                  {activeTab === "completed" ? "View Details" : "Open Runner"}
-                  <ArrowUpRight className="h-4 w-4" />
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  <span>{getTimeElapsed(selectedTask.startedAt)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  <span>
+                    {(() => {
+                      const procedure = procedures[selectedTask.procedureId];
+                      return procedure 
+                        ? `${selectedTask.currentStepIndex + 1} of ${procedure.steps.length} steps`
+                        : "Step " + (selectedTask.currentStepIndex + 1);
+                    })()}
+                  </span>
+                </div>
               </div>
-            </motion.article>
-          ))}
-        </div>
-      )}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-8">
+              <div className="mx-auto max-w-3xl space-y-6">
+                {/* Current Step Card */}
+                {(() => {
+                  const currentStep = getCurrentStep(selectedTask);
+                  const procedure = procedures[selectedTask.procedureId];
+                  const progress = procedure 
+                    ? Math.round(((selectedTask.currentStepIndex + 1) / procedure.steps.length) * 100)
+                    : 0;
+
+                  return (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+                    >
+                      <div className="flex items-start gap-4 mb-6">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
+                          <span className="text-xl font-bold">
+                            {selectedTask.currentStepIndex + 1}
+                          </span>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-xl font-bold text-slate-900 mb-1">
+                            {currentStep?.title || "Current Step"}
+                          </h3>
+                          <p className="text-sm text-slate-600">
+                            Step {selectedTask.currentStepIndex + 1} of{" "}
+                            {procedure?.steps.length || "?"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Progress */}
+                      {procedure && (
+                        <div className="mb-6">
+                          <div className="flex items-center justify-between text-sm text-slate-600 mb-2">
+                            <span>Overall Progress</span>
+                            <span className="font-semibold text-slate-900">{progress}%</span>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${progress}%` }}
+                              transition={{ duration: 0.8 }}
+                              className={`h-full rounded-full ${
+                                selectedTask.status === "FLAGGED" ? "bg-rose-500" : "bg-blue-500"
+                              }`}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {currentStep && (
+                        <div className="rounded-xl bg-slate-50 p-4">
+                          <p className="text-sm text-slate-700 leading-relaxed">
+                            {currentStep.description || "No description available for this step."}
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedTask.status === "FLAGGED" && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="mt-6 rounded-xl border-2 border-rose-200 bg-rose-50 p-5"
+                        >
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="h-5 w-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-semibold text-rose-900 mb-1">
+                                Mismatch Detected
+                              </p>
+                              <p className="text-sm text-rose-700 leading-relaxed">
+                                This step requires manager approval before proceeding. Please review the details and take appropriate action.
+                              </p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  );
+                })()}
+
+                {/* Action Button */}
+                <div className="pt-6 border-t border-slate-200">
+                  {canAccessTask(selectedTask) ? (
+                    <Link
+                      href={`/run/${selectedTask.id}`}
+                      className="group inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-4 text-base font-semibold text-white transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-500/25"
+                    >
+                      <Play className="h-5 w-5" />
+                      Open Task
+                      <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                    </Link>
+                  ) : (
+                    <div className="rounded-xl border-2 border-rose-200 bg-rose-50 p-5">
+                      <div className="flex items-center gap-3">
+                        <AlertCircle className="h-5 w-5 text-rose-600" />
+                        <div>
+                          <p className="text-sm font-semibold text-rose-900">Access Denied</p>
+                          <p className="text-sm text-rose-700 mt-0.5">
+                            This task is not assigned to you or your team.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center"
+            >
+              <Mail className="mx-auto h-16 w-16 text-slate-300" />
+              <p className="mt-4 text-lg font-semibold text-slate-900">Select a task</p>
+              <p className="mt-2 text-sm text-slate-600 max-w-sm">
+                Choose a task from the list to view details and get started
+              </p>
+            </motion.div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
-

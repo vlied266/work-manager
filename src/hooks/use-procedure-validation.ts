@@ -1,0 +1,92 @@
+import { useMemo } from "react";
+import { AtomicStep } from "@/types/schema";
+
+export interface ValidationError {
+  stepId: string;
+  message: string;
+}
+
+export interface ValidationResult {
+  isValid: boolean;
+  errors: ValidationError[];
+  errorCount: number;
+}
+
+/**
+ * Validates a procedure's steps to ensure all required configuration is present
+ */
+export function useProcedureValidation(steps: AtomicStep[]): ValidationResult {
+  const validation = useMemo(() => {
+    const errors: ValidationError[] = [];
+
+    steps.forEach((step) => {
+      const stepConfig = step.config || {};
+
+      switch (step.action) {
+        case "INPUT":
+          // INPUT requires label and data type
+          if (!stepConfig.fieldLabel || stepConfig.fieldLabel.trim() === "") {
+            errors.push({
+              stepId: step.id,
+              message: "Missing field label. Please provide a label for this input field.",
+            });
+          }
+          if (!stepConfig.inputType) {
+            errors.push({
+              stepId: step.id,
+              message: "Missing data type. Please select an input type (text, number, file, etc.).",
+            });
+          }
+          // If inputType is "file", also require allowedExtensions
+          if (stepConfig.inputType === "file" && (!stepConfig.allowedExtensions || stepConfig.allowedExtensions.length === 0)) {
+            errors.push({
+              stepId: step.id,
+              message: "Missing file type restrictions. Please specify allowed file extensions.",
+            });
+          }
+          break;
+
+        case "COMPARE":
+          // COMPARE requires targetA and targetB
+          if (!stepConfig.targetA || stepConfig.targetA.trim() === "") {
+            errors.push({
+              stepId: step.id,
+              message: "Missing Target A. Please select a variable for the first comparison target.",
+            });
+          }
+          if (!stepConfig.targetB || stepConfig.targetB.trim() === "") {
+            errors.push({
+              stepId: step.id,
+              message: "Missing Target B. Please select a variable for the second comparison target.",
+            });
+          }
+          break;
+
+        case "AUTHORIZE":
+        case "NEGOTIATE":
+          // AUTHORIZE/NEGOTIATE requires instructions
+          if (!stepConfig.instruction || stepConfig.instruction.trim() === "") {
+            errors.push({
+              stepId: step.id,
+              message: "Missing instructions. Please provide approval instructions for this step.",
+            });
+          }
+          break;
+
+        // Add more validation rules as needed
+        default:
+          // Other actions might not require specific validation
+          break;
+      }
+    });
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      errorCount: errors.length,
+    };
+  }, [steps]);
+
+  return validation;
+}
+

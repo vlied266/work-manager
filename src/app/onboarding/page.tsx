@@ -1,174 +1,149 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useState, useEffect } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, updateDoc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
-import { bootstrapOrganization } from "@/lib/organization";
-import { useAuth } from "@/hooks/use-auth";
-import { PlanTier } from "@/types/workos";
-
-const plans: PlanTier[] = ["FREE", "PRO"];
-
-const sanitizeInvites = (value: string) =>
-  value
-    .split(/[\n,]/)
-    .map((email) => email.trim().toLowerCase())
-    .filter((email) => email.length > 0);
+import Link from "next/link";
+import { Sparkles, Loader2, Building2 } from "lucide-react";
+import { getPlanLimits } from "@/lib/billing/limits";
 
 export default function OnboardingPage() {
-  const router = useRouter();
-  const { firebaseUser, profile, loading, refreshProfile } = useAuth();
-
-  const [orgName, setOrgName] = useState("");
-  const [domain, setDomain] = useState("");
-  const [teamName, setTeamName] = useState("Core Operations");
-  const [plan, setPlan] = useState<PlanTier>("PRO");
-  const [inviteBlock, setInviteBlock] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [organizationName, setOrganizationName] = useState("");
   const [saving, setSaving] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !firebaseUser) {
-      router.replace("/sign-in");
-    }
-  }, [firebaseUser, loading, router]);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+      if (!currentUser) {
+        router.push("/sign-in");
+      }
+    });
 
-  useEffect(() => {
-    if (!loading && profile?.organizationId) {
-      router.replace("/design");
-    }
-  }, [loading, profile, router]);
+    return () => unsubscribe();
+  }, [router]);
 
-  const inviteCount = useMemo(() => sanitizeInvites(inviteBlock).length, [inviteBlock]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !organizationName.trim()) return;
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!firebaseUser || !firebaseUser.email) {
-      setError("Authentication error. Please sign in again.");
-      return;
-    }
-    setError(null);
     setSaving(true);
     try {
-      await bootstrapOrganization({
-        name: orgName,
-        domain,
-        plan,
-        ownerUid: firebaseUser.uid,
-        ownerEmail: firebaseUser.email,
-        ownerName: firebaseUser.displayName || profile?.displayName || "",
-        defaultTeamName: teamName,
-        inviteEmails: sanitizeInvites(inviteBlock),
+      // Create or update organization with default FREE plan
+      const orgId = `org-${user.uid}`;
+      await setDoc(doc(db, "organizations", orgId), {
+        name: organizationName.trim(),
+        plan: "FREE",
+        subscriptionStatus: "active",
+        limits: getPlanLimits("FREE"),
+        createdAt: serverTimestamp(),
       });
-      await refreshProfile();
-      router.push("/design");
-    } catch (err) {
-      setError((err as Error).message);
+
+      // Update user profile with organization ID
+      await updateDoc(doc(db, "users", user.uid), {
+        organizationId: orgId,
+        updatedAt: serverTimestamp(),
+      });
+
+      // Redirect based on role
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const role = userData.role;
+
+        if (role === "ADMIN" || role === "MANAGER") {
+          router.push("/dashboard");
+        } else {
+          router.push("/inbox");
+        }
+      } else {
+        router.push("/inbox");
+      }
+    } catch (error) {
+      console.error("Error setting up organization:", error);
+      alert("Failed to set up organization. Please try again.");
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading || !firebaseUser) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-base">
-        <p className="text-muted">Preparing your workspace…</p>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-900"></div>
+          <p className="text-sm text-slate-600">Loading...</p>
+        </div>
       </div>
     );
   }
 
+  if (!user) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-base">
-      <div className="mx-auto max-w-4xl px-6 py-12">
-        <div className="rounded-3xl bg-white/90 p-10 shadow-glass ring-1 ring-white/70 backdrop-blur-2xl">
-          <p className="text-xs uppercase tracking-[0.4em] text-muted">Organization Setup</p>
-          <h1 className="mt-3 text-3xl font-semibold text-ink">Name your operating system</h1>
-          <p className="text-muted">
-            This information defines your company in WorkOS. You can invite more teammates later.
-          </p>
-
-          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-            <label className="block space-y-2 text-sm">
-              <span className="font-medium text-muted">Organization Name</span>
-              <input
-                type="text"
-                required
-                value={orgName}
-                onChange={(event) => setOrgName(event.target.value)}
-                className="w-full rounded-2xl border border-ink/10 bg-base/80 px-4 py-3 text-base outline-none focus:border-accent"
-                placeholder="Tesla"
-              />
-            </label>
-
-            <label className="block space-y-2 text-sm">
-              <span className="font-medium text-muted">Primary Domain</span>
-              <input
-                type="text"
-                required
-                value={domain}
-                onChange={(event) => setDomain(event.target.value)}
-                className="w-full rounded-2xl border border-ink/10 bg-base/80 px-4 py-3 text-base outline-none focus:border-accent"
-                placeholder="tesla.com"
-              />
-            </label>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="block space-y-2 text-sm">
-                <span className="font-medium text-muted">Default Team Name</span>
-                <input
-                  type="text"
-                  required
-                  value={teamName}
-                  onChange={(event) => setTeamName(event.target.value)}
-                  className="w-full rounded-2xl border border-ink/10 bg-base/80 px-4 py-3 text-base outline-none focus:border-accent"
-                  placeholder="Core Operations"
-                />
-              </label>
-
-              <div className="space-y-2 text-sm">
-                <span className="font-medium text-muted">Plan</span>
-                <div className="grid grid-cols-2 gap-3">
-                  {plans.map((tier) => (
-                    <button
-                      type="button"
-                      key={tier}
-                      onClick={() => setPlan(tier)}
-                      className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
-                        plan === tier
-                          ? "border-accent bg-accent/10 text-accent"
-                          : "border-ink/10 text-muted hover:border-ink/30"
-                      }`}
-                    >
-                      {tier}
-                    </button>
-                  ))}
-                </div>
-              </div>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-50 to-white px-4 py-12">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="mb-8 text-center">
+          <Link href="/" className="inline-flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
+              <Sparkles className="h-5 w-5" />
             </div>
+            <span className="text-xl font-semibold text-slate-900">WorkOS</span>
+          </Link>
+        </div>
 
-            <label className="block space-y-2 text-sm">
-              <span className="font-medium text-muted">
-                Invite teammates ({inviteCount} ready)
-              </span>
-              <textarea
-                rows={4}
-                value={inviteBlock}
-                onChange={(event) => setInviteBlock(event.target.value)}
-                className="w-full rounded-2xl border border-ink/10 bg-base/80 px-4 py-3 text-sm outline-none focus:border-accent"
-                placeholder="ops@company.com, lead@company.com"
+        {/* Onboarding Card */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="mb-6 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
+              <Building2 className="h-8 w-8 text-blue-600" />
+            </div>
+            <h1 className="mt-4 text-2xl font-bold text-slate-900">Welcome to WorkOS</h1>
+            <p className="mt-2 text-sm text-slate-600">
+              Let's set up your organization to get started
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="organizationName" className="block text-sm font-medium text-slate-700 mb-1.5">
+                Organization Name
+              </label>
+              <input
+                id="organizationName"
+                type="text"
+                value={organizationName}
+                onChange={(e) => setOrganizationName(e.target.value)}
+                required
+                placeholder="Acme Inc."
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
               />
-              <span className="text-xs text-muted">
-                Separate emails with commas or new lines. Invitations will stay pending until accepted.
-              </span>
-            </label>
-
-            {error && <p className="text-sm text-red-500">{error}</p>}
+              <p className="mt-1 text-xs text-slate-500">
+                This will be your workspace name
+              </p>
+            </div>
 
             <button
               type="submit"
-              disabled={saving}
-              className="w-full rounded-2xl bg-ink px-4 py-4 text-sm font-semibold text-white shadow-subtle transition hover:bg-black disabled:opacity-60"
+              disabled={saving || !organizationName.trim()}
+              className="w-full rounded-xl bg-slate-900 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? "Creating workspace..." : "Create Organization"}
+              {saving ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Setting up...
+                </span>
+              ) : (
+                "Continue"
+              )}
             </button>
           </form>
         </div>

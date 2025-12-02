@@ -1,147 +1,272 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Timestamp } from "firebase/firestore";
-import { useRunHistory } from "@/hooks/use-run-history";
-
-const statusFilters = [
-  { id: "all", label: "All Runs" },
-  { id: "flagged", label: "Flagged" },
-  { id: "completed", label: "Completed" },
-];
-
-const formatTs = (value?: Timestamp | Date) => {
-  if (!value) return "—";
-  const date = value instanceof Timestamp ? value.toDate() : value;
-  return date.toLocaleString();
-};
+import { useEffect, useState, useMemo } from "react";
+import { collection, onSnapshot, query, where, orderBy, doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { ActiveRun, Procedure } from "@/types/schema";
+import { FileText, Download, CheckCircle2, AlertTriangle, Clock, XCircle } from "lucide-react";
+import Link from "next/link";
+import { exportToCSV, generateRunCertificate, exportRunToCSV } from "@/lib/exporter";
+import { motion } from "framer-motion";
 
 export default function HistoryPage() {
-  const { runs, stats, loading, error } = useRunHistory();
-  const [activeFilter, setActiveFilter] = useState("all");
+  const [runs, setRuns] = useState<ActiveRun[]>([]);
+  const [procedures, setProcedures] = useState<Record<string, Procedure>>({});
+  const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [organizationId] = useState("default-org"); // TODO: Get from auth context
+  const [userId] = useState("user-1"); // TODO: Get from auth context
 
-  const filtered = useMemo(() => {
-    if (activeFilter === "flagged") {
-      return runs.filter((run) => run.logs?.some((log) => log.outcome === "FLAGGED"));
+  useEffect(() => {
+    const q = query(
+      collection(db, "active_runs"),
+      where("organizationId", "==", organizationId),
+      where("status", "in", ["COMPLETED", "FLAGGED"]),
+      orderBy("completedAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      async (snapshot) => {
+        const runsData = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            startedAt: data.startedAt?.toDate() || new Date(),
+            completedAt: data.completedAt?.toDate(),
+            logs: (data.logs || []).map((log: any) => ({
+              ...log,
+              timestamp: log.timestamp?.toDate() || new Date(),
+            })),
+          } as ActiveRun;
+        });
+        setRuns(runsData);
+
+        // Fetch procedures
+        const procedureIds = [...new Set(runsData.map((r) => r.procedureId))];
+        const proceduresData: Record<string, Procedure> = {};
+        for (const procId of procedureIds) {
+          try {
+            const procDoc = await getDoc(doc(db, "procedures", procId));
+            if (procDoc.exists()) {
+              const procData = procDoc.data();
+              proceduresData[procId] = {
+                id: procDoc.id,
+                ...procData,
+                createdAt: procData.createdAt?.toDate() || new Date(),
+                updatedAt: procData.updatedAt?.toDate() || new Date(),
+                steps: procData.steps || [],
+              } as Procedure;
+            }
+          } catch (error) {
+            console.error(`Error fetching procedure ${procId}:`, error);
+          }
+        }
+        setProcedures(proceduresData);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching runs:", error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [organizationId]);
+
+  const handleExportAll = () => {
+    setExporting(true);
+    try {
+      exportToCSV(runs, procedures);
+    } catch (error) {
+      console.error("Error exporting:", error);
+      alert("Failed to export. Please try again.");
+    } finally {
+      setExporting(false);
     }
-    if (activeFilter === "completed") {
-      return runs.filter((run) => run.status === "COMPLETED");
+  };
+
+  const handleExportPDF = async (run: ActiveRun) => {
+    const procedure = procedures[run.procedureId];
+    if (!procedure) {
+      alert("Procedure not found. Cannot generate certificate.");
+      return;
     }
-    return runs;
-  }, [activeFilter, runs]);
+
+    try {
+      await generateRunCertificate(run, procedure, "User", "Organization");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. Please try again.");
+    }
+  };
+
+  const handleExportRunCSV = (run: ActiveRun) => {
+    const procedure = procedures[run.procedureId];
+    if (!procedure) {
+      alert("Procedure not found. Cannot export.");
+      return;
+    }
+
+    try {
+      exportRunToCSV(run, procedure);
+    } catch (error) {
+      console.error("Error exporting run:", error);
+      alert("Failed to export. Please try again.");
+    }
+  };
+
+  const getStatusIcon = (status: ActiveRun["status"]) => {
+    switch (status) {
+      case "COMPLETED":
+        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+      case "FLAGGED":
+        return <AlertTriangle className="h-4 w-4 text-rose-600" />;
+      default:
+        return <Clock className="h-4 w-4 text-slate-400" />;
+    }
+  };
+
+  const formatDate = (date: Date | null) => {
+    if (!date) return "N/A";
+    return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const getDuration = (startedAt: Date, completedAt: Date | null) => {
+    if (!completedAt) return "N/A";
+    const diff = completedAt.getTime() - startedAt.getTime();
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days}d ${hours % 24}h`;
+    if (hours > 0) return `${hours}h ${minutes % 60}m`;
+    return `${minutes}m`;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-900"></div>
+          <p className="text-sm text-slate-600">Loading history...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
-      <header className="rounded-3xl bg-white/90 p-8 shadow-glass ring-1 ring-white/70 backdrop-blur-2xl">
-        <p className="text-xs uppercase tracking-[0.4em] text-muted">Audit Console</p>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-6">
+    <div className="h-full bg-slate-50 p-8">
+      <div className="mx-auto max-w-7xl">
+        {/* Header */}
+        <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-semibold text-ink">Run History</h1>
-            <p className="text-muted">Inspect completed work and flagged events.</p>
+            <h1 className="text-3xl font-semibold text-slate-900">Run History</h1>
+            <p className="mt-1 text-sm text-slate-600">View and export completed processes</p>
           </div>
-          <div className="flex gap-4">
-            <div className="rounded-2xl border border-white/70 bg-white/80 px-6 py-4 text-center">
-              <p className="text-sm uppercase tracking-[0.4em] text-muted">Total</p>
-              <p className="text-2xl font-semibold text-ink">{stats.total}</p>
-            </div>
-            <div className="rounded-2xl border border-white/70 bg-white/80 px-6 py-4 text-center">
-              <p className="text-sm uppercase tracking-[0.4em] text-muted">Completed</p>
-              <p className="text-2xl font-semibold text-ink">{stats.completed}</p>
-            </div>
-            <div className="rounded-2xl border border-white/70 bg-white/80 px-6 py-4 text-center">
-              <p className="text-sm uppercase tracking-[0.4em] text-muted">Flagged</p>
-              <p className="text-2xl font-semibold text-ink text-amber-600">{stats.flagged}</p>
-            </div>
-          </div>
+          <button
+            onClick={handleExportAll}
+            disabled={exporting || runs.length === 0}
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="h-4 w-4" />
+            {exporting ? "Exporting..." : "Export All to Excel"}
+          </button>
         </div>
-        <div className="mt-6 inline-flex gap-2 rounded-full border border-white/80 bg-white/80 p-1">
-          {statusFilters.map((filter) => (
-            <button
-              key={filter.id}
-              onClick={() => setActiveFilter(filter.id)}
-              className={`rounded-full px-5 py-2 text-xs font-semibold ${
-                activeFilter === filter.id ? "bg-ink text-white" : "text-muted hover:text-ink"
-              }`}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
-      </header>
 
-      {loading ? (
-        <div className="rounded-3xl border border-white/80 bg-white/70 p-10 text-center text-muted shadow-subtle">
-          Loading run history…
-        </div>
-      ) : error ? (
-        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-center text-red-600 shadow-subtle">
-          {error}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-3xl border border-white/80 bg-white/70 p-10 text-center text-muted shadow-subtle">
-          No runs match the selected filter.
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <AnimatePresence>
-            {filtered.map((run) => (
-              <motion.article
-                key={run.id}
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="rounded-3xl border border-white/70 bg-white/90 p-6 shadow-subtle backdrop-blur-xl"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.4em] text-muted">Procedure</p>
-                    <h2 className="text-2xl font-semibold text-ink">{run.procedureName}</h2>
-                    <p className="text-sm text-muted">Started {run.startedAtCopy}</p>
-                  </div>
-                  <div className="flex gap-3">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        run.status === "COMPLETED"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : run.status === "FAILED" || run.status === "BLOCKED"
-                            ? "bg-rose-100 text-rose-700"
-                            : "bg-amber-100 text-amber-700"
-                      }`}
+        {/* Runs Table */}
+        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          {runs.length === 0 ? (
+            <div className="p-12 text-center">
+              <Clock className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+              <p className="text-sm text-slate-600">No completed runs yet</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-6 py-3 text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                      Process
+                    </th>
+                    <th className="px-6 py-3 text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                      Started
+                    </th>
+                    <th className="px-6 py-3 text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                      Completed
+                    </th>
+                    <th className="px-6 py-3 text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                      Duration
+                    </th>
+                    <th className="px-6 py-3 text-xs font-semibold text-slate-700 uppercase tracking-wider text-right">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {runs.map((run) => (
+                    <motion.tr
+                      key={run.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="hover:bg-slate-50 transition-colors"
                     >
-                      {run.status.replace(/_/g, " ")}
-                    </span>
-                    {run.logs?.some((log) => log.outcome === "FLAGGED") && (
-                      <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">
-                        Flagged
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <details className="mt-4 rounded-2xl border border-ink/10 bg-base/60 p-4 text-sm text-muted">
-                  <summary className="cursor-pointer font-semibold text-ink">View audit logs</summary>
-                  <div className="mt-4 space-y-3">
-                    {run.logs?.map((log) => (
-                      <div key={log.stepId + (log.performedAt as Timestamp)?.toMillis?.()} className="rounded-2xl border border-white/70 bg-white/80 p-4">
-                        <div className="flex items-center justify-between text-xs text-muted">
-                          <span>{log.stepTitle}</span>
-                          <span>{log.performedAt && formatTs(log.performedAt as Timestamp)}</span>
+                      <td className="px-6 py-4">
+                        <Link
+                          href={`/run/${run.id}`}
+                          className="text-sm font-medium text-slate-900 hover:text-blue-600 transition-colors"
+                        >
+                          {run.procedureTitle}
+                        </Link>
+                        <p className="text-xs text-slate-500 mt-0.5">ID: {run.id.substring(0, 8)}...</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(run.status)}
+                          <span className="text-sm text-slate-700 capitalize">{run.status}</span>
                         </div>
-                        <p className="mt-2 text-sm text-ink">Outcome: {log.outcome}</p>
-                        <pre className="mt-2 max-h-48 overflow-auto rounded-xl bg-slate-900/90 p-3 text-xs text-slate-100">
-                          {JSON.stringify(log.inputData, null, 2)}
-                        </pre>
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              </motion.article>
-            ))}
-          </AnimatePresence>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {formatDate(run.startedAt)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {formatDate(run.completedAt || null)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {getDuration(run.startedAt, run.completedAt || null)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleExportPDF(run)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                            title="Download PDF Certificate"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                            PDF
+                          </button>
+                          <button
+                            onClick={() => handleExportRunCSV(run)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                            title="Export to Excel"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            CSV
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

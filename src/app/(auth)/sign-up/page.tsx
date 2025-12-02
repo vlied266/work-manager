@@ -1,101 +1,164 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { useState } from "react";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Loader2, AlertCircle } from "lucide-react";
+import Logo from "@/components/Logo";
 
 export default function SignUpPage() {
-  const router = useRouter();
-  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError(null);
     setLoading(true);
+
     try {
-      const credential = await createUserWithEmailAndPassword(auth, email, password);
-      if (fullName) {
-        await updateProfile(credential.user, { displayName: fullName });
-      }
-      await setDoc(doc(db, "users", credential.user.uid), {
-        uid: credential.user.uid,
-        email: credential.user.email,
-        displayName: fullName,
-        avatarUrl: "",
-        organizationId: "",
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Create user profile in Firestore
+      const userProfile = {
+        email: user.email,
+        displayName: displayName || user.email?.split("@")[0] || "User",
+        role: "OPERATOR" as const, // Default role for new users
         teamIds: [],
-        role: "ADMIN",
-      });
+        organizationId: "", // Will be set during onboarding
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(doc(db, "users", user.uid), userProfile);
+
+      // Smart redirect based on role
+      // New users without organization go to onboarding
       router.push("/onboarding");
-    } catch (err) {
-      setError((err as Error).message);
+    } catch (err: any) {
+      console.error("Sign up error:", err);
+      setError(err.message || "Failed to create account. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="space-y-8 text-ink">
-      <div>
-        <p className="text-xs uppercase tracking-[0.4em] text-muted">WorkOS Access</p>
-        <h1 className="mt-2 text-3xl font-semibold">Create your workspace</h1>
-        <p className="text-sm text-muted">Start by creating your admin account.</p>
-      </div>
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <label className="block space-y-2 text-sm">
-          <span className="font-medium text-muted">Full Name</span>
-          <input
-            type="text"
-            required
-            value={fullName}
-            onChange={(event) => setFullName(event.target.value)}
-            className="w-full rounded-2xl border border-ink/10 bg-white/80 px-4 py-3 text-base outline-none focus:border-accent"
-            placeholder="Ada Lovelace"
-          />
-        </label>
-        <label className="block space-y-2 text-sm">
-          <span className="font-medium text-muted">Email</span>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="w-full rounded-2xl border border-ink/10 bg-white/80 px-4 py-3 text-base outline-none focus:border-accent"
-            placeholder="you@company.com"
-          />
-        </label>
-        <label className="block space-y-2 text-sm">
-          <span className="font-medium text-muted">Password</span>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-2xl border border-ink/10 bg-white/80 px-4 py-3 text-base outline-none focus:border-accent"
-            placeholder="••••••••"
-          />
-        </label>
-        {error && <p className="text-sm text-red-500">{error}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white shadow-subtle transition hover:bg-black disabled:opacity-60"
-        >
-          {loading ? "Creating account..." : "Continue"}
-        </button>
-      </form>
-      <div className="text-sm text-muted">
-        Already have access?{" "}
-        <Link href="/sign-in" className="font-semibold text-accent">
-          Sign in →
-        </Link>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-50 to-white px-4 py-12">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="mb-8 text-center">
+          <Link href="/" className="inline-flex items-center gap-3 group">
+            <Logo size="small" />
+            <div>
+              <span className="text-xl font-bold text-slate-900 group-hover:text-slate-700 transition-colors block">
+                WorkOS
+              </span>
+              <div className="text-[10px] text-slate-500 font-medium tracking-wider uppercase">
+                Atomic Engine
+              </div>
+            </div>
+          </Link>
+        </div>
+
+        {/* Sign Up Card */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-slate-900">Create Account</h1>
+            <p className="mt-2 text-sm text-slate-600">
+              Get started with WorkOS today
+            </p>
+          </div>
+
+          {error && (
+            <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-rose-600" />
+                <p className="text-sm font-medium text-rose-900">{error}</p>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSignUp} className="space-y-4">
+            <div>
+              <label htmlFor="displayName" className="block text-sm font-medium text-slate-700 mb-1.5">
+                Full Name
+              </label>
+              <input
+                id="displayName"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                required
+                placeholder="John Doe"
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="you@example.com"
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1.5">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                minLength={6}
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+              />
+              <p className="mt-1 text-xs text-slate-500">Must be at least 6 characters</p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-slate-900 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Creating account...
+                </span>
+              ) : (
+                "Create Account"
+              )}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-slate-600">
+              Already have an account?{" "}
+              <Link href="/sign-in" className="font-medium text-slate-900 hover:underline">
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

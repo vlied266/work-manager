@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "seed:mock": "tsx scripts/seed-mock-data.ts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -10,17 +11,44 @@
     "seed": "tsx scripts/seed-financial-data.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.75",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.4.2",
+    "@types/papaparse": "^5.5.0",
+    "@types/react-signature-canvas": "^1.0.7",
+    "@types/three": "^0.181.0",
+    "ai": "^5.0.106",
     "clsx": "^2.1.1",
+    "driver.js": "^1.4.0",
+    "file-saver": "^2.0.5",
     "firebase": "^12.6.0",
     "framer-motion": "^12.23.24",
+    "jspdf": "^3.0.4",
+    "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.555.0",
     "next": "16.0.5",
+    "next-pwa": "^5.6.0",
+    "openai": "^6.9.1",
+    "papaparse": "^5.5.3",
     "react": "19.2.0",
+    "react-confetti": "^6.4.0",
     "react-dom": "19.2.0",
-    "tailwind-merge": "^3.4.0"
+    "react-dropzone": "^14.3.8",
+    "react-firebase-hooks": "^5.1.1",
+    "react-signature-canvas": "^1.1.0-alpha.2",
+    "recharts": "^3.5.1",
+    "tailwind-merge": "^3.4.0",
+    "tesseract.js": "^6.0.1",
+    "three": "^0.181.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/file-saver": "^2.0.7",
+    "@types/next-pwa": "^5.6.9",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -29,7 +57,7 @@
     "eslint-config-next": "16.0.5",
     "firebase-admin": "^13.6.0",
     "tailwindcss": "^4",
-    "tsx": "^4.20.6",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

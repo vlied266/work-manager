@@ -1,310 +1,531 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  collection,
-  getDocs,
-  serverTimestamp,
-  addDoc,
-  doc,
-  getDoc,
-} from "firebase/firestore";
-import { Reorder } from "framer-motion";
-import { Workflow, Save, GripVertical, ArrowLeft, Play } from "lucide-react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import { collection, onSnapshot, query, where, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Procedure, ProcessProcedureRef, ProcessDefinition } from "@/types/workos";
-import { useAuth } from "@/hooks/use-auth";
-import { useProcesses } from "@/hooks/use-processes";
-import { useRouter } from "next/navigation";
+import { ProcessGroup, Procedure, Organization } from "@/types/schema";
+import { 
+  FolderOpen, Edit, Play, Users, User, Search, 
+  BookOpen, FileText, CheckCircle2, Clock, X
+} from "lucide-react";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import * as LucideIcons from "lucide-react";
+import { checkUsageLimit, getPlanLimits } from "@/lib/billing/limits";
+import { UpgradeModal } from "@/components/billing/upgrade-modal";
 
-export default function ProcessesPage() {
-  const { profile, firebaseUser } = useAuth();
-  const router = useRouter();
-  const { processes } = useProcesses();
+export default function LibraryPage() {
+  const [activeTab, setActiveTab] = useState<"procedures" | "processes">("procedures");
   const [procedures, setProcedures] = useState<Procedure[]>([]);
-  const [selectedProcedures, setSelectedProcedures] = useState<ProcessProcedureRef[]>([]);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [launching, setLaunching] = useState<string | null>(null);
+  const [processGroups, setProcessGroups] = useState<ProcessGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [organizationId] = useState("default-org"); // TODO: Get from auth context
+  const [assignModal, setAssignModal] = useState<{ type: "procedure" | "process"; id: string; title: string } | null>(null);
+  const [assigneeType, setAssigneeType] = useState<"USER" | "TEAM">("USER");
+  const [assigneeId, setAssigneeId] = useState("");
+  const [upgradeModal, setUpgradeModal] = useState<{
+    isOpen: boolean;
+    resource: "users" | "activeRuns" | "aiGenerations";
+  }>({ isOpen: false, resource: "activeRuns" });
 
+  // Fetch Procedures
   useEffect(() => {
-    const fetchProcedures = async () => {
-      if (!profile?.organizationId) return;
-      const snapshot = await getDocs(collection(db, "procedures"));
-      const data = snapshot.docs
-        .map(
-          (docSnap) =>
-            ({
-              id: docSnap.id,
-              ...(docSnap.data() as Procedure),
-            }) satisfies Procedure,
-        )
-        .filter((proc) => proc.organizationId === profile.organizationId);
-      setProcedures(data);
-    };
-    fetchProcedures();
-  }, [profile?.organizationId]);
+    const q = query(
+      collection(db, "procedures"),
+      where("organizationId", "==", organizationId)
+    );
 
-  const availableProcedures = useMemo(
-    () => procedures.filter((proc) => !selectedProcedures.some((sel) => sel.procedureId === proc.id)),
-    [procedures, selectedProcedures],
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const procs = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+          updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+          steps: doc.data().steps || [],
+        })) as Procedure[];
+        procs.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+        setProcedures(procs);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching procedures:", error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [organizationId]);
+
+  // Fetch Process Groups
+  useEffect(() => {
+    const q = query(
+      collection(db, "process_groups"),
+      where("organizationId", "==", organizationId)
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const groups = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+          updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+          procedureSequence: doc.data().procedureSequence || [],
+          isActive: doc.data().isActive !== undefined ? doc.data().isActive : true,
+        })) as ProcessGroup[];
+        groups.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+        setProcessGroups(groups);
+      },
+      (error) => {
+        console.error("Error fetching process groups:", error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [organizationId]);
+
+  // Get procedure count for a process group
+  const getProcedureCount = (groupId: string): number => {
+    const group = processGroups.find(g => g.id === groupId);
+    if (!group) return 0;
+    
+    // Count procedures in procedureSequence
+    const count = group.procedureSequence?.length || 0;
+    
+    // Also check legacy processGroupId links
+    const legacyCount = procedures.filter(p => p.processGroupId === groupId).length;
+    
+    return Math.max(count, legacyCount);
+  };
+
+  // Get procedures for a process group
+  const getProceduresForGroup = (groupId: string): Procedure[] => {
+    const group = processGroups.find(g => g.id === groupId);
+    if (!group) return [];
+    
+    // Get procedures by IDs from procedureSequence
+    const procsById = procedures.filter(p => 
+      group.procedureSequence?.includes(p.id)
+    );
+    
+    // Also include legacy procedures
+    const legacyProcs = procedures.filter(p => p.processGroupId === groupId);
+    
+    // Combine and deduplicate
+    const allProcs = [...procsById, ...legacyProcs.filter(p => !procsById.find(ep => ep.id === p.id))];
+    
+    return allProcs;
+  };
+
+  // Filter procedures/processes by search query
+  const filteredProcedures = procedures.filter(p =>
+    p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const addProcedure = (proc: Procedure) => {
-    setSelectedProcedures((prev) => [
-      ...prev,
-      {
-        procedureId: proc.id,
-        procedureName: proc.name,
-        teamId: proc.teamId,
-        order: prev.length,
-      },
-    ]);
-  };
+  const filteredProcessGroups = processGroups.filter(g =>
+    g.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    g.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const removeProcedure = (procedureId: string) => {
-    setSelectedProcedures((prev) => prev.filter((proc) => proc.procedureId !== procedureId));
-  };
-
-  const handleSave = async () => {
-    if (!profile?.organizationId || !firebaseUser) {
-      setError("Authentication required.");
-      return;
-    }
-    if (!name.trim() || selectedProcedures.length === 0) {
-      setError("Provide a name and select at least one procedure.");
+  const handleAssign = async () => {
+    if (!assignModal || !assigneeId.trim()) {
+      alert("Please select an assignee.");
       return;
     }
 
-    setError(null);
-    setSuccess(null);
-    setSaving(true);
     try {
-      await addDoc(collection(db, "processes"), {
-        name: name.trim(),
-        description: description.trim(),
-        organizationId: profile.organizationId,
-        procedures: selectedProcedures.map((proc, index) => ({ ...proc, order: index })),
-        createdBy: firebaseUser.uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      setSuccess("Process saved.");
-      setName("");
-      setDescription("");
-      setSelectedProcedures([]);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleLaunchProcess = async (process: ProcessDefinition) => {
-    if (!profile?.organizationId || !firebaseUser) return;
-    setLaunching(process.id);
-    setError(null);
-    try {
-      const expanded = await Promise.all(
-        process.procedures.map(async (ref) => {
-          // Handle both 'id' and 'procedureId' for backward compatibility
-          const procedureId = ref.procedureId || (ref as ProcessProcedureRef & { id?: string }).id;
-          if (!procedureId) {
-            throw new Error(`Procedure reference missing ID: ${JSON.stringify(ref)}`);
-          }
-          const procSnap = await getDoc(doc(db, "procedures", procedureId));
-          if (!procSnap.exists()) throw new Error(`Procedure ${ref.procedureName || procedureId} missing`);
-          return { id: procSnap.id, ...(procSnap.data() as Procedure) };
-        }),
-      );
-      const flattenedSteps = expanded.flatMap((proc) =>
-        proc.steps.map((step) => ({
-          ...step,
-          procedureLabel: proc.name,
-          procedureSourceId: proc.id,
-        })),
-      );
-
-      const runRef = await addDoc(collection(db, "active_runs"), {
-        organizationId: profile.organizationId,
-        procedureId: `process:${process.id}`,
-        procedureName: process.name,
-        processId: process.id,
-        processName: process.name,
-        procedureSnapshot: {
-          id: `process:${process.id}`,
-          organizationId: profile.organizationId,
-          teamId: expanded[0]?.teamId ?? "",
-          name: process.name,
-          description: process.description || "",
-          steps: flattenedSteps,
+      if (assignModal.type === "procedure") {
+        await updateDoc(doc(db, "procedures", assignModal.id), {
+          defaultAssignee: {
+            type: assigneeType,
+            id: assigneeId,
+          },
           updatedAt: serverTimestamp(),
-        },
-        startedBy: firebaseUser.uid,
+        });
+      } else {
+        await updateDoc(doc(db, "process_groups", assignModal.id), {
+          defaultAssignee: {
+            type: assigneeType,
+            id: assigneeId,
+          },
+          updatedAt: serverTimestamp(),
+        });
+      }
+      
+      alert("Assignment saved successfully!");
+      setAssignModal(null);
+      setAssigneeId("");
+    } catch (error) {
+      console.error("Error saving assignment:", error);
+      alert("Failed to save assignment. Please try again.");
+    }
+  };
+
+  const handleStartProcedure = async (procedureId: string, procedureTitle: string) => {
+    try {
+      // Check usage limit for active runs
+      const { getDoc } = await import("firebase/firestore");
+      const orgDoc = await getDoc(doc(db, "organizations", organizationId));
+      if (orgDoc.exists()) {
+        const orgData = orgDoc.data();
+        const organization = {
+          id: orgDoc.id,
+          name: orgData.name || "",
+          plan: orgData.plan || "FREE",
+          subscriptionStatus: orgData.subscriptionStatus || "active",
+          limits: orgData.limits || getPlanLimits(orgData.plan || "FREE"),
+          createdAt: orgData.createdAt?.toDate() || new Date(),
+        } as Organization;
+        
+        const limitCheck = await checkUsageLimit(organization, "activeRuns");
+        if (!limitCheck.allowed) {
+          setUpgradeModal({ isOpen: true, resource: "activeRuns" });
+          return;
+        }
+      }
+      
+      const { addDoc, collection, serverTimestamp } = await import("firebase/firestore");
+      const procedure = procedures.find(p => p.id === procedureId);
+      
+      // Check for default assignee
+      const defaultAssignee = (procedure as any)?.defaultAssignee;
+      
+      const runRef = await addDoc(collection(db, "active_runs"), {
+        procedureId,
+        procedureTitle,
+        organizationId,
         status: "IN_PROGRESS",
         currentStepIndex: 0,
         startedAt: serverTimestamp(),
         logs: [],
+        assigneeId: defaultAssignee?.id || null,
+        assigneeType: defaultAssignee?.type || null,
       });
-      router.push(`/run/${runRef.id}`);
-    } catch (err) {
-      console.error(err);
-      setError((err as Error).message);
-    } finally {
-      setLaunching(null);
+      
+      window.location.href = `/run/${runRef.id}`;
+    } catch (error) {
+      console.error("Error starting procedure:", error);
+      alert("Failed to start procedure. Please try again.");
     }
   };
 
-  return (
-    <div className="space-y-10">
-      <header className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 pb-8">
-        <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-muted hover:text-ink">
-          <ArrowLeft className="h-4 w-4" />
-          Back to overview
-        </Link>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="apple-button inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white disabled:opacity-50 disabled:hover:shadow-lg"
-          >
-            <Save className="h-4 w-4" />
-            {saving ? "Saving..." : "Save Process"}
-          </button>
+  const getIconComponent = (iconName: string) => {
+    const IconComponent = (LucideIcons as any)[iconName] || FolderOpen;
+    return IconComponent;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center">
+          <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-900"></div>
+          <p className="text-sm text-slate-600">Loading library...</p>
         </div>
-      </header>
+      </div>
+    );
+  }
 
-      <main className="mx-auto grid w-full max-w-6xl gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-        <section className="space-y-6 rounded-3xl bg-white/80 p-8 shadow-glass ring-1 ring-white/60 backdrop-blur-2xl">
-          <div className="flex items-center gap-3 text-muted">
-            <Workflow className="h-5 w-5 text-accent" />
-            <p className="text-xs uppercase tracking-[0.4em]">Process Meta</p>
-          </div>
-          <div className="space-y-4">
-            <label className="block space-y-2">
-              <span className="text-sm font-medium text-muted">Process Name</span>
-              <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                className="w-full rounded-2xl border border-ink/10 bg-white/70 px-4 py-3 text-base text-ink shadow-subtle outline-none transition focus:border-accent"
-                placeholder="Onboard New Client"
-              />
-            </label>
-            <label className="block space-y-2">
-              <span className="text-sm font-medium text-muted">Description</span>
-              <textarea
-                rows={4}
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                className="w-full rounded-2xl border border-ink/10 bg-white/70 px-4 py-3 text-sm text-ink shadow-subtle outline-none transition focus:border-accent"
-                placeholder="Outline the overall business outcome."
-              />
-            </label>
-          </div>
-          <div className="rounded-2xl border border-ink/5 bg-base/50 p-4 text-xs text-muted">
-            <p className="uppercase tracking-[0.4em]">Available Procedures</p>
-            {availableProcedures.length === 0 ? (
-              <p className="mt-3 text-sm text-muted">All procedures have been added to this process.</p>
-            ) : (
-              <div className="mt-4 space-y-2">
-                {availableProcedures.map((proc) => (
-                  <button
-                    key={proc.id}
-                    onClick={() => addProcedure(proc)}
-                    className="w-full rounded-2xl border border-dashed border-ink/10 px-4 py-3 text-left text-sm font-semibold text-ink hover:border-ink/30"
-                  >
-                    {proc.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
+  return (
+    <div className="space-y-8 p-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Library</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Manage your procedures and processes (Templates)
+          </p>
+        </div>
+      </div>
 
-        <section className="space-y-5 rounded-3xl bg-white/90 p-8 shadow-subtle ring-1 ring-white/70 backdrop-blur-xl">
-          <div className="flex items-center gap-3 text-muted">
-            <Workflow className="h-5 w-5 text-accent" />
-            <p className="text-xs uppercase tracking-[0.4em]">Procedure Order</p>
-          </div>
-          {error && <p className="text-sm text-red-500">{error}</p>}
-          {success && <p className="text-sm text-emerald-600">{success}</p>}
-          {selectedProcedures.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-ink/10 px-6 py-10 text-center text-muted">
-              Add procedures from the left panel to define the process sequence.
-            </p>
-          ) : (
-            <Reorder.Group axis="y" values={selectedProcedures} onReorder={setSelectedProcedures} className="space-y-4">
-              {selectedProcedures.map((proc) => (
-                <Reorder.Item
-                  key={proc.procedureId}
-                  value={proc}
-                  className="flex items-center justify-between rounded-2xl border border-white/70 bg-white/80 px-4 py-4 shadow-inner"
-                >
-                  <div>
-                    <p className="text-lg font-semibold text-ink">{proc.procedureName}</p>
-                    {proc.teamId && <p className="text-sm text-muted">Team: {proc.teamId}</p>}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => removeProcedure(proc.procedureId)}
-                      className="rounded-2xl border-2 border-ink/30 bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm transition-all hover:border-red-400 hover:bg-red-50 hover:text-red-600 hover:shadow-md"
-                    >
-                      Remove
-                    </button>
-                    <GripVertical className="h-5 w-5 text-muted" />
-                  </div>
-                </Reorder.Item>
-              ))}
-            </Reorder.Group>
-          )}
-        </section>
-      </main>
-
-      <div className="sticky bottom-6 z-10 mx-auto flex w-full max-w-6xl justify-end gap-3">
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-slate-200">
         <button
-          onClick={handleSave}
-          disabled={saving}
-          className="apple-button inline-flex items-center gap-2 px-8 py-4 text-sm font-medium text-white disabled:opacity-50 disabled:hover:shadow-lg"
+          onClick={() => setActiveTab("procedures")}
+          className={`px-6 py-3 text-sm font-medium transition-colors ${
+            activeTab === "procedures"
+              ? "border-b-2 border-slate-900 text-slate-900"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
         >
-          <Save className="h-4 w-4" />
-          {saving ? "Saving..." : "Save Process"}
+          <BookOpen className="inline h-4 w-4 mr-2" />
+          Procedures ({procedures.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("processes")}
+          className={`px-6 py-3 text-sm font-medium transition-colors ${
+            activeTab === "processes"
+              ? "border-b-2 border-slate-900 text-slate-900"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          <FolderOpen className="inline h-4 w-4 mr-2" />
+          Processes ({processGroups.length})
         </button>
       </div>
-      <section className="mx-auto w-full max-w-6xl space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-ink">Existing Processes</h2>
-          <span className="text-sm text-muted">{processes.length} defined</span>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+        <input
+          type="text"
+          placeholder="Search procedures or processes..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+        />
+      </div>
+
+      {/* Procedures Tab */}
+      {activeTab === "procedures" && (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredProcedures.length === 0 ? (
+            <div className="col-span-full rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-xl p-12 text-center shadow-sm">
+              <FileText className="mx-auto h-12 w-12 text-slate-400" />
+              <h3 className="mt-4 text-lg font-semibold text-slate-900">No Procedures Found</h3>
+              <p className="mt-2 text-sm text-slate-600">
+                {searchQuery ? "Try a different search term" : "Create your first procedure in Studio"}
+              </p>
+            </div>
+          ) : (
+            filteredProcedures.map((procedure) => (
+              <motion.div
+                key={procedure.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-xl p-6 shadow-sm transition-all hover:shadow-md"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-slate-900">{procedure.title}</h3>
+                    <p className="mt-1 text-sm text-slate-600 line-clamp-2">
+                      {procedure.description || "No description"}
+                    </p>
+                  </div>
+                  <span
+                    className={`ml-2 rounded-full px-3 py-1 text-xs font-medium ${
+                      procedure.isPublished
+                        ? "bg-green-100 text-green-700 border border-green-200"
+                        : "bg-slate-100 text-slate-700 border border-slate-200"
+                    }`}
+                  >
+                    {procedure.isPublished ? "Published" : "Draft"}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs text-slate-600 mb-4">
+                  <FileText className="h-4 w-4" />
+                  <span>{procedure.steps.length} {procedure.steps.length === 1 ? "step" : "steps"}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/studio/procedure/${procedure.id}`}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    <Edit className="h-3.5 w-3.5" />
+                    Edit
+                  </Link>
+                  <button
+                    onClick={() => setAssignModal({ type: "procedure", id: procedure.id, title: procedure.title })}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    Assign
+                  </button>
+                  <button
+                    onClick={() => handleStartProcedure(procedure.id, procedure.title)}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-xs font-medium text-white transition-all hover:bg-slate-800"
+                  >
+                    <Play className="h-3.5 w-3.5" />
+                    Run
+                  </button>
+                </div>
+              </motion.div>
+            ))
+          )}
         </div>
-        {processes.length === 0 ? (
-          <p className="rounded-3xl border border-dashed border-ink/10 px-6 py-10 text-center text-muted">
-            No processes yet. Create a process from the form above.
-          </p>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {processes.map((proc) => (
-              <div key={proc.id} className="rounded-3xl border border-white/70 bg-white/80 p-6 shadow-subtle">
-                <p className="text-xs uppercase tracking-[0.4em] text-muted">Process</p>
-                <h3 className="mt-2 text-xl font-semibold text-ink">{proc.name}</h3>
-                <p className="text-sm text-muted">
-                  {proc.description || "No description"} · {proc.procedures.length} procedure(s)
-                </p>
-                <button
-                  onClick={() => handleLaunchProcess(proc)}
-                  className="apple-button mt-4 inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50"
-                  disabled={!!launching && launching !== proc.id}
+      )}
+
+      {/* Processes Tab */}
+      {activeTab === "processes" && (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredProcessGroups.length === 0 ? (
+            <div className="col-span-full rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-xl p-12 text-center shadow-sm">
+              <FolderOpen className="mx-auto h-12 w-12 text-slate-400" />
+              <h3 className="mt-4 text-lg font-semibold text-slate-900">No Processes Found</h3>
+              <p className="mt-2 text-sm text-slate-600">
+                {searchQuery ? "Try a different search term" : "Create your first process in Studio"}
+              </p>
+            </div>
+          ) : (
+            filteredProcessGroups.map((group) => {
+              const procedureCount = getProcedureCount(group.id);
+              const IconComponent = getIconComponent(group.icon);
+
+              return (
+                <motion.div
+                  key={group.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-xl p-6 shadow-sm transition-all hover:shadow-md"
                 >
-                  <Play className="h-4 w-4" />
-                  {launching === proc.id ? "Launching…" : "Start Process"}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
+                        <IconComponent className="h-6 w-6 text-slate-700" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-slate-900">{group.title}</h3>
+                        <p className="mt-1 text-sm text-slate-600 line-clamp-2">
+                          {group.description || "No description"}
+                        </p>
+                      </div>
+                    </div>
+                    <span
+                      className={`ml-2 rounded-full px-3 py-1 text-xs font-medium ${
+                        group.isActive
+                          ? "bg-green-100 text-green-700 border border-green-200"
+                          : "bg-slate-100 text-slate-700 border border-slate-200"
+                      }`}
+                    >
+                      {group.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-slate-600 mb-4">
+                    <FileText className="h-4 w-4" />
+                    <span>{procedureCount} {procedureCount === 1 ? "procedure" : "procedures"} inside</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/studio/process/${group.id}`}
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                      Edit
+                    </Link>
+                    <button
+                      onClick={() => setAssignModal({ type: "process", id: group.id, title: group.title })}
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
+                    >
+                      <Users className="h-3.5 w-3.5" />
+                      Assign
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Assignment Modal */}
+      {assignModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl max-w-md w-full mx-4"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900">Assign {assignModal.type === "procedure" ? "Procedure" : "Process"}</h3>
+              <button
+                onClick={() => {
+                  setAssignModal(null);
+                  setAssigneeId("");
+                }}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-slate-600 mb-6">
+              Assign <strong>{assignModal.title}</strong> to a user or team.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Assign to
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setAssigneeType("USER")}
+                    className={`flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+                      assigneeType === "USER"
+                        ? "border-slate-900 bg-slate-900 text-white"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                    }`}
+                  >
+                    <User className="inline h-4 w-4 mr-2" />
+                    User
+                  </button>
+                  <button
+                    onClick={() => setAssigneeType("TEAM")}
+                    className={`flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+                      assigneeType === "TEAM"
+                        ? "border-slate-900 bg-slate-900 text-white"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                    }`}
+                  >
+                    <Users className="inline h-4 w-4 mr-2" />
+                    Team
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  {assigneeType === "USER" ? "User ID" : "Team ID"}
+                </label>
+                <input
+                  type="text"
+                  value={assigneeId}
+                  onChange={(e) => setAssigneeId(e.target.value)}
+                  placeholder={assigneeType === "USER" ? "Enter user ID" : "Enter team ID"}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  TODO: Replace with dropdown selector
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <button
+                  onClick={() => {
+                    setAssignModal(null);
+                    setAssigneeId("");
+                  }}
+                  className="flex-1 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAssign}
+                  className="flex-1 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-slate-800"
+                >
+                  Save Assignment
                 </button>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={upgradeModal.isOpen}
+        onClose={() => setUpgradeModal({ isOpen: false, resource: "activeRuns" })}
+        resource={upgradeModal.resource}
+        currentPlan="FREE" // TODO: Get from organization
+      />
     </div>
   );
 }

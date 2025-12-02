@@ -1,6 +1,6 @@
-import { getApp, getApps, initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
@@ -13,17 +13,14 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
+// Initialize Firebase
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-export const auth = getAuth(app);
+// Initialize services
 export const db = getFirestore(app);
-
-// Initialize storage
-// Note: Make sure NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is set correctly
-// Format should be: "your-project-id.appspot.com" or "gs://your-project-id.appspot.com"
-const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-if (!storageBucket) {
-  console.warn("[Firebase] Storage bucket not configured. File uploads will fail.");
-}
+export { app };
+export const auth = getAuth(app);
 export const storage = getStorage(app);
+
+export default app;
 
