@@ -137,7 +137,7 @@ export default function DashboardLayout({
             <div className="flex h-full flex-col">
               {/* Logo */}
               <div className="flex h-16 items-center justify-between border-b border-slate-200 px-6">
-                <Link href="/dashboard" className="flex items-center gap-3 group">
+                <Link href="/" className="flex items-center gap-3 group">
                   <Logo size="small" />
                   <div>
                     <span className="text-lg font-bold text-slate-900 group-hover:text-slate-700 transition-colors block">

@@ -1,12 +1,27 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import Link from "next/link";
-import { Sparkles, Zap, Users, Layers, ArrowRight, Check, Circle, Move, Bot, BarChart3, TrendingUp, Activity, Github, Twitter, Linkedin, Mail } from "lucide-react";
+import { Sparkles, Zap, Users, Layers, ArrowRight, Check, Circle, Move, Bot, BarChart3, TrendingUp, Activity, Github, Twitter, Linkedin, Mail, LayoutDashboard } from "lucide-react";
 import { motion } from "framer-motion";
 import HeroAnimation from "@/components/HeroAnimation";
 import Logo from "@/components/Logo";
 
 export default function LandingPage() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navbar */}
@@ -64,120 +79,282 @@ export default function LandingPage() {
 
             {/* CTA Buttons */}
             <div className="flex items-center gap-3">
-              <Link href="/sign-in">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="rounded-xl px-5 py-2.5 text-sm font-medium text-slate-700 transition-all hover:bg-slate-100 hover:text-slate-900"
-                >
-                  Sign In
-                </motion.button>
-              </Link>
-              <Link href="/sign-up">
-                <motion.button
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 shadow-lg hover:shadow-xl"
-                >
-                  Get Started
-                </motion.button>
-              </Link>
+              {!loading && (
+                <>
+                  {user ? (
+                    <Link href="/dashboard">
+                      <motion.button
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 shadow-lg hover:shadow-xl"
+                      >
+                        <LayoutDashboard className="h-4 w-4" />
+                        Go to Dashboard
+                      </motion.button>
+                    </Link>
+                  ) : (
+                    <>
+                      <Link href="/sign-in">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="rounded-xl px-5 py-2.5 text-sm font-medium text-slate-700 transition-all hover:bg-slate-100 hover:text-slate-900"
+                        >
+                          Sign In
+                        </motion.button>
+                      </Link>
+                      <Link href="/sign-up">
+                        <motion.button
+                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-slate-800 shadow-lg hover:shadow-xl"
+                        >
+                          Get Started
+                        </motion.button>
+                      </Link>
+                    </>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
       </motion.nav>
 
       {/* Hero Section - Unified Container */}
-      <section className="relative overflow-visible">
+      <section className="relative overflow-visible bg-gradient-to-br from-slate-50 via-white to-blue-50/40">
         {/* Unified Container with Shared Background */}
         <div className="mx-auto max-w-[1600px] px-6 py-8 sm:py-12 lg:py-16 relative">
-          {/* Shared Background Container */}
-          <div className="relative overflow-visible bg-white p-8 sm:p-12 lg:p-16" style={{ border: 'none', outline: 'none', borderRadius: 0 }}>
-            {/* Animated Color Orbs - Removed for white background */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ display: 'none' }}>
-              {/* Cyan/Teal Orb - Top Left */}
+          {/* Shared Background Container - Completely Transparent to Match Hero Background */}
+          <div className="relative overflow-visible p-8 sm:p-12 lg:p-16" style={{ background: 'transparent' }}>
+            {/* Premium Animated Color Orbs with Glassmorphism */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              {/* Main Cyan/Teal Orb - Top Left - Premium */}
               <motion.div
-                className="absolute w-[600px] h-[600px] rounded-full blur-3xl opacity-30"
+                className="absolute rounded-full blur-3xl"
                 style={{
-                  background: 'radial-gradient(circle, rgba(79, 240, 183, 0.4) 0%, transparent 70%)',
-                  top: '-20%',
-                  left: '-10%',
+                  width: '800px',
+                  height: '800px',
+                  background: 'radial-gradient(circle, rgba(79, 240, 183, 0.6) 0%, rgba(6, 182, 212, 0.4) 25%, rgba(14, 165, 233, 0.2) 50%, transparent 75%)',
+                  top: '-30%',
+                  left: '-20%',
+                  filter: 'blur(80px)',
                 }}
                 animate={{
-                  x: [0, 30, 0],
-                  y: [0, 20, 0],
-                  scale: [1, 1.1, 1],
+                  x: [0, 60, 0],
+                  y: [0, 40, 0],
+                  scale: [1, 1.2, 1],
+                  opacity: [0.5, 0.7, 0.5],
+                  rotate: [0, 180, 360],
                 }}
                 transition={{
-                  duration: 8,
+                  duration: 15,
                   repeat: Infinity,
                   ease: "easeInOut",
                 }}
               />
               
-              {/* Purple/Pink Orb - Bottom Right */}
+              {/* Main Purple/Pink Orb - Bottom Right - Premium */}
               <motion.div
-                className="absolute w-[600px] h-[600px] rounded-full blur-3xl opacity-30"
+                className="absolute rounded-full blur-3xl"
                 style={{
-                  background: 'radial-gradient(circle, rgba(112, 0, 255, 0.4) 0%, transparent 70%)',
-                  bottom: '-20%',
-                  right: '-10%',
+                  width: '800px',
+                  height: '800px',
+                  background: 'radial-gradient(circle, rgba(139, 92, 246, 0.6) 0%, rgba(168, 85, 247, 0.4) 25%, rgba(192, 132, 252, 0.2) 50%, transparent 75%)',
+                  bottom: '-30%',
+                  right: '-20%',
+                  filter: 'blur(80px)',
                 }}
                 animate={{
-                  x: [0, -30, 0],
-                  y: [0, -20, 0],
-                  scale: [1, 1.1, 1],
+                  x: [0, -60, 0],
+                  y: [0, -40, 0],
+                  scale: [1, 1.2, 1],
+                  opacity: [0.5, 0.7, 0.5],
+                  rotate: [360, 180, 0],
                 }}
                 transition={{
-                  duration: 8,
+                  duration: 15,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: 3,
+                }}
+              />
+              
+              {/* Blue Accent - Top Right - Premium */}
+              <motion.div
+                className="absolute rounded-full blur-3xl"
+                style={{
+                  width: '600px',
+                  height: '600px',
+                  background: 'radial-gradient(circle, rgba(59, 130, 246, 0.5) 0%, rgba(37, 99, 235, 0.3) 30%, rgba(29, 78, 216, 0.15) 60%, transparent 80%)',
+                  top: '0%',
+                  right: '5%',
+                  filter: 'blur(70px)',
+                }}
+                animate={{
+                  x: [0, -40, 0],
+                  y: [0, 30, 0],
+                  scale: [1, 1.25, 1],
+                  opacity: [0.4, 0.6, 0.4],
+                  rotate: [0, -90, 0],
+                }}
+                transition={{
+                  duration: 14,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: 1.5,
+                }}
+              />
+              
+              {/* Purple Accent - Bottom Center - Premium */}
+              <motion.div
+                className="absolute rounded-full blur-3xl"
+                style={{
+                  width: '550px',
+                  height: '550px',
+                  background: 'radial-gradient(circle, rgba(168, 85, 247, 0.5) 0%, rgba(139, 92, 246, 0.3) 30%, rgba(124, 58, 237, 0.15) 60%, transparent 80%)',
+                  bottom: '-10%',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  filter: 'blur(70px)',
+                }}
+                animate={{
+                  x: [0, 35, 0],
+                  y: [0, -25, 0],
+                  scale: [1, 1.22, 1],
+                  opacity: [0.4, 0.6, 0.4],
+                  rotate: [0, 90, 0],
+                }}
+                transition={{
+                  duration: 13,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: 0.8,
+                }}
+              />
+              
+              {/* Cyan Accent - Top Center - Premium */}
+              <motion.div
+                className="absolute rounded-full blur-3xl"
+                style={{
+                  width: '500px',
+                  height: '500px',
+                  background: 'radial-gradient(circle, rgba(6, 182, 212, 0.5) 0%, rgba(79, 240, 183, 0.3) 30%, rgba(34, 211, 238, 0.15) 60%, transparent 80%)',
+                  top: '10%',
+                  left: '30%',
+                  filter: 'blur(65px)',
+                }}
+                animate={{
+                  x: [0, -35, 0],
+                  y: [0, 35, 0],
+                  scale: [1, 1.3, 1],
+                  opacity: [0.35, 0.55, 0.35],
+                  rotate: [0, -180, 0],
+                }}
+                transition={{
+                  duration: 16,
                   repeat: Infinity,
                   ease: "easeInOut",
                   delay: 2,
                 }}
               />
-              
-              {/* Additional Purple Accent - Bottom Center */}
+
+              {/* Pink Accent - Center Left - New */}
               <motion.div
-                className="absolute w-[400px] h-[400px] rounded-full blur-3xl opacity-20"
+                className="absolute rounded-full blur-3xl"
                 style={{
-                  background: 'radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, transparent 70%)',
-                  bottom: '-10%',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
+                  width: '450px',
+                  height: '450px',
+                  background: 'radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, rgba(219, 39, 119, 0.25) 35%, rgba(190, 24, 93, 0.15) 60%, transparent 80%)',
+                  top: '50%',
+                  left: '10%',
+                  transform: 'translateY(-50%)',
+                  filter: 'blur(60px)',
                 }}
                 animate={{
-                  x: [0, 20, 0],
-                  y: [0, -15, 0],
-                  scale: [1, 1.15, 1],
-                }}
-                transition={{
-                  duration: 10,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 1,
-                }}
-              />
-              
-              {/* Cyan Accent - Top Center */}
-              <motion.div
-                className="absolute w-[300px] h-[300px] rounded-full blur-3xl opacity-25"
-                style={{
-                  background: 'radial-gradient(circle, rgba(6, 182, 212, 0.35) 0%, transparent 70%)',
-                  top: '10%',
-                  left: '30%',
-                }}
-                animate={{
-                  x: [0, -25, 0],
-                  y: [0, 25, 0],
-                  scale: [1, 1.2, 1],
+                  x: [0, 30, 0],
+                  y: [0, -20, 0],
+                  scale: [1, 1.18, 1],
+                  opacity: [0.3, 0.5, 0.3],
+                  rotate: [0, 120, 0],
                 }}
                 transition={{
                   duration: 12,
                   repeat: Infinity,
                   ease: "easeInOut",
-                  delay: 0.5,
+                  delay: 1.2,
                 }}
               />
+
+              {/* Enhanced Floating Bubbles with Varied Sizes */}
+              {[...Array(10)].map((_, i) => {
+                const colors = [
+                  'radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, rgba(37, 99, 235, 0.15) 50%, transparent 70%)',
+                  'radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, rgba(168, 85, 247, 0.15) 50%, transparent 70%)',
+                  'radial-gradient(circle, rgba(6, 182, 212, 0.3) 0%, rgba(79, 240, 183, 0.15) 50%, transparent 70%)',
+                  'radial-gradient(circle, rgba(236, 72, 153, 0.3) 0%, rgba(219, 39, 119, 0.15) 50%, transparent 70%)',
+                ];
+                return (
+                  <motion.div
+                    key={i}
+                    className="absolute rounded-full blur-2xl"
+                    style={{
+                      width: `${120 + i * 25}px`,
+                      height: `${120 + i * 25}px`,
+                      background: colors[i % colors.length],
+                      top: `${5 + (i * 9) % 80}%`,
+                      left: `${8 + (i * 11) % 75}%`,
+                      filter: 'blur(50px)',
+                    }}
+                    animate={{
+                      x: [0, Math.sin(i) * 35, 0],
+                      y: [0, Math.cos(i) * 35, 0],
+                      scale: [1, 1.15, 1],
+                      opacity: [0.25, 0.45, 0.25],
+                      rotate: [0, 360, 0],
+                    }}
+                    transition={{
+                      duration: 10 + i * 1.5,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay: i * 0.3,
+                    }}
+                  />
+                );
+              })}
+
+              {/* Glowing Particles */}
+              {[...Array(15)].map((_, i) => (
+                <motion.div
+                  key={`particle-${i}`}
+                  className="absolute rounded-full"
+                  style={{
+                    width: `${4 + (i % 3) * 2}px`,
+                    height: `${4 + (i % 3) * 2}px`,
+                    background: i % 4 === 0 
+                      ? 'rgba(59, 130, 246, 0.8)'
+                      : i % 4 === 1
+                      ? 'rgba(139, 92, 246, 0.8)'
+                      : i % 4 === 2
+                      ? 'rgba(6, 182, 212, 0.8)'
+                      : 'rgba(236, 72, 153, 0.8)',
+                    top: `${10 + (i * 6) % 85}%`,
+                    left: `${5 + (i * 7) % 90}%`,
+                    boxShadow: `0 0 ${8 + i * 2}px currentColor`,
+                  }}
+                  animate={{
+                    y: [0, -30, 0],
+                    opacity: [0.3, 1, 0.3],
+                    scale: [0.8, 1.2, 0.8],
+                  }}
+                  transition={{
+                    duration: 3 + (i % 3) * 0.5,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: i * 0.2,
+                  }}
+                />
+              ))}
             </div>
 
             {/* Content Grid - Text and Sphere in same container */}
@@ -215,19 +392,36 @@ export default function LandingPage() {
                   transition={{ duration: 0.6, delay: 0.3 }}
                   className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-4"
                 >
-                  <Link
-                    href="/sign-up"
-                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white transition-all hover:scale-105 hover:bg-slate-800 shadow-lg"
-                  >
-                    Start for Free
-                    <ArrowRight className="h-5 w-5" />
-                  </Link>
-                  <Link
-                    href="/sign-in"
-                    className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-8 py-4 text-base font-semibold text-slate-700 transition-all hover:bg-slate-50"
-                  >
-                    Sign In
-                  </Link>
+                  {!loading && (
+                    <>
+                      {user ? (
+                        <Link
+                          href="/dashboard"
+                          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white transition-all hover:scale-105 hover:bg-slate-800 shadow-lg"
+                        >
+                          <LayoutDashboard className="h-5 w-5" />
+                          Go to Dashboard
+                          <ArrowRight className="h-5 w-5" />
+                        </Link>
+                      ) : (
+                        <>
+                          <Link
+                            href="/sign-up"
+                            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white transition-all hover:scale-105 hover:bg-slate-800 shadow-lg"
+                          >
+                            Start for Free
+                            <ArrowRight className="h-5 w-5" />
+                          </Link>
+                          <Link
+                            href="/sign-in"
+                            className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-8 py-4 text-base font-semibold text-slate-700 transition-all hover:bg-slate-50"
+                          >
+                            Sign In
+                          </Link>
+                        </>
+                      )}
+                    </>
+                  )}
                 </motion.div>
 
                 {/* Trust Indicators */}
@@ -254,7 +448,12 @@ export default function LandingPage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
                 className="relative w-full"
-                style={{ margin: 0, padding: 0 }}
+                style={{ 
+                  margin: 0, 
+                  padding: 0, 
+                  background: 'transparent',
+                  backgroundColor: 'transparent',
+                }}
               >
                 <HeroAnimation />
               </motion.div>
@@ -750,47 +949,182 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-50">
-        {/* Decorative Background Elements */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/50">
+        {/* Premium Decorative Background Elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Animated Gradient Orbs */}
+          {/* Premium Blue Orb - Top Left */}
           <motion.div
-            className="absolute w-[600px] h-[600px] rounded-full blur-3xl opacity-20"
+            className="absolute rounded-full blur-3xl"
             style={{
-              background: 'radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%)',
-              top: '-20%',
-              left: '-10%',
+              width: '900px',
+              height: '900px',
+              background: 'radial-gradient(circle, rgba(59, 130, 246, 0.5) 0%, rgba(37, 99, 235, 0.3) 25%, rgba(29, 78, 216, 0.15) 50%, transparent 75%)',
+              top: '-30%',
+              left: '-20%',
+              filter: 'blur(90px)',
             }}
             animate={{
-              x: [0, 30, 0],
-              y: [0, 20, 0],
-              scale: [1, 1.1, 1],
+              x: [0, 70, 0],
+              y: [0, 50, 0],
+              scale: [1, 1.25, 1],
+              opacity: [0.4, 0.6, 0.4],
+              rotate: [0, 180, 360],
             }}
             transition={{
-              duration: 8,
+              duration: 16,
               repeat: Infinity,
               ease: "easeInOut",
             }}
           />
+          
+          {/* Premium Purple Orb - Bottom Right */}
           <motion.div
-            className="absolute w-[600px] h-[600px] rounded-full blur-3xl opacity-20"
+            className="absolute rounded-full blur-3xl"
             style={{
-              background: 'radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%)',
-              bottom: '-20%',
-              right: '-10%',
+              width: '900px',
+              height: '900px',
+              background: 'radial-gradient(circle, rgba(139, 92, 246, 0.5) 0%, rgba(168, 85, 247, 0.3) 25%, rgba(192, 132, 252, 0.15) 50%, transparent 75%)',
+              bottom: '-30%',
+              right: '-20%',
+              filter: 'blur(90px)',
             }}
             animate={{
-              x: [0, -30, 0],
-              y: [0, -20, 0],
-              scale: [1, 1.1, 1],
+              x: [0, -70, 0],
+              y: [0, -50, 0],
+              scale: [1, 1.25, 1],
+              opacity: [0.4, 0.6, 0.4],
+              rotate: [360, 180, 0],
             }}
             transition={{
-              duration: 8,
+              duration: 16,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 3.5,
+            }}
+          />
+
+          {/* Premium Cyan Accent - Center */}
+          <motion.div
+            className="absolute rounded-full blur-3xl"
+            style={{
+              width: '650px',
+              height: '650px',
+              background: 'radial-gradient(circle, rgba(6, 182, 212, 0.4) 0%, rgba(79, 240, 183, 0.25) 30%, rgba(34, 211, 238, 0.12) 60%, transparent 80%)',
+              top: '45%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              filter: 'blur(75px)',
+            }}
+            animate={{
+              scale: [1, 1.4, 1],
+              opacity: [0.3, 0.5, 0.3],
+              rotate: [0, 360, 0],
+            }}
+            transition={{
+              duration: 14,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 1.5,
+            }}
+          />
+
+          {/* Pink Accent - Top Right */}
+          <motion.div
+            className="absolute rounded-full blur-3xl"
+            style={{
+              width: '550px',
+              height: '550px',
+              background: 'radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, rgba(219, 39, 119, 0.25) 35%, rgba(190, 24, 93, 0.15) 60%, transparent 80%)',
+              top: '10%',
+              right: '15%',
+              filter: 'blur(70px)',
+            }}
+            animate={{
+              x: [0, -40, 0],
+              y: [0, 30, 0],
+              scale: [1, 1.2, 1],
+              opacity: [0.35, 0.55, 0.35],
+              rotate: [0, -90, 0],
+            }}
+            transition={{
+              duration: 13,
               repeat: Infinity,
               ease: "easeInOut",
               delay: 2,
             }}
           />
+
+          {/* Enhanced Floating Particles with More Variety */}
+          {[...Array(12)].map((_, i) => {
+            const colors = [
+              'radial-gradient(circle, rgba(59, 130, 246, 0.25) 0%, rgba(37, 99, 235, 0.12) 50%, transparent 70%)',
+              'radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, rgba(168, 85, 247, 0.12) 50%, transparent 70%)',
+              'radial-gradient(circle, rgba(6, 182, 212, 0.25) 0%, rgba(79, 240, 183, 0.12) 50%, transparent 70%)',
+              'radial-gradient(circle, rgba(236, 72, 153, 0.25) 0%, rgba(219, 39, 119, 0.12) 50%, transparent 70%)',
+            ];
+            return (
+              <motion.div
+                key={i}
+                className="absolute rounded-full blur-2xl"
+                style={{
+                  width: `${110 + i * 22}px`,
+                  height: `${110 + i * 22}px`,
+                  background: colors[i % colors.length],
+                  top: `${15 + (i * 7) % 75}%`,
+                  left: `${8 + (i * 9) % 80}%`,
+                  filter: 'blur(55px)',
+                }}
+                animate={{
+                  x: [0, Math.sin(i) * 40, 0],
+                  y: [0, Math.cos(i) * 40, 0],
+                  scale: [1, 1.2, 1],
+                  opacity: [0.2, 0.4, 0.2],
+                  rotate: [0, 360, 0],
+                }}
+                transition={{
+                  duration: 11 + i * 1.8,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: i * 0.35,
+                }}
+              />
+            );
+          })}
+
+          {/* Glowing Star Particles */}
+          {[...Array(20)].map((_, i) => (
+            <motion.div
+              key={`star-${i}`}
+              className="absolute rounded-full"
+              style={{
+                width: `${3 + (i % 4) * 1.5}px`,
+                height: `${3 + (i % 4) * 1.5}px`,
+                background: i % 5 === 0 
+                  ? 'rgba(59, 130, 246, 0.9)'
+                  : i % 5 === 1
+                  ? 'rgba(139, 92, 246, 0.9)'
+                  : i % 5 === 2
+                  ? 'rgba(6, 182, 212, 0.9)'
+                  : i % 5 === 3
+                  ? 'rgba(236, 72, 153, 0.9)'
+                  : 'rgba(79, 240, 183, 0.9)',
+                top: `${5 + (i * 4.5) % 90}%`,
+                left: `${3 + (i * 4.7) % 95}%`,
+                boxShadow: `0 0 ${10 + (i % 3) * 3}px currentColor, 0 0 ${20 + (i % 3) * 5}px currentColor`,
+              }}
+              animate={{
+                y: [0, -40, 0],
+                opacity: [0.2, 1, 0.2],
+                scale: [0.5, 1.5, 0.5],
+              }}
+              transition={{
+                duration: 4 + (i % 4) * 0.6,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: i * 0.15,
+              }}
+            />
+          ))}
         </div>
 
         <div className="relative mx-auto max-w-[1600px] px-6 py-20 sm:py-24 lg:py-32">
@@ -855,39 +1189,72 @@ export default function LandingPage() {
               transition={{ duration: 0.6, delay: 0.7 }}
               className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4"
             >
-              <Link href="/sign-up">
-                <motion.button
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="group relative inline-flex items-center gap-3 rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-slate-800 shadow-xl overflow-hidden"
-                >
-                  {/* Shimmer Effect */}
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                    animate={{
-                      x: ['-100%', '100%'],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      repeatDelay: 1,
-                      ease: "linear",
-                    }}
-                  />
-                  <span className="relative z-10">Start for Free</span>
-                  <ArrowRight className="h-5 w-5 relative z-10 transition-transform group-hover:translate-x-1" />
-                </motion.button>
-              </Link>
-              
-              <Link href="/sign-in">
-                <motion.button
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-8 py-4 text-base font-semibold text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-400 shadow-sm"
-                >
-                  Sign In
-                </motion.button>
-              </Link>
+              {!loading && (
+                <>
+                  {user ? (
+                    <Link href="/dashboard">
+                      <motion.button
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="group relative inline-flex items-center gap-3 rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-slate-800 shadow-xl overflow-hidden"
+                      >
+                        {/* Shimmer Effect */}
+                        <motion.div
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                          animate={{
+                            x: ['-100%', '100%'],
+                          }}
+                          transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            repeatDelay: 1,
+                            ease: "linear",
+                          }}
+                        />
+                        <LayoutDashboard className="h-5 w-5 relative z-10" />
+                        <span className="relative z-10">Go to Dashboard</span>
+                        <ArrowRight className="h-5 w-5 relative z-10 transition-transform group-hover:translate-x-1" />
+                      </motion.button>
+                    </Link>
+                  ) : (
+                    <>
+                      <Link href="/sign-up">
+                        <motion.button
+                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileTap={{ scale: 0.98 }}
+                          className="group relative inline-flex items-center gap-3 rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-slate-800 shadow-xl overflow-hidden"
+                        >
+                          {/* Shimmer Effect */}
+                          <motion.div
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                            animate={{
+                              x: ['-100%', '100%'],
+                            }}
+                            transition={{
+                              duration: 2,
+                              repeat: Infinity,
+                              repeatDelay: 1,
+                              ease: "linear",
+                            }}
+                          />
+                          <span className="relative z-10">Start for Free</span>
+                          <ArrowRight className="h-5 w-5 relative z-10 transition-transform group-hover:translate-x-1" />
+                        </motion.button>
+                      </Link>
+                      
+                      <Link href="/sign-in">
+                        <motion.button
+                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileTap={{ scale: 0.98 }}
+                          className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-8 py-4 text-base font-semibold text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-400 shadow-sm"
+                        >
+                          Sign In
+                        </motion.button>
+                      </Link>
+                    </>
+                  )}
+                </>
+              )}
             </motion.div>
 
             {/* Trust Indicators */}
@@ -1023,13 +1390,19 @@ export default function LandingPage() {
                 Product
               </h3>
               <ul className="space-y-3">
-                {["Features", "Pricing", "Templates", "Integrations", "API"].map((item) => (
-                  <li key={item}>
+                {[
+                  { name: "Features", href: "/features" },
+                  { name: "Pricing", href: "/pricing" },
+                  { name: "Templates", href: "/templates" },
+                  { name: "Integrations", href: "/integrations" },
+                  { name: "API", href: "/api" },
+                ].map((item) => (
+                  <li key={item.name}>
                     <Link
-                      href="#"
+                      href={item.href}
                       className="text-sm text-slate-600 hover:text-slate-900 transition-colors relative group"
                     >
-                      {item}
+                      {item.name}
                       <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-slate-900 group-hover:w-full transition-all duration-300" />
                     </Link>
                   </li>
@@ -1048,13 +1421,19 @@ export default function LandingPage() {
                 Company
               </h3>
               <ul className="space-y-3">
-                {["About", "Blog", "Careers", "Partners", "Press Kit"].map((item) => (
-                  <li key={item}>
+                {[
+                  { name: "About", href: "/about" },
+                  { name: "Blog", href: "#" },
+                  { name: "Careers", href: "/careers" },
+                  { name: "Partners", href: "/partners" },
+                  { name: "Press Kit", href: "/press-kit" },
+                ].map((item) => (
+                  <li key={item.name}>
                     <Link
-                      href="#"
+                      href={item.href}
                       className="text-sm text-slate-600 hover:text-slate-900 transition-colors relative group"
                     >
-                      {item}
+                      {item.name}
                       <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-slate-900 group-hover:w-full transition-all duration-300" />
                     </Link>
                   </li>
@@ -1073,13 +1452,19 @@ export default function LandingPage() {
                 Resources
               </h3>
               <ul className="space-y-3">
-                {["Documentation", "Help Center", "Community", "Status", "Contact"].map((item) => (
-                  <li key={item}>
+                {[
+                  { name: "Documentation", href: "/documentation" },
+                  { name: "Help Center", href: "/help-center" },
+                  { name: "Community", href: "/community" },
+                  { name: "Status", href: "/status" },
+                  { name: "Contact", href: "/contact" },
+                ].map((item) => (
+                  <li key={item.name}>
                     <Link
-                      href="#"
+                      href={item.href}
                       className="text-sm text-slate-600 hover:text-slate-900 transition-colors relative group"
                     >
-                      {item}
+                      {item.name}
                       <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-slate-900 group-hover:w-full transition-all duration-300" />
                     </Link>
                   </li>
@@ -1102,21 +1487,21 @@ export default function LandingPage() {
               </div>
               <div className="flex flex-wrap items-center gap-6 text-sm text-slate-500">
                 <Link
-                  href="#"
+                  href="/privacy-policy"
                   className="hover:text-slate-900 transition-colors relative group"
                 >
                   Privacy Policy
                   <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-slate-900 group-hover:w-full transition-all duration-300" />
                 </Link>
                 <Link
-                  href="#"
+                  href="/terms-of-service"
                   className="hover:text-slate-900 transition-colors relative group"
                 >
                   Terms of Service
                   <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-slate-900 group-hover:w-full transition-all duration-300" />
                 </Link>
                 <Link
-                  href="#"
+                  href="/cookie-policy"
                   className="hover:text-slate-900 transition-colors relative group"
                 >
                   Cookie Policy

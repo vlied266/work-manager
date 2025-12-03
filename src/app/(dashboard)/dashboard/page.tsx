@@ -180,42 +180,43 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8 p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Command Center</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Monitor active work instances and running processes
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50/40 via-white to-cyan-50/40 relative overflow-hidden font-sans">
+      <div className="space-y-8 p-8">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Command Center</h1>
+            <p className="mt-2 text-sm text-slate-600 font-medium">
+              Monitor active work instances and running processes
+            </p>
+          </div>
+          <Link
+            href="/processes"
+            className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg shadow-black/5 px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-xl"
+          >
+            <BarChart3 className="h-4 w-4" />
+            View Library
+          </Link>
         </div>
-        <Link
-          href="/processes"
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
-        >
-          <BarChart3 className="h-4 w-4" />
-          View Library
-        </Link>
-      </div>
 
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {/* Metrics Cards - Glass Widgets */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+          className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-6 hover:shadow-2xl transition-all"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-600">Active Runs</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{metrics.activeRunsCount}</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Runs</p>
+              <p className="mt-2 text-3xl font-extrabold text-slate-900">{metrics.activeRunsCount}</p>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
-              <Activity className="h-6 w-6" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
+              <Activity className="h-7 w-7" />
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-2 text-xs text-slate-600">
+          <div className="mt-4 flex items-center gap-2 text-xs text-slate-600 font-medium">
             <TrendingUp className="h-4 w-4 text-green-600" />
             <span>{metrics.totalRuns} total runs</span>
           </div>
@@ -225,18 +226,18 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+          className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-6 hover:shadow-2xl transition-all"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-600">Completed</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{metrics.completedRuns}</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Completed</p>
+              <p className="mt-2 text-3xl font-extrabold text-slate-900">{metrics.completedRuns}</p>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 text-green-600">
-              <CheckCircle2 className="h-6 w-6" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg">
+              <CheckCircle2 className="h-7 w-7" />
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-2 text-xs text-slate-600">
+          <div className="mt-4 flex items-center gap-2 text-xs text-slate-600 font-medium">
             <span>{metrics.completionRate}% completion rate</span>
           </div>
         </motion.div>
@@ -245,19 +246,19 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+          className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-6 hover:shadow-2xl transition-all"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-600">Flagged</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{metrics.flaggedRuns}</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Flagged</p>
+              <p className="mt-2 text-3xl font-extrabold text-slate-900">{metrics.flaggedRuns}</p>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-100 text-rose-600">
-              <AlertTriangle className="h-6 w-6" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-lg">
+              <AlertTriangle className="h-7 w-7" />
             </div>
           </div>
           <div className="mt-4">
-            <Link href="/flags" className="text-xs font-medium text-rose-600 hover:text-rose-700">
+            <Link href="/flags" className="text-xs font-semibold text-rose-600 hover:text-rose-700 transition-colors">
               Review flagged items →
             </Link>
           </div>
@@ -267,62 +268,62 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+          className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-6 hover:shadow-2xl transition-all"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-600">Avg. Time</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{metrics.avgCompletionTime}m</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg. Time</p>
+              <p className="mt-2 text-3xl font-extrabold text-slate-900">{metrics.avgCompletionTime}m</p>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 text-purple-600">
-              <Clock className="h-6 w-6" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg">
+              <Clock className="h-7 w-7" />
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-2 text-xs text-slate-600">
+          <div className="mt-4 flex items-center gap-2 text-xs text-slate-600 font-medium">
             <span>Average completion time</span>
           </div>
         </motion.div>
       </div>
 
-      {/* Filters and Search */}
+      {/* Filters and Search - iOS Segmented Control Style */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-2">
+        <div className="inline-flex rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg p-1.5">
           <button
             onClick={() => setFilter("all")}
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+            className={`rounded-full px-5 py-2 text-sm font-semibold tracking-tight transition-all ${
               filter === "all"
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                ? "bg-white text-slate-800 shadow-md"
+                : "text-slate-600 hover:text-slate-800"
             }`}
           >
             All ({activeRuns.length})
           </button>
           <button
             onClick={() => setFilter("in_progress")}
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+            className={`rounded-full px-5 py-2 text-sm font-semibold tracking-tight transition-all ${
               filter === "in_progress"
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                ? "bg-white text-slate-800 shadow-md"
+                : "text-slate-600 hover:text-slate-800"
             }`}
           >
             In Progress ({metrics.activeRunsCount})
           </button>
           <button
             onClick={() => setFilter("completed")}
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+            className={`rounded-full px-5 py-2 text-sm font-semibold tracking-tight transition-all ${
               filter === "completed"
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                ? "bg-white text-slate-800 shadow-md"
+                : "text-slate-600 hover:text-slate-800"
             }`}
           >
             Completed ({metrics.completedRuns})
           </button>
           <button
             onClick={() => setFilter("flagged")}
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+            className={`rounded-full px-5 py-2 text-sm font-semibold tracking-tight transition-all ${
               filter === "flagged"
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                ? "bg-white text-slate-800 shadow-md"
+                : "text-slate-600 hover:text-slate-800"
             }`}
           >
             Flagged ({metrics.flaggedRuns})
@@ -336,72 +337,79 @@ export default function DashboardPage() {
             placeholder="Search runs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 sm:w-64"
+            className="w-full rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg pl-12 pr-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white/90 sm:w-64 transition-all"
           />
         </div>
       </div>
 
-      {/* Active Runs Table */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      {/* Active Runs Table - Floating Glass Panel */}
+      <div className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Procedure</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Started By</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Current Step</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Started</th>
-                <th className="px-6 py-4 text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-white/50">
+                <th className="px-8 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Procedure</th>
+                <th className="px-8 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Started By</th>
+                <th className="px-8 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Current Step</th>
+                <th className="px-8 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                <th className="px-8 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Started</th>
+                <th className="px-8 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody>
               {filteredRuns.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
-                    <Activity className="mx-auto h-12 w-12 text-slate-400" />
-                    <h3 className="mt-4 text-lg font-semibold text-slate-900">No Active Runs</h3>
-                    <p className="mt-2 text-sm text-slate-600">
-                      {searchQuery || filter !== "all"
-                        ? "No runs match your filters"
-                        : "Start a procedure from the Library to see it here"}
-                    </p>
-                    {!searchQuery && filter === "all" && (
-                      <Link
-                        href="/processes"
-                        className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-slate-800"
-                      >
-                        <ArrowRight className="h-4 w-4" />
-                        Go to Library
-                      </Link>
-                    )}
+                  <td colSpan={6} className="px-8 py-16 text-center">
+                    <div className="flex flex-col items-center">
+                      <div className="relative mb-6">
+                        <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-indigo-100/50 rounded-3xl blur-2xl" />
+                        <div className="relative h-20 w-20 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 flex items-center justify-center shadow-lg">
+                          <Activity className="h-10 w-10 text-slate-400" />
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-extrabold text-slate-900 mb-2">No Active Runs</h3>
+                      <p className="text-sm text-slate-600 mb-6 max-w-md">
+                        {searchQuery || filter !== "all"
+                          ? "No runs match your filters"
+                          : "Start a procedure from the Library to see it here"}
+                      </p>
+                      {!searchQuery && filter === "all" && (
+                        <Link
+                          href="/processes"
+                          className="inline-flex items-center gap-2 rounded-full bg-[#007AFF] px-6 py-3 text-sm font-semibold text-white shadow-md hover:bg-[#0071E3] hover:shadow-lg transition-all"
+                        >
+                          <ArrowRight className="h-4 w-4" />
+                          Start a Workflow
+                        </Link>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (
-                filteredRuns.map((run) => (
+                filteredRuns.map((run, index) => (
                   <motion.tr
                     key={run.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="hover:bg-slate-50 transition-colors"
+                    className={`transition-colors ${index % 2 === 0 ? "bg-white/50" : "bg-white/30"} hover:bg-white/70`}
                   >
-                    <td className="px-6 py-4">
+                    <td className="px-8 py-5">
                       <div>
-                        <p className="text-sm font-medium text-slate-900">{run.procedureTitle || "Unknown Procedure"}</p>
-                        <p className="text-xs text-slate-500 mt-1">ID: {run.id.slice(0, 8)}...</p>
+                        <p className="text-sm font-bold text-slate-900">{run.procedureTitle || "Unknown Procedure"}</p>
+                        <p className="text-xs text-slate-500 mt-1 font-mono">ID: {run.id.slice(0, 8)}...</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-8 py-5">
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-slate-400" />
-                        <span className="text-sm text-slate-700">
+                        <span className="text-sm font-medium text-slate-700">
                           {(run as any).startedBy || "Unknown"}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-8 py-5">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-slate-700">
+                        <span className="text-sm font-medium text-slate-700">
                           {getCurrentStepName(run)}
                         </span>
                         <span className="text-xs text-slate-500">
@@ -409,21 +417,21 @@ export default function DashboardPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${getStatusBadge(run.status)}`}>
+                    <td className="px-8 py-5">
+                      <span className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold ${getStatusBadge(run.status).replace("border ", "")}`}>
                         {run.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
                         <Clock className="h-4 w-4" />
                         <span>{formatTimeAgo(run.startedAt)}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-8 py-5">
                       <Link
                         href={`/run/${run.id}`}
-                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
+                        className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-sm border border-white/60 px-4 py-2 text-xs font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-md"
                       >
                         <ArrowRight className="h-3.5 w-3.5" />
                         View
@@ -435,6 +443,7 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </div>
   );

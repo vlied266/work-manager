@@ -190,24 +190,25 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-8 p-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">My Profile</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Manage your account information and preferences
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50/40 via-white to-cyan-50/40 relative overflow-hidden font-sans">
+      <div className="space-y-8 p-8">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">My Profile</h1>
+          <p className="mt-2 text-sm text-slate-600 font-medium">
+            Manage your account information and preferences
+          </p>
+        </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* Left Column: Avatar */}
-        <div className="lg:col-span-1">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-          >
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Profile Picture</h2>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          {/* Left Column: Avatar - Glass Panel */}
+          <div className="lg:col-span-1">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-8 hover:shadow-2xl transition-all"
+            >
+              <h2 className="text-xl font-extrabold tracking-tight text-slate-900 mb-6">Profile Picture</h2>
             
             <div className="flex flex-col items-center">
               <div className="relative mb-4">
@@ -234,7 +235,7 @@ export default function ProfilePage() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingAvatar}
-                  className="absolute bottom-0 right-0 flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg transition-all hover:bg-slate-800 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="absolute bottom-0 right-0 flex h-12 w-12 items-center justify-center rounded-full bg-[#007AFF] text-white shadow-lg transition-all hover:bg-[#0071E3] hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Camera className="h-5 w-5" />
                 </button>
@@ -255,20 +256,20 @@ export default function ProfilePage() {
           </motion.div>
         </div>
 
-        {/* Right Column: Form */}
+        {/* Right Column: Form - Glass Panel */}
         <div className="lg:col-span-2">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+            className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-8 hover:shadow-2xl transition-all"
           >
-            <h2 className="text-lg font-semibold text-slate-900 mb-6">Account Information</h2>
+            <h2 className="text-xl font-extrabold tracking-tight text-slate-900 mb-8">Account Information</h2>
 
             <div className="space-y-6">
               {/* Display Name */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
                   Full Name
                 </label>
                 <input
@@ -276,13 +277,13 @@ export default function ProfilePage() {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Enter your full name"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  className="w-full rounded-xl border-0 bg-white/50 shadow-inner px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                 />
               </div>
 
               {/* Job Title */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
                   Job Title
                 </label>
                 <input
@@ -290,59 +291,59 @@ export default function ProfilePage() {
                   value={jobTitle}
                   onChange={(e) => setJobTitle(e.target.value)}
                   placeholder="e.g., Senior Accountant"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                  className="w-full rounded-xl border-0 bg-white/50 shadow-inner px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                 />
               </div>
 
               {/* Email (Read-only) */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
                   Email Address
                 </label>
                 <input
                   type="email"
                   value={email}
                   readOnly
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 cursor-not-allowed"
+                  className="w-full rounded-xl border-0 bg-slate-50/50 shadow-inner px-4 py-3 text-sm font-medium text-slate-600 cursor-not-allowed"
                 />
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-2 text-xs text-slate-500 font-medium">
                   Email cannot be changed
                 </p>
               </div>
 
               {/* Role (Read-only) */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
                   Role
                 </label>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <input
                     type="text"
                     value={role}
                     readOnly
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 cursor-not-allowed"
+                    className="flex-1 rounded-xl border-0 bg-slate-50/50 shadow-inner px-4 py-3 text-sm font-medium text-slate-600 cursor-not-allowed"
                   />
-                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  <span className={`rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wider ${
                     role === "ADMIN" 
-                      ? "bg-purple-100 text-purple-700 border border-purple-200"
+                      ? "bg-purple-100 text-purple-700"
                       : role === "MANAGER"
-                      ? "bg-blue-100 text-blue-700 border border-blue-200"
-                      : "bg-slate-100 text-slate-700 border border-slate-200"
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-slate-100 text-slate-700"
                   }`}>
                     {role}
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-2 text-xs text-slate-500 font-medium">
                   Role is managed by administrators
                 </p>
               </div>
 
               {/* Save Button */}
-              <div className="pt-4 border-t border-slate-200">
+              <div className="pt-6 border-t border-slate-100">
                 <button
                   onClick={handleSave}
                   disabled={saving || !displayName.trim()}
-                  className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-slate-800 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  className="inline-flex items-center gap-2 rounded-full bg-[#007AFF] px-6 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-[#0071E3] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? (
                     <>
@@ -360,6 +361,7 @@ export default function ProfilePage() {
             </div>
           </motion.div>
         </div>
+      </div>
       </div>
     </div>
   );

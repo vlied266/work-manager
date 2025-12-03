@@ -200,31 +200,32 @@ export default function BillingPage() {
   const runsUsagePercent = getUsagePercentage(usage?.currentActiveRuns || 0, limits.maxActiveRuns);
 
   return (
-    <div className="space-y-8 p-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">Billing & Subscription</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Manage your subscription and view usage limits
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50/40 via-white to-cyan-50/40 relative overflow-hidden font-sans">
+      <div className="space-y-8 p-8">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Billing & Subscription</h1>
+          <p className="mt-2 text-sm text-slate-600 font-medium">
+            Manage your subscription and view usage limits
+          </p>
+        </div>
 
-      {/* Current Plan Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-      >
-        <div className="flex items-start justify-between mb-6">
+        {/* Current Plan Card - Glass Panel */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-8 hover:shadow-2xl transition-all"
+        >
+        <div className="flex items-start justify-between mb-8">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Current Plan</h2>
-            <p className="text-sm text-slate-600 mt-1">
+            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">Current Plan</h2>
+            <p className="text-sm text-slate-600 font-medium mt-1">
               {organization.plan === "FREE" && "Free tier - Upgrade to unlock more features"}
               {organization.plan === "PRO" && "Pro plan - Full access to all features"}
               {organization.plan === "ENTERPRISE" && "Enterprise plan - Custom solution"}
             </p>
           </div>
-          <span className={`rounded-full px-4 py-1.5 text-xs font-semibold ${
+          <span className={`rounded-full px-5 py-2 text-xs font-bold uppercase tracking-wider ${
             organization.plan === "FREE" 
               ? "bg-slate-100 text-slate-700"
               : organization.plan === "PRO"
@@ -248,13 +249,17 @@ export default function BillingPage() {
                 {usage?.currentUsers || 0} / {limits.maxUsers === Infinity ? "∞" : limits.maxUsers}
               </span>
             </div>
-            <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+            <div className="h-3 w-full rounded-full bg-slate-100/50 overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${userUsagePercent}%` }}
                 transition={{ duration: 0.5 }}
-                className={`h-full rounded-full ${
-                  userUsagePercent >= 90 ? "bg-rose-500" : userUsagePercent >= 70 ? "bg-orange-500" : "bg-blue-500"
+                className={`h-full rounded-full bg-gradient-to-r ${
+                  userUsagePercent >= 90 
+                    ? "from-rose-500 to-rose-600" 
+                    : userUsagePercent >= 70 
+                    ? "from-orange-500 to-orange-600" 
+                    : "from-blue-500 to-blue-600"
                 }`}
               />
             </div>
@@ -271,13 +276,17 @@ export default function BillingPage() {
                 {usage?.currentActiveRuns || 0} / {limits.maxActiveRuns === Infinity ? "∞" : limits.maxActiveRuns}
               </span>
             </div>
-            <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+            <div className="h-3 w-full rounded-full bg-slate-100/50 overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${runsUsagePercent}%` }}
                 transition={{ duration: 0.5 }}
-                className={`h-full rounded-full ${
-                  runsUsagePercent >= 90 ? "bg-rose-500" : runsUsagePercent >= 70 ? "bg-orange-500" : "bg-blue-500"
+                className={`h-full rounded-full bg-gradient-to-r ${
+                  runsUsagePercent >= 90 
+                    ? "from-rose-500 to-rose-600" 
+                    : runsUsagePercent >= 70 
+                    ? "from-orange-500 to-orange-600" 
+                    : "from-blue-500 to-blue-600"
                 }`}
               />
             </div>
@@ -295,12 +304,12 @@ export default function BillingPage() {
                   {usage?.currentAiGenerations || 0} / {limits.aiGenerations === Infinity ? "∞" : limits.aiGenerations}
                 </span>
               </div>
-              <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+              <div className="h-3 w-full rounded-full bg-slate-100/50 overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${getUsagePercentage(usage?.currentAiGenerations || 0, limits.aiGenerations)}%` }}
                   transition={{ duration: 0.5 }}
-                  className="h-full rounded-full bg-purple-500"
+                  className="h-full rounded-full bg-gradient-to-r from-purple-500 to-purple-600"
                 />
               </div>
             </div>
@@ -308,39 +317,39 @@ export default function BillingPage() {
         </div>
       </motion.div>
 
-      {/* Pricing Plans */}
+      {/* Pricing Plans - Apple One Style */}
       <div>
-        <h2 className="text-xl font-semibold text-slate-900 mb-6">Choose Your Plan</h2>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 mb-8">Choose Your Plan</h2>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           {plans.map((plan, index) => (
             <motion.div
               key={plan.name}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className={`relative rounded-2xl border-2 p-6 ${
+              className={`relative rounded-[2.5rem] bg-white/70 backdrop-blur-xl border-2 p-8 shadow-xl shadow-black/5 hover:shadow-2xl transition-all ${
                 plan.highlight
-                  ? "border-blue-500 bg-blue-50/30 shadow-lg"
-                  : "border-slate-200 bg-white"
+                  ? "border-blue-400/50 ring-2 ring-blue-400/50 scale-105"
+                  : "border-white/60"
               }`}
             >
               {plan.highlight && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="rounded-full bg-blue-500 px-3 py-1 text-xs font-semibold text-white">
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                  <span className="rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-1.5 text-xs font-bold text-white shadow-lg">
                     Most Popular
                   </span>
                 </div>
               )}
 
-              <div className="mb-6">
-                <h3 className="text-xl font-bold text-slate-900">{plan.name}</h3>
-                <div className="mt-2 flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-slate-900">{plan.price}</span>
+              <div className="mb-8">
+                <h3 className="text-2xl font-extrabold tracking-tight text-slate-900 mb-2">{plan.name}</h3>
+                <div className="mt-3 flex items-baseline gap-1">
+                  <span className="text-4xl font-extrabold text-slate-900">{plan.price}</span>
                   {plan.period && (
-                    <span className="text-sm text-slate-600">/{plan.period}</span>
+                    <span className="text-sm text-slate-600 font-medium">/{plan.period}</span>
                   )}
                 </div>
-                <p className="mt-2 text-sm text-slate-600">{plan.description}</p>
+                <p className="mt-3 text-sm text-slate-600 font-medium">{plan.description}</p>
               </div>
 
               <ul className="space-y-3 mb-6">
@@ -372,12 +381,12 @@ export default function BillingPage() {
                     alert("Please contact sales@workos.com for Enterprise pricing");
                   }
                 }}
-                className={`w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
+                className={`w-full rounded-full px-6 py-3.5 text-sm font-semibold transition-all ${
                   plan.highlight
-                    ? "bg-blue-600 text-white hover:bg-blue-700 hover:scale-105"
+                    ? "bg-[#007AFF] text-white hover:bg-[#0071E3] hover:shadow-lg"
                     : plan.ctaDisabled
-                    ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                    : "bg-slate-900 text-white hover:bg-slate-800 hover:scale-105"
+                    ? "bg-slate-100/50 text-slate-400 cursor-not-allowed"
+                    : "bg-slate-900 text-white hover:bg-slate-800 hover:shadow-lg"
                 }`}
               >
                 {plan.ctaDisabled ? (
@@ -402,7 +411,7 @@ export default function BillingPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="rounded-xl border border-orange-200 bg-orange-50 p-4"
+          className="rounded-2xl border border-orange-200/50 bg-orange-50/60 backdrop-blur-sm p-6"
         >
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100">
@@ -421,6 +430,7 @@ export default function BillingPage() {
           </div>
         </motion.div>
       )}
+      </div>
     </div>
   );
 }

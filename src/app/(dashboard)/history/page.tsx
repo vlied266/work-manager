@@ -157,114 +157,124 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="h-full bg-slate-50 p-8">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold text-slate-900">Run History</h1>
-            <p className="mt-1 text-sm text-slate-600">View and export completed processes</p>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50/40 via-white to-cyan-50/40 relative overflow-hidden font-sans">
+      <div className="p-8">
+        <div className="mx-auto max-w-7xl">
+          {/* Header */}
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Run History</h1>
+              <p className="mt-2 text-sm text-slate-600 font-medium">View and export completed processes</p>
+            </div>
+            <button
+              onClick={handleExportAll}
+              disabled={exporting || runs.length === 0}
+              className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg shadow-black/5 px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="h-4 w-4" />
+              {exporting ? "Exporting..." : "Export All to Excel"}
+            </button>
           </div>
-          <button
-            onClick={handleExportAll}
-            disabled={exporting || runs.length === 0}
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download className="h-4 w-4" />
-            {exporting ? "Exporting..." : "Export All to Excel"}
-          </button>
-        </div>
 
-        {/* Runs Table */}
-        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-          {runs.length === 0 ? (
-            <div className="p-12 text-center">
-              <Clock className="mx-auto h-12 w-12 text-slate-300 mb-3" />
-              <p className="text-sm text-slate-600">No completed runs yet</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="px-6 py-3 text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                      Process
-                    </th>
-                    <th className="px-6 py-3 text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                      Started
-                    </th>
-                    <th className="px-6 py-3 text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                      Completed
-                    </th>
-                    <th className="px-6 py-3 text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                      Duration
-                    </th>
-                    <th className="px-6 py-3 text-xs font-semibold text-slate-700 uppercase tracking-wider text-right">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {runs.map((run) => (
-                    <motion.tr
-                      key={run.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="hover:bg-slate-50 transition-colors"
-                    >
-                      <td className="px-6 py-4">
-                        <Link
-                          href={`/run/${run.id}`}
-                          className="text-sm font-medium text-slate-900 hover:text-blue-600 transition-colors"
-                        >
-                          {run.procedureTitle}
-                        </Link>
-                        <p className="text-xs text-slate-500 mt-0.5">ID: {run.id.substring(0, 8)}...</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(run.status)}
-                          <span className="text-sm text-slate-700 capitalize">{run.status}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">
-                        {formatDate(run.startedAt)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">
-                        {formatDate(run.completedAt || null)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">
-                        {getDuration(run.startedAt, run.completedAt || null)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleExportPDF(run)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                            title="Download PDF Certificate"
+          {/* Runs Table - Airtable Style */}
+          <div className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 overflow-hidden">
+            {runs.length === 0 ? (
+              <div className="p-16 text-center">
+                <div className="flex flex-col items-center">
+                  <div className="relative mb-6">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-indigo-100/50 rounded-3xl blur-2xl" />
+                    <div className="relative h-20 w-20 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 flex items-center justify-center shadow-lg">
+                      <Clock className="h-10 w-10 text-slate-400" />
+                    </div>
+                  </div>
+                  <p className="text-lg font-extrabold text-slate-900 mb-2">No completed runs yet</p>
+                  <p className="text-sm text-slate-600 font-medium">Completed processes will appear here</p>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-white/50">
+                      <th className="px-8 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Process
+                      </th>
+                      <th className="px-8 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Status
+                      </th>
+                      <th className="px-8 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Started
+                      </th>
+                      <th className="px-8 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Completed
+                      </th>
+                      <th className="px-8 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Duration
+                      </th>
+                      <th className="px-8 py-4 text-xs font-bold uppercase tracking-wider text-slate-400 text-right">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {runs.map((run, index) => (
+                      <motion.tr
+                        key={run.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`transition-colors ${index % 2 === 0 ? "bg-white/50" : "bg-white/30"} hover:bg-white/70`}
+                      >
+                        <td className="px-8 py-5">
+                          <Link
+                            href={`/run/${run.id}`}
+                            className="text-sm font-bold text-slate-900 hover:text-blue-600 transition-colors"
                           >
-                            <FileText className="h-3.5 w-3.5" />
-                            PDF
-                          </button>
-                          <button
-                            onClick={() => handleExportRunCSV(run)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                            title="Export to Excel"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                            CSV
-                          </button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                            {run.procedureTitle}
+                          </Link>
+                          <p className="text-xs text-slate-500 font-mono mt-0.5">ID: {run.id.substring(0, 8)}...</p>
+                        </td>
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(run.status)}
+                            <span className="text-sm font-semibold text-slate-700 capitalize">{run.status}</span>
+                          </div>
+                        </td>
+                        <td className="px-8 py-5 text-sm text-slate-700 font-medium">
+                          {formatDate(run.startedAt)}
+                        </td>
+                        <td className="px-8 py-5 text-sm text-slate-700 font-medium">
+                          {formatDate(run.completedAt || null)}
+                        </td>
+                        <td className="px-8 py-5 text-sm text-slate-700 font-medium">
+                          {getDuration(run.startedAt, run.completedAt || null)}
+                        </td>
+                        <td className="px-8 py-5">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleExportPDF(run)}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-white/70 backdrop-blur-sm border border-white/60 px-4 py-2 text-xs font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-md"
+                              title="Download PDF Certificate"
+                            >
+                              <FileText className="h-3.5 w-3.5" />
+                              PDF
+                            </button>
+                            <button
+                              onClick={() => handleExportRunCSV(run)}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-white/70 backdrop-blur-sm border border-white/60 px-4 py-2 text-xs font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-md"
+                              title="Export to Excel"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                              CSV
+                            </button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

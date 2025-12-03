@@ -125,138 +125,150 @@ export default function MonitorPage() {
   }
 
   return (
-    <div className="h-full bg-slate-50 p-8">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold text-slate-900">Process Monitor</h1>
-            <p className="mt-1 text-sm text-slate-600">Monitor all active and completed processes</p>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50/40 via-white to-cyan-50/40 relative overflow-hidden font-sans">
+      <div className="p-8">
+        <div className="mx-auto max-w-7xl">
+          {/* Header */}
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Process Monitor</h1>
+              <p className="mt-2 text-sm text-slate-600 font-medium">Monitor all active and completed processes</p>
+            </div>
+            {filteredRuns.filter((r) => r.status === "COMPLETED").length > 0 && (
+              <button
+                onClick={() => {
+                  setExporting(true);
+                  try {
+                    const completedRuns = filteredRuns.filter((r) => r.status === "COMPLETED");
+                    exportToCSV(completedRuns, procedures);
+                  } catch (error) {
+                    console.error("Error exporting:", error);
+                    alert("Failed to export. Please try again.");
+                  } finally {
+                    setExporting(false);
+                  }
+                }}
+                disabled={exporting}
+                className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg shadow-black/5 px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-xl disabled:opacity-50"
+              >
+                <Download className="h-4 w-4" />
+                {exporting ? "Exporting..." : "Export Completed"}
+              </button>
+            )}
           </div>
-          {filteredRuns.filter((r) => r.status === "COMPLETED").length > 0 && (
-            <button
-              onClick={() => {
-                setExporting(true);
-                try {
-                  const completedRuns = filteredRuns.filter((r) => r.status === "COMPLETED");
-                  exportToCSV(completedRuns, procedures);
-                } catch (error) {
-                  console.error("Error exporting:", error);
-                  alert("Failed to export. Please try again.");
-                } finally {
-                  setExporting(false);
-                }
-              }}
-              disabled={exporting}
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-slate-800 disabled:opacity-50"
-            >
-              <Download className="h-4 w-4" />
-              {exporting ? "Exporting..." : "Export Completed"}
-            </button>
-          )}
-        </div>
 
-        {/* Filters */}
-        <div className="mb-6 flex gap-2">
-          {[
-            { id: "all", label: "All" },
-            { id: "active", label: "Active" },
-            { id: "flagged", label: "Flagged" },
-            { id: "completed", label: "Completed" },
-          ].map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id as any)}
-              className={`rounded-xl px-4 py-2 text-sm font-medium transition-all ${
-                filter === f.id
-                  ? "bg-slate-900 text-white"
-                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+          {/* Filters - iOS Segmented Control */}
+          <div className="mb-8 inline-flex rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg p-1.5">
+            {[
+              { id: "all", label: "All" },
+              { id: "active", label: "Active" },
+              { id: "flagged", label: "Flagged" },
+              { id: "completed", label: "Completed" },
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id as any)}
+                className={`rounded-full px-5 py-2 text-sm font-semibold tracking-tight transition-all ${
+                  filter === f.id
+                    ? "bg-white text-slate-800 shadow-md"
+                    : "text-slate-600 hover:text-slate-800"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
 
-        {/* Runs Table */}
-        <div className="rounded-2xl border border-slate-200 bg-white">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Process
-                  </th>
-                  <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Progress
-                  </th>
-                  <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Started
-                  </th>
-                  <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
+          {/* Runs Table - Airtable Style */}
+          <div className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-white/50">
+                    <th className="px-8 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Process
+                    </th>
+                    <th className="px-8 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Status
+                    </th>
+                    <th className="px-8 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Progress
+                    </th>
+                    <th className="px-8 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Started
+                    </th>
+                    <th className="px-8 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
                 {filteredRuns.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-500">
-                      No processes found
+                    <td colSpan={5} className="px-8 py-16 text-center">
+                      <div className="flex flex-col items-center">
+                        <div className="relative mb-6">
+                          <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-indigo-100/50 rounded-3xl blur-2xl" />
+                          <div className="relative h-20 w-20 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 flex items-center justify-center shadow-lg">
+                            <Clock className="h-10 w-10 text-slate-400" />
+                          </div>
+                        </div>
+                        <p className="text-lg font-extrabold text-slate-900 mb-2">No processes found</p>
+                        <p className="text-sm text-slate-600 font-medium">Try adjusting your filters</p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
-                  filteredRuns.map((run) => {
+                  filteredRuns.map((run, index) => {
                     const progress = run.logs?.length || 0;
                     return (
                       <tr
                         key={run.id}
-                        className={`hover:bg-slate-50 transition-colors ${
+                        className={`transition-colors ${index % 2 === 0 ? "bg-white/50" : "bg-white/30"} hover:bg-white/70 ${
                           run.status === "FLAGGED" ? "bg-rose-50/30" : ""
                         }`}
                       >
-                        <td className="px-6 py-4">
+                        <td className="px-8 py-5">
                           <div className="flex items-center gap-3">
                             {getStatusIcon(run.status)}
                             <div>
-                              <p className="text-sm font-medium text-slate-900">
+                              <p className="text-sm font-bold text-slate-900">
                                 {run.procedureTitle}
                               </p>
-                              <p className="text-xs text-slate-500">
+                              <p className="text-xs text-slate-500 font-medium mt-0.5">
                                 {run.logs?.length || 0} steps completed
                               </p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className={getStatusBadge(run.status)}>{run.status}</span>
+                        <td className="px-8 py-5">
+                          <span className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold ${getStatusBadge(run.status).replace("border ", "")}`}>
+                            {run.status}
+                          </span>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <div className="h-2 w-32 rounded-full bg-slate-200">
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-3">
+                            <div className="h-2.5 w-40 rounded-full bg-slate-200 overflow-hidden">
                               <div
-                                className="h-2 rounded-full bg-blue-600 transition-all"
+                                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all"
                                 style={{
                                   width: `${(progress / 10) * 100}%`,
                                 }}
                               />
                             </div>
-                            <span className="text-xs text-slate-600">{progress} steps</span>
+                            <span className="text-xs text-slate-600 font-medium">{progress} steps</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className="text-sm text-slate-600">
+                        <td className="px-8 py-5">
+                          <span className="text-sm text-slate-700 font-medium">
                             {run.startedAt.toLocaleDateString()}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-8 py-5">
                           <div className="flex items-center gap-2">
                             <Link
                               href={`/run/${run.id}`}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
+                              className="inline-flex items-center gap-1.5 rounded-full bg-white/70 backdrop-blur-sm border border-white/60 px-4 py-2 text-xs font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-md"
                             >
                               View
                             </Link>
@@ -276,7 +288,7 @@ export default function MonitorPage() {
                                       alert("Failed to generate PDF. Please try again.");
                                     }
                                   }}
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
+                                  className="inline-flex items-center gap-1.5 rounded-full bg-white/70 backdrop-blur-sm border border-white/60 px-4 py-2 text-xs font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-md"
                                   title="Download PDF Certificate"
                                 >
                                   <FileText className="h-3.5 w-3.5" />
@@ -295,7 +307,7 @@ export default function MonitorPage() {
                                       alert("Failed to export. Please try again.");
                                     }
                                   }}
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50"
+                                  className="inline-flex items-center gap-1.5 rounded-full bg-white/70 backdrop-blur-sm border border-white/60 px-4 py-2 text-xs font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-md"
                                   title="Export to Excel"
                                 >
                                   <Download className="h-3.5 w-3.5" />
@@ -311,6 +323,7 @@ export default function MonitorPage() {
               </tbody>
             </table>
           </div>
+        </div>
         </div>
       </div>
     </div>

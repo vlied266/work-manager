@@ -163,71 +163,72 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-semibold text-slate-900">Analytics & Insights</h1>
-        <p className="mt-1 text-sm text-slate-600">Productivity metrics and performance data</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50/40 via-white to-cyan-50/40 relative overflow-hidden font-sans">
+      <div className="space-y-8 p-8">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Analytics & Insights</h1>
+          <p className="mt-2 text-sm text-slate-600 font-medium">Productivity metrics and performance data</p>
+        </div>
 
-      {/* Summary Metrics */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600">Total Runs</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{metrics.total}</p>
+        {/* Summary Metrics - Glass Widgets */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+          <div className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-6 hover:shadow-2xl transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Runs</p>
+                <p className="mt-2 text-3xl font-extrabold text-slate-900">{metrics.total}</p>
+              </div>
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-500 to-slate-600 text-white shadow-lg">
+                <TrendingUp className="h-7 w-7" />
+              </div>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
-              <TrendingUp className="h-6 w-6 text-slate-600" />
+          </div>
+
+          <div className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-6 hover:shadow-2xl transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Completed</p>
+                <p className="mt-2 text-3xl font-extrabold text-green-900">{metrics.completed}</p>
+                <p className="mt-1 text-xs text-slate-500 font-medium">{metrics.completionRate}% completion rate</p>
+              </div>
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg">
+                <CheckCircle2 className="h-7 w-7" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-6 hover:shadow-2xl transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">In Progress</p>
+                <p className="mt-2 text-3xl font-extrabold text-blue-900">{metrics.inProgress}</p>
+              </div>
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
+                <Clock className="h-7 w-7" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-6 hover:shadow-2xl transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Flagged</p>
+                <p className="mt-2 text-3xl font-extrabold text-rose-900">{metrics.flagged}</p>
+              </div>
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-lg">
+                <AlertTriangle className="h-7 w-7" />
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-green-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-600">Completed</p>
-              <p className="mt-2 text-3xl font-bold text-green-900">{metrics.completed}</p>
-              <p className="mt-1 text-xs text-slate-500">{metrics.completionRate}% completion rate</p>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100">
-              <CheckCircle2 className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-blue-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-600">In Progress</p>
-              <p className="mt-2 text-3xl font-bold text-blue-900">{metrics.inProgress}</p>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100">
-              <Clock className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-rose-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-rose-600">Flagged</p>
-              <p className="mt-2 text-3xl font-bold text-rose-900">{metrics.flagged}</p>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-100">
-              <AlertTriangle className="h-6 w-6 text-rose-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        {/* Bar Chart: Tasks Completed per Day */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        {/* Charts Grid - Glass Cards */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+          {/* Bar Chart: Tasks Completed per Day */}
+          <div className="rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-8 hover:shadow-2xl transition-all">
           <div className="mb-6">
-            <h2 className="text-lg font-semibold text-slate-900">Tasks Completed per Day</h2>
-            <p className="mt-1 text-sm text-slate-600">Last 7 days</p>
+            <h2 className="text-xl font-extrabold tracking-tight text-slate-900">Tasks Completed per Day</h2>
+            <p className="mt-1 text-sm text-slate-600 font-medium">Last 7 days</p>
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={tasksPerDay}>
@@ -264,10 +265,10 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Pie Chart: Status Distribution */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-8 hover:shadow-2xl transition-all">
           <div className="mb-6">
-            <h2 className="text-lg font-semibold text-slate-900">Status Distribution</h2>
-            <p className="mt-1 text-sm text-slate-600">Current run status breakdown</p>
+            <h2 className="text-xl font-extrabold tracking-tight text-slate-900">Status Distribution</h2>
+            <p className="mt-1 text-sm text-slate-600 font-medium">Current run status breakdown</p>
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -312,51 +313,59 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Top Performers */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-8 hover:shadow-2xl transition-all">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Top Performers</h2>
-            <p className="mt-1 text-sm text-slate-600">Users with most completed steps</p>
+            <h2 className="text-xl font-extrabold tracking-tight text-slate-900">Top Performers</h2>
+            <p className="mt-1 text-sm text-slate-600 font-medium">Users with most completed steps</p>
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
-            <Users className="h-5 w-5 text-slate-600" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-500 to-slate-600 text-white shadow-lg">
+            <Users className="h-6 w-6" />
           </div>
         </div>
 
         {topPerformers.length === 0 ? (
           <div className="py-12 text-center">
-            <Users className="mx-auto h-12 w-12 text-slate-300" />
-            <p className="mt-4 text-sm font-medium text-slate-900">No data available</p>
-            <p className="mt-1 text-xs text-slate-600">
+            <div className="relative mb-4 inline-block">
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-100/50 to-slate-200/50 rounded-3xl blur-2xl" />
+              <div className="relative h-16 w-16 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 flex items-center justify-center shadow-lg">
+                <Users className="h-8 w-8 text-slate-400" />
+              </div>
+            </div>
+            <p className="mt-4 text-sm font-extrabold text-slate-900">No data available</p>
+            <p className="mt-1 text-xs text-slate-600 font-medium">
               Complete some tasks to see performance metrics
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {topPerformers.map((performer, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4"
+                className={`flex items-center justify-between rounded-2xl p-5 transition-all ${
+                  index % 2 === 0 ? "bg-white/50" : "bg-white/30"
+                } hover:bg-white/70`}
               >
                 <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-sm font-bold text-slate-700">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white text-sm font-bold shadow-lg">
                     {index + 1}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{performer.name}</p>
-                    <p className="text-xs text-slate-600">
+                    <p className="text-sm font-bold text-slate-900">{performer.name}</p>
+                    <p className="text-xs text-slate-600 font-medium">
                       {performer.completed} of {performer.total} completed
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold text-slate-900">{performer.percentage}%</p>
-                  <p className="text-xs text-slate-500">Success rate</p>
+                  <p className="text-lg font-extrabold text-slate-900">{performer.percentage}%</p>
+                  <p className="text-xs text-slate-500 font-medium">Success rate</p>
                 </div>
               </div>
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

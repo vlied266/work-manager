@@ -7,7 +7,7 @@ import { ProcessGroup, Procedure } from "@/types/schema";
 import { DndContext, DragEndEvent, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from "@dnd-kit/core";
 import { arrayMove, useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowLeft, X, ArrowRight, GripVertical, ArrowDown, Search, Trash2, Workflow } from "lucide-react";
+import { ArrowLeft, X, ArrowRight, GripVertical, ArrowDown, Search, Trash2, Workflow, FileText, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -323,7 +323,7 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-gray-50 to-[#F2F2F7]">
         <div className="text-center">
           <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-900"></div>
           <p className="text-sm text-slate-600">Loading...</p>
@@ -333,132 +333,130 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
-      {/* Header */}
-      <header className="border-b border-slate-200 bg-white/90 backdrop-blur-xl sticky top-0 z-10 shadow-sm">
-        <div className="mx-auto max-w-[1600px] px-6 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-blue-50 relative overflow-hidden font-sans">
+      {/* Minimalist Header with Glassmorphism */}
+      <header className="sticky top-0 z-50 border-b border-white/20 bg-white/40 backdrop-blur-xl supports-[backdrop-filter]:bg-white/30">
+        <div className="mx-auto max-w-[1800px] px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg">
-                  <Workflow className="h-5 w-5" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-slate-900">Process Composer</h1>
-                  <p className="text-sm text-slate-600">Compose processes from existing procedures</p>
-                </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors">
+                <Link
+                  href="/studio"
+                  className="flex items-center gap-1 text-sm font-medium"
+                >
+                  <ArrowLeft className="h-4 w-4" strokeWidth={2} />
+                  <span>Back</span>
+                </Link>
+              </div>
+              <div className="h-6 w-[1px] bg-gray-300 mx-2" />
+              
+              <div className="flex flex-col">
+                <input
+                  type="text"
+                  value={processTitle}
+                  onChange={(e) => setProcessTitle(e.target.value)}
+                  placeholder="Untitled Process"
+                  className="bg-transparent text-xl font-extrabold text-slate-800 tracking-tight placeholder:text-slate-400 focus:outline-none focus:ring-0 p-0 border-none w-[400px]"
+                />
+                <input
+                  type="text"
+                  value={processDescription}
+                  onChange={(e) => setProcessDescription(e.target.value)}
+                  placeholder="Add a description..."
+                  className="bg-transparent text-xs font-medium text-slate-600 placeholder:text-slate-400 focus:outline-none focus:ring-0 p-0 border-none w-[400px] mt-0.5"
+                />
               </div>
             </div>
+            
             <div className="flex items-center gap-3">
-              <Link
-                href="/studio"
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Studio
-              </Link>
-              {processGroup && processGroup.id && !processGroup.id.startsWith("temp-") && (
+              {/* iOS-style Toggle Switch */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-slate-600">Active</span>
                 <button
-                  onClick={handleDeleteProcess}
-                  className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-5 py-2.5 text-sm font-medium text-rose-700 shadow-sm transition-all hover:border-rose-300 hover:bg-rose-50"
+                  onClick={() => setIsActive(!isActive)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:ring-offset-2 ${
+                    isActive ? "bg-[#007AFF]" : "bg-gray-300"
+                  }`}
                 >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      isActive ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
                 </button>
+              </div>
+
+              {processGroup && processGroup.id && !processGroup.id.startsWith("temp-") && (
+                <motion.button
+                  onClick={handleDeleteProcess}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="p-2 rounded-full hover:bg-rose-50 text-rose-500 transition-colors"
+                  title="Delete"
+                >
+                  <Trash2 className="h-5 w-5" strokeWidth={1.5} />
+                </motion.button>
+              )}
+
+              <div className="h-6 w-[1px] bg-gray-300 mx-1" />
+
+              {processGroup && processGroup.id && !processGroup.id.startsWith("temp-") ? (
+                <motion.button
+                  onClick={handleSaveProcess}
+                  disabled={!processTitle.trim() || !processDescription.trim() || saving}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="rounded-full bg-[#007AFF] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#0071E3] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Changes</span>
+                  )}
+                </motion.button>
+              ) : (
+                <motion.button
+                  onClick={handleCreateProcess}
+                  disabled={
+                    !processTitle.trim() ||
+                    !processDescription.trim() ||
+                    !processGroup ||
+                    processGroup.procedureSequence.length === 0 ||
+                    saving
+                  }
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="rounded-full bg-[#007AFF] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#0071E3] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Creating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Create Process</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </>
+                  )}
+                </motion.button>
               )}
             </div>
           </div>
         </div>
       </header>
 
-      {/* Process Info */}
-      <div className="mx-auto max-w-[1600px] px-6 pt-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg mb-6"
-        >
-          <div className="grid gap-6 md:grid-cols-2">
-            <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-2">
-                Process Title *
-              </label>
-              <input
-                type="text"
-                value={processTitle}
-                onChange={(e) => setProcessTitle(e.target.value)}
-                placeholder="e.g., HR Onboarding Flow"
-                className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-2">
-                Description *
-              </label>
-              <input
-                type="text"
-                value={processDescription}
-                onChange={(e) => setProcessDescription(e.target.value)}
-                placeholder="Brief description of this process flow..."
-                className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
-              />
-            </div>
-          </div>
-          <div className="mt-6 pt-6 border-t border-slate-200 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="isActive"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="h-5 w-5 rounded border-slate-300 text-green-600 focus:ring-2 focus:ring-green-200"
-              />
-              <label htmlFor="isActive" className="text-sm font-medium text-slate-700 cursor-pointer">
-                Active (visible in dashboard)
-              </label>
-            </div>
-            {processGroup && processGroup.id && !processGroup.id.startsWith("temp-") ? (
-              <button
-                onClick={handleSaveProcess}
-                disabled={!processTitle.trim() || !processDescription.trim() || saving}
-                className="rounded-xl bg-gradient-to-r from-green-600 to-green-700 px-8 py-3 text-sm font-semibold text-white transition-all hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
-            ) : (
-              <button
-                onClick={handleCreateProcess}
-                disabled={
-                  !processTitle.trim() ||
-                  !processDescription.trim() ||
-                  !processGroup ||
-                  processGroup.procedureSequence.length === 0 ||
-                  saving
-                }
-                className="rounded-xl bg-gradient-to-r from-slate-900 to-slate-800 px-8 py-3 text-sm font-semibold text-white transition-all hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {saving ? "Creating..." : "Create Process"}
-              </button>
-            )}
-          </div>
-          {processGroup && processGroup.procedureSequence.length === 0 && (
-            <div className="mt-4 rounded-lg bg-green-50 border border-green-200 p-4">
-              <p className="text-sm text-green-900 font-medium">
-                💡 Add at least one procedure from the library to create the process
-              </p>
-            </div>
-          )}
-        </motion.div>
-      </div>
-
-      {/* Main Content - 2 Pane Layout */}
-      <main className="mx-auto max-w-[1600px] px-6 pb-8">
+      {/* Main Content - Floating Glass Islands */}
+      <main className="mx-auto max-w-[1800px] px-6 pb-6 pt-6 h-[calc(100vh-80px)]">
         <ProcessDndContext onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-[340px_1fr] gap-6 h-[calc(100vh-320px)] rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-lg">
-            {/* Left Pane: Procedure Library (ONLY Procedures, no Atomic Tasks) */}
+          <div className="grid grid-cols-[320px_1fr] gap-6 h-full">
+            {/* Left Pane: Procedure Library - Floating Glass Island */}
             <ProcedureLibrary procedures={filteredProcedures} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
-            {/* Center Pane: Process Timeline */}
+            {/* Right Canvas: Process Flow - Floating Glass Island */}
             <ProcessTimeline
               processGroup={processGroup || {
                 id: "temp",
@@ -505,7 +503,7 @@ function ProcessDndContext({
   );
 }
 
-// Left Pane: Procedure Library (ONLY Procedures)
+// Left Pane: Procedure Library - Apple Aesthetic
 function ProcedureLibrary({
   procedures,
   searchQuery,
@@ -516,39 +514,44 @@ function ProcedureLibrary({
   onSearchChange: (query: string) => void;
 }) {
   return (
-    <div className="h-full overflow-y-auto bg-white/50 backdrop-blur-xl border-r border-slate-200 p-6">
-      <div className="sticky top-0 bg-white/90 backdrop-blur-sm pb-4 mb-4 border-b border-slate-200">
-        <h2 className="text-lg font-bold text-slate-900 mb-1">Procedure Library</h2>
-        <p className="text-xs text-slate-600 mb-3">Drag to add to your process</p>
+    <div className="h-full overflow-hidden rounded-[2rem] bg-white/60 backdrop-blur-xl border border-white/40 shadow-2xl shadow-black/5 flex flex-col">
+      {/* Header */}
+      <div className="flex-shrink-0 p-6 border-b border-white/20">
+        <h2 className="text-lg font-extrabold text-slate-800 tracking-tight mb-1">Library</h2>
+        <p className="text-xs text-slate-600 mb-4">Drag to add to your process</p>
+        
+        {/* macOS Spotlight-style Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search procedures..."
-            className="w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            className="w-full rounded-full bg-white/50 shadow-inner pl-9 pr-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-black/5 focus:bg-white/70 transition-all"
           />
         </div>
       </div>
 
-      {procedures.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-sm text-slate-500">No published procedures found</p>
-          <p className="text-xs text-slate-400 mt-1">Publish procedures in the Procedure Builder first</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {procedures.map((procedure) => (
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-3">
+        {procedures.length === 0 ? (
+          <div className="text-center py-12">
+            <FileText className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+            <p className="text-sm text-slate-600 font-medium">No published procedures</p>
+            <p className="text-xs text-slate-500 mt-1">Publish procedures first</p>
+          </div>
+        ) : (
+          procedures.map((procedure) => (
             <DraggableProcedureCard key={procedure.id} procedure={procedure} />
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }
 
-// Draggable Procedure Card
+// Draggable Procedure Card - Apple Aesthetic
 function DraggableProcedureCard({ procedure }: { procedure: Procedure }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `procedure-${procedure.id}`,
@@ -561,7 +564,6 @@ function DraggableProcedureCard({ procedure }: { procedure: Procedure }) {
   const style = transform
     ? {
         transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-        rotate: isDragging ? "2deg" : "0deg",
       }
     : undefined;
 
@@ -571,19 +573,22 @@ function DraggableProcedureCard({ procedure }: { procedure: Procedure }) {
       style={style}
       {...listeners}
       {...attributes}
-      className={`group relative cursor-grab active:cursor-grabbing rounded-xl border-2 border-green-200 bg-green-50 p-4 transition-all hover:bg-green-100 ${
-        isDragging ? "shadow-2xl z-50 opacity-90" : "shadow-sm"
+      className={`group relative cursor-grab active:cursor-grabbing rounded-xl bg-white shadow-lg p-4 transition-all ${
+        isDragging ? "shadow-2xl z-50 opacity-90 scale-105" : "hover:shadow-xl hover:-translate-y-1"
       }`}
-      whileHover={{ scale: 1.02 }}
+      whileHover={{ y: -2 }}
       whileTap={{ scale: 0.98 }}
     >
       <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center shadow-sm">
+          <FileText className="h-5 w-5 text-blue-600" />
+        </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-semibold text-green-900">{procedure.title}</h4>
+          <h4 className="text-sm font-semibold text-slate-800 tracking-tight mb-1 leading-tight">{procedure.title}</h4>
           {procedure.description && (
-            <p className="text-xs text-green-700 mt-1 line-clamp-2">{procedure.description}</p>
+            <p className="text-xs text-slate-600 line-clamp-2 mb-2">{procedure.description}</p>
           )}
-          <p className="text-xs text-green-600 mt-2">
+          <p className="text-xs text-slate-500 font-medium">
             {procedure.steps.length} step{procedure.steps.length !== 1 ? "s" : ""}
           </p>
         </div>
@@ -592,7 +597,7 @@ function DraggableProcedureCard({ procedure }: { procedure: Procedure }) {
   );
 }
 
-// Center Pane: Process Timeline
+// Right Canvas: Process Flow - Apple Aesthetic
 function ProcessTimeline({
   processGroup,
   procedures,
@@ -614,53 +619,54 @@ function ProcessTimeline({
   return (
     <div
       ref={setNodeRef}
-      className={`h-full overflow-y-auto bg-slate-50/50 p-6 transition-colors ${
-        isOver ? "bg-green-50/50" : ""
+      className={`h-full overflow-hidden rounded-[2rem] bg-white/60 backdrop-blur-xl border border-white/40 shadow-2xl shadow-black/5 relative ${
+        isOver ? "bg-blue-50/30" : ""
       }`}
     >
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-slate-900">Process Flow</h2>
-        <p className="text-xs text-slate-600 mt-1">
-          {sequence.length} procedure{sequence.length !== 1 ? "s" : ""} in sequence
-        </p>
+      <div className="h-full overflow-y-auto overflow-x-hidden p-8">
+        {sequence.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center h-full min-h-[400px]"
+          >
+            {/* Beautiful Empty State */}
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-indigo-100/50 rounded-3xl blur-2xl" />
+              <div className="relative bg-white/70 backdrop-blur-sm rounded-3xl p-8 shadow-lg">
+                <Workflow className="h-16 w-16 text-blue-500/70 mx-auto" strokeWidth={1.5} />
+              </div>
+            </div>
+            <h3 className="text-lg font-extrabold text-slate-800 tracking-tight mb-2">
+              Drag Procedures here
+            </h3>
+            <p className="text-sm text-slate-600 text-center max-w-sm leading-relaxed">
+              Drag published Procedures here to build your flow.
+            </p>
+          </motion.div>
+        ) : (
+          <SortableContext items={sequence} strategy={verticalListSortingStrategy}>
+            <div className="space-y-4 max-w-2xl mx-auto">
+              <AnimatePresence>
+                {sequenceProcedures.map((procedure, index) => (
+                  <SortableProcedureItem
+                    key={procedure.id}
+                    procedure={procedure}
+                    index={index}
+                    isLast={index === sequenceProcedures.length - 1}
+                    onRemove={() => onRemoveProcedure(procedure.id)}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+          </SortableContext>
+        )}
       </div>
-
-      {sequence.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center justify-center h-full min-h-[400px] rounded-2xl border-2 border-dashed border-slate-300 bg-white/50"
-        >
-          <ArrowRight className="h-16 w-16 text-slate-400 mb-4" />
-          <h3 className="text-lg font-semibold text-slate-900 mb-2">
-            Drag your first Procedure here
-          </h3>
-          <p className="text-sm text-slate-600 text-center max-w-sm">
-            Start building your process by dragging procedures from the left sidebar
-          </p>
-        </motion.div>
-      ) : (
-        <SortableContext items={sequence} strategy={verticalListSortingStrategy}>
-          <div className="space-y-4 max-w-2xl mx-auto">
-            <AnimatePresence>
-              {sequenceProcedures.map((procedure, index) => (
-                <SortableProcedureItem
-                  key={procedure.id}
-                  procedure={procedure}
-                  index={index}
-                  isLast={index === sequenceProcedures.length - 1}
-                  onRemove={() => onRemoveProcedure(procedure.id)}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
-        </SortableContext>
-      )}
     </div>
   );
 }
 
-// Sortable Procedure Item in Timeline
+// Sortable Procedure Item in Timeline - Apple Aesthetic
 function SortableProcedureItem({
   procedure,
   index,
@@ -693,53 +699,70 @@ function SortableProcedureItem({
         layout
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`group relative rounded-xl border-2 p-4 transition-all ${
-          isDragging ? "shadow-2xl border-green-500" : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
+        exit={{ opacity: 0, scale: 0.95 }}
+        className={`group relative rounded-xl bg-white shadow-lg p-5 transition-all ${
+          isDragging ? "shadow-2xl scale-105 ring-1 ring-[#007AFF]/30" : "hover:shadow-xl hover:-translate-y-1"
         }`}
       >
         <div className="flex items-start gap-4">
+          {/* Drag Handle */}
           <div
             {...attributes}
             {...listeners}
-            className="flex-shrink-0 cursor-grab active:cursor-grabbing p-1 hover:bg-slate-100 rounded"
+            className="flex-shrink-0 cursor-grab active:cursor-grabbing p-2 hover:bg-gray-100/50 rounded-lg transition-colors"
           >
-            <GripVertical className="h-5 w-5 text-slate-400" />
+            <GripVertical className="h-5 w-5 text-slate-500" strokeWidth={2} />
           </div>
 
+          {/* Step Number Badge */}
           <div className="flex-shrink-0">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 text-green-700 font-semibold">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-sm shadow-lg">
               {index + 1}
             </div>
           </div>
 
+          {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-sm font-semibold text-slate-900">{procedure.title}</h3>
+              <h3 className="text-sm font-semibold text-slate-800 tracking-tight">{procedure.title}</h3>
             </div>
             {procedure.description && (
-              <p className="text-xs text-slate-600 mb-2">{procedure.description}</p>
+              <p className="text-xs text-slate-600 mb-2 line-clamp-2">{procedure.description}</p>
             )}
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 font-medium">
               {procedure.steps.length} step{procedure.steps.length !== 1 ? "s" : ""}
             </p>
           </div>
 
+          {/* Remove Button */}
           <button
             onClick={onRemove}
-            className="flex-shrink-0 rounded-lg p-2 text-slate-400 hover:bg-rose-100 hover:text-rose-700 transition-colors"
+            className="flex-shrink-0 rounded-lg p-2 text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" strokeWidth={2} />
           </button>
         </div>
       </motion.div>
 
-      {/* Flow Arrow */}
+      {/* Sleek Connecting Arrow */}
       {!isLast && (
-        <div className="flex justify-center my-2">
-          <ArrowDown className="h-6 w-6 text-slate-400" />
-        </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex justify-center my-3"
+        >
+          <div className="relative">
+            {/* Subtle connecting line with arrow */}
+            <svg className="h-6 w-6 text-blue-400/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path
+                d="M12 2 L12 18 M8 14 L12 18 L16 14"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+        </motion.div>
       )}
     </>
   );
 }
-

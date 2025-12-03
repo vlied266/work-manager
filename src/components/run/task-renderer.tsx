@@ -33,6 +33,8 @@ interface TaskRendererProps {
   run: any;
   handleCompleteStep: (outcome: "SUCCESS" | "FAILURE" | "FLAGGED", autoFlagged?: boolean) => void;
   submitting: boolean;
+  runId?: string;
+  resolvedConfig?: any;
 }
 
 export function TaskRenderer({

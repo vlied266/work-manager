@@ -6,7 +6,7 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import * as LucideIcons from "lucide-react";
 import { motion } from "framer-motion";
-import { Users, User, ShieldCheck, Upload, CheckCircle2, Calculator, Sparkles, AlertTriangle } from "lucide-react";
+import { Users, User, ShieldCheck, Upload, CheckCircle2, Calculator, Sparkles, AlertTriangle, Info, HelpCircle } from "lucide-react";
 import { MagicInput } from "@/components/studio/magic-input";
 
 interface ConfigPanelProps {
@@ -129,97 +129,81 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
-      className="h-full overflow-y-auto bg-gradient-to-br from-white to-slate-50 border-l border-slate-200 p-6"
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      className="relative h-full w-full overflow-y-auto overflow-x-hidden p-8"
+      style={{ minHeight: 0 }}
     >
-      <div className="sticky top-0 bg-white/95 backdrop-blur-xl pb-6 mb-8 border-b border-slate-200/80 z-10">
+      {/* Clean Header */}
+      <div className="relative sticky top-0 bg-white/70 backdrop-blur-xl pb-6 mb-8 border-b border-slate-100 z-10 -mx-8 px-8 pt-0">
         {validationError && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 rounded-xl border-2 border-rose-200 bg-rose-50/80 p-4 backdrop-blur-sm"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            className="mb-4 rounded-xl bg-orange-50/80 border border-orange-200/50 p-3 flex items-start gap-2.5"
           >
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100">
-                <AlertTriangle className="h-5 w-5 text-rose-600" strokeWidth={2} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-rose-900 mb-1">⚠️ Configuration Missing</p>
-                <p className="text-xs text-rose-700 leading-relaxed">{validationError}</p>
-              </div>
-            </div>
+            <AlertTriangle className="h-3.5 w-3.5 text-[#FF9500] mt-0.5 flex-shrink-0" strokeWidth={2} />
+            <p className="text-xs text-[#FF9500] font-medium leading-relaxed">{validationError}</p>
           </motion.div>
         )}
-        <div className="flex items-center gap-4 mb-3">
-          <div
-            className={`flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm ${
-              metadata.color === "blue"
-                ? "bg-blue-100 text-blue-700"
-                : metadata.color === "green"
-                ? "bg-green-100 text-green-700"
-                : metadata.color === "yellow"
-                ? "bg-yellow-100 text-yellow-700"
-                : "bg-purple-100 text-purple-700"
-            }`}
-          >
-            <IconComponent className="h-6 w-6" strokeWidth={1.5} />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight">{step.title}</h2>
-            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{metadata.label}</p>
-          </div>
+        
+        <div>
+          <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight mb-1">{step.title}</h2>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{metadata.label}</p>
         </div>
-        <p className="text-sm text-slate-500 font-medium leading-relaxed">{metadata.description}</p>
       </div>
 
-      <div className="space-y-6">
-        {/* Basic Info */}
+      <div className="relative space-y-8">
+        {/* Basic Info - Grouped */}
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-900">Basic Information</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
+            Basic Information
+          </h3>
           
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">
-              Step Title
-            </label>
-            <input
-              type="text"
-              value={step.title}
-              onChange={(e) => onUpdate({ title: e.target.value })}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-              placeholder="Enter step title"
-            />
-          </div>
+          <div className="space-y-5">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                Step Title
+              </label>
+              <input
+                type="text"
+                value={step.title}
+                onChange={(e) => onUpdate({ title: e.target.value })}
+                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                placeholder="Enter step title"
+              />
+            </div>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">
-              Output Variable Name
-            </label>
-            <input
-              type="text"
-              value={step.config.outputVariableName || ""}
-              onChange={(e) =>
-                onUpdate({
-                  config: { ...step.config, outputVariableName: e.target.value || undefined },
-                })
-              }
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-              placeholder="e.g., invoice_total, step_1_output"
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              This value will be stored in Run Context and can be referenced by other steps
-            </p>
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                Output Variable Name
+              </label>
+              <input
+                type="text"
+                value={step.config.outputVariableName || ""}
+                onChange={(e) =>
+                  onUpdate({
+                    config: { ...step.config, outputVariableName: e.target.value || undefined },
+                  })
+                }
+                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                placeholder="e.g., invoice_total"
+              />
+              <p className="mt-2 text-xs text-slate-500">
+                Variable name for referencing this step's data later
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Responsibility Section 👤 */}
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-slate-600" />
-            <h3 className="text-sm font-semibold text-slate-900">Responsibility</h3>
-          </div>
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
+            Responsibility
+          </h3>
+          <div className="rounded-xl bg-slate-50/50 p-5 space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                Who should perform this step?
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                Assignment Type
               </label>
               <select
                 value={
@@ -238,7 +222,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
                     assigneeId: assignmentType === "STARTER" ? undefined : step.assignment?.assigneeId || step.assigneeId,
                   });
                 }}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
               >
                 <option value="STARTER">Process Starter (The person who clicked Run)</option>
                 <option value="SPECIFIC_USER">Specific User</option>
@@ -263,7 +247,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
                       assigneeId: e.target.value || undefined,
                     })
                   }
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                 >
                   <option value="">Select a team</option>
                   {teams.map((team) => (
@@ -297,7 +281,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
                       assigneeId: e.target.value || undefined,
                     })
                   }
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                 >
                   <option value="">Select a user</option>
                   {users.map((user) => (
@@ -358,14 +342,13 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
           </div>
         )}
 
-        {/* Action-specific Configuration */}
+        {/* Action-specific Configuration - Natural Language */}
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-900">Configuration</h3>
           {renderActionConfig(step, availableVariablesLegacy, onUpdate, allSteps)}
         </div>
 
         {/* Flow Logic (Routing) */}
-        <div className="space-y-4 mt-6 pt-6 border-t border-slate-200">
+        <div className="space-y-4 mt-6 pt-6 border-t border-white/20">
           <h3 className="text-sm font-semibold text-slate-900">Flow Logic</h3>
           {renderFlowLogic(step, allSteps, onUpdate)}
         </div>
@@ -396,11 +379,24 @@ function renderActionConfig(
   switch (action) {
     case "INPUT":
       return (
-        <div className="space-y-4">
-          {/* Field Label */}
+        <div className="space-y-6">
+          {/* Natural Language Header */}
+          <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100">
+                <LucideIcons.MessageSquare className="h-5 w-5 text-blue-600" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">What information do you need?</h3>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Tell us what question to ask the operator. They'll see this on their mobile device.
+            </p>
+          </div>
+
+          {/* Question Text */}
           <div>
-            <label className="block text-xs font-semibold text-slate-900 mb-2">
-              Field Label *
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Question text <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -408,35 +404,37 @@ function renderActionConfig(
               onChange={(e) =>
                 onUpdate({ config: { ...config, fieldLabel: e.target.value } })
               }
-              className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-              placeholder="e.g., Invoice Number, Customer Name"
+              className="w-full rounded-xl border-0 bg-white/50 shadow-inner px-4 py-3 text-sm font-medium text-slate-800 focus:ring-1 focus:ring-black/5 focus:bg-white/70 transition-all"
+              placeholder="e.g., Enter the oven temperature"
             />
-            <p className="mt-1.5 text-xs text-slate-500">
-              This label will be displayed to users when they fill out this step
+            <p className="mt-2 text-xs text-slate-500 flex items-center gap-1">
+              <LucideIcons.Info className="h-3 w-3" />
+              This is exactly what the operator will see on their screen
             </p>
           </div>
 
-          {/* Data Type */}
+          {/* Data Type - Natural Language */}
           <div>
-            <label className="block text-xs font-semibold text-slate-900 mb-2">
-              Data Type *
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              What type of answer? <span className="text-rose-500">*</span>
             </label>
             <select
               value={config.inputType || "text"}
               onChange={(e) =>
                 onUpdate({ config: { ...config, inputType: e.target.value as any } })
               }
-              className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+              className="w-full rounded-xl border-0 bg-white/50 shadow-inner px-4 py-3 text-sm font-medium text-slate-800 focus:ring-1 focus:ring-black/5 focus:bg-white/70 transition-all"
             >
-              <option value="text">Text</option>
-              <option value="number">Number</option>
-              <option value="email">Email</option>
+              <option value="text">Text (words or sentences)</option>
+              <option value="number">Number (e.g., 350, 12.5)</option>
+              <option value="email">Email address</option>
               <option value="date">Date</option>
               <option value="file">File Upload</option>
-              <option value="table">Table</option>
+              <option value="table">Table (multiple rows)</option>
             </select>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Select the type of data this field will accept
+            <p className="mt-2 text-xs text-slate-500 flex items-center gap-1">
+              <LucideIcons.Info className="h-3 w-3" />
+              Choose how the operator should answer your question
             </p>
           </div>
 
@@ -504,7 +502,7 @@ function renderActionConfig(
                         },
                       })
                     }
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                    className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                   />
                 </div>
                 <div>
@@ -534,7 +532,7 @@ function renderActionConfig(
                         },
                       });
                     }}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                    className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                   />
                 </div>
               </div>
@@ -563,7 +561,7 @@ function renderActionConfig(
                     });
                   }}
                   placeholder="e.g., Name, Email, Phone"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                 />
                 <p className="mt-1 text-xs text-slate-500">
                   Enter column headers separated by commas
@@ -575,15 +573,20 @@ function renderActionConfig(
           {/* File Upload Specific Config */}
           {config.inputType === "file" && (
             <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white p-5 space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <LucideIcons.Upload className="h-4 w-4 text-blue-600" />
-                <p className="text-sm font-semibold text-blue-900">File Upload Configuration</p>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100">
+                  <LucideIcons.Upload className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">What file is required?</h3>
+                  <p className="text-xs text-slate-600">Configure the upload button and allowed file types</p>
+                </div>
               </div>
               
-              {/* Button Label */}
+              {/* Button Label - Natural Language */}
               <div>
-                <label className="block text-xs font-semibold text-slate-900 mb-2">
-                  Upload Button Label
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Button Label <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -591,9 +594,13 @@ function renderActionConfig(
                   onChange={(e) =>
                     onUpdate({ config: { ...config, buttonLabel: e.target.value } })
                   }
-                  className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                  placeholder="e.g., Upload Invoice, Attach CV"
+                  className="w-full rounded-xl border-0 bg-white/50 shadow-inner px-4 py-3 text-sm font-medium text-slate-800 focus:ring-1 focus:ring-black/5 focus:bg-white/70 transition-all"
+                  placeholder="e.g., Upload Invoice"
                 />
+                <p className="mt-2 text-xs text-slate-500 flex items-center gap-1">
+                  <LucideIcons.Info className="h-3 w-3" />
+                  This text appears on the upload button
+                </p>
               </div>
 
               {/* Allowed File Types */}
@@ -695,61 +702,91 @@ function renderActionConfig(
 
     case "COMPARE":
       return (
-        <div className="space-y-4">
-          <div className="rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <LucideIcons.GitCompare className="h-4 w-4 text-purple-600" />
-              <p className="text-sm font-semibold text-purple-900">Variable Piping</p>
+        <div className="space-y-6">
+          {/* Natural Language Header */}
+          <div className="rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100">
+                <LucideIcons.GitCompare className="h-5 w-5 text-purple-600" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">The Logic Builder</h3>
             </div>
-            <p className="text-xs text-purple-700 leading-relaxed">
-              Select variables from previous steps to automatically compare values. The system will evaluate the comparison and route accordingly.
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Create a rule that checks if two values match. The workflow will continue based on the result.
             </p>
           </div>
 
-          {/* Target A */}
-          <MagicInput
-            value={config.targetA || ""}
-            onChange={(value) =>
-              onUpdate({ config: { ...config, targetA: value || undefined } })
-            }
-            placeholder="e.g., step_1_output, invoice_total"
-            availableVariables={availableVariables}
-            label="Variable A (Source)"
-            helpText="Select from previous steps or enter variable name manually"
-          />
+          {/* Sentence Builder UI */}
+          <div className="space-y-4">
+            <div className="rounded-lg border-2 border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-semibold text-slate-900 mb-4">Check if:</p>
+              
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex-1 min-w-[120px]">
+                  <MagicInput
+                    value={config.targetA || ""}
+                    onChange={(value) =>
+                      onUpdate({ config: { ...config, targetA: value || undefined } })
+                    }
+                    placeholder="First value..."
+                    availableVariables={availableVariables}
+                    label=""
+                    helpText=""
+                  />
+                </div>
+                
+                <span className="text-sm font-semibold text-slate-700">is</span>
+                
+                <select
+                  value={config.comparisonType || "exact"}
+                  onChange={(e) =>
+                    onUpdate({ config: { ...config, comparisonType: e.target.value as any } })
+                  }
+                  className="rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                >
+                  <option value="exact">Equal To</option>
+                  <option value="numeric">Greater Than</option>
+                  <option value="numeric">Less Than</option>
+                  <option value="fuzzy">Similar To</option>
+                </select>
+                
+                <div className="flex-1 min-w-[120px]">
+                  <MagicInput
+                    value={config.targetB || ""}
+                    onChange={(value) =>
+                      onUpdate({ config: { ...config, targetB: value || undefined } })
+                    }
+                    placeholder="Second value..."
+                    availableVariables={availableVariables}
+                    label=""
+                    helpText=""
+                  />
+                </div>
+              </div>
+            </div>
 
-          {/* Target B */}
-          <MagicInput
-            value={config.targetB || ""}
-            onChange={(value) =>
-              onUpdate({ config: { ...config, targetB: value || undefined } })
-            }
-            placeholder="e.g., step_2_output, expected_total"
-            availableVariables={availableVariables}
-            label="Variable B (Target)"
-            helpText="Select from previous steps or enter variable name manually"
-          />
-
-          {/* Comparison Type */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-900 mb-2">
-              Comparison Type
-            </label>
-            <select
-              value={config.comparisonType || "exact"}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, comparisonType: e.target.value as any } })
-              }
-              className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
-            >
-              <option value="exact">Exact Match</option>
-              <option value="fuzzy">Fuzzy Match (similarity)</option>
-              <option value="numeric">Numeric (with tolerance)</option>
-              <option value="date">Date Comparison</option>
-            </select>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Choose how the values should be compared
-            </p>
+            {/* Force Explanation Toggle */}
+            <div className="flex items-center justify-between p-4 rounded-xl border-2 border-slate-200 bg-slate-50">
+              <div>
+                <label className="text-sm font-semibold text-slate-900 block mb-1">
+                  If it fails, force user to explain?
+                </label>
+                <p className="text-xs text-slate-600">
+                  When the comparison fails, ask the operator why
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={config.requireMismatchReason || false}
+                  onChange={(e) =>
+                    onUpdate({ config: { ...config, requireMismatchReason: e.target.checked } })
+                  }
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+              </label>
+            </div>
           </div>
         </div>
       );
@@ -985,10 +1022,17 @@ function renderActionConfig(
             </p>
           </div>
 
-          {/* Instructions Textarea */}
+          {/* Instructions Textarea - Natural Language */}
           <div>
-            <label className="block text-xs font-semibold text-slate-900 mb-2">
-              Instructions for Approver *
+            <label className="block text-sm font-semibold text-slate-900 mb-2 flex items-center gap-2">
+              What should the approver review? <span className="text-rose-500">*</span>
+              <div className="group relative">
+                <Info className="h-4 w-4 text-slate-400 cursor-help" />
+                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 rounded-lg bg-slate-900 text-white text-xs p-3 shadow-xl z-50">
+                  <p>Tell the approver exactly what to check. Be specific: "Verify that the invoice amount matches the purchase order."</p>
+                  <div className="absolute -bottom-1 left-4 h-2 w-2 rotate-45 bg-slate-900" />
+                </div>
+              </div>
             </label>
             <textarea
               value={config.instruction || config.instructions || ""}
@@ -1005,8 +1049,9 @@ function renderActionConfig(
               className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all resize-none"
               placeholder="Enter detailed instructions for the approver...&#10;&#10;Example:&#10;Please review the invoice details and verify that:&#10;1. Amount matches the purchase order&#10;2. Vendor information is correct&#10;3. All required documents are attached"
             />
-            <p className="mt-1.5 text-xs text-slate-500">
-              Provide clear instructions on what the approver should review
+            <p className="mt-2 text-xs text-slate-500 flex items-center gap-1">
+              <Info className="h-3 w-3" />
+              This is exactly what the approver will see on their screen
             </p>
           </div>
 
@@ -1063,14 +1108,17 @@ function renderActionConfig(
 
     case "VALIDATE":
       return (
-        <div className="space-y-4">
-          <div className="rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <LucideIcons.CheckCircle2 className="h-4 w-4 text-purple-600" />
-              <p className="text-sm font-semibold text-purple-900">Validation Configuration</p>
+        <div className="space-y-6">
+          {/* Natural Language Header */}
+          <div className="rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100">
+                <LucideIcons.CheckCircle2 className="h-5 w-5 text-purple-600" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">Check if data follows a rule</h3>
             </div>
-            <p className="text-xs text-purple-700 leading-relaxed">
-              Configure validation rules to check data against specific criteria
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Create a validation rule. If the data doesn't match, the workflow can stop or ask for correction.
             </p>
           </div>
 

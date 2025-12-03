@@ -189,7 +189,7 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
   const resolvedStep: AtomicStep | null = currentStep && resolvedConfig
     ? {
         ...currentStep,
-        config: resolvedConfig.resolvedConfig,
+        config: resolvedConfig, // Use resolved config directly
       }
     : currentStep;
 

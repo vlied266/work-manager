@@ -48,103 +48,80 @@ function SortableStepItem({ step, index, isSelected, onClick, onDelete, validati
   const hasError = !!validationError;
 
   return (
-    <motion.div
-      ref={setNodeRef}
-      style={style}
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      className={`group relative rounded-2xl border-2 p-6 cursor-pointer transition-all backdrop-blur-sm ${
-        hasError
-          ? "border-rose-500 bg-rose-50/80 shadow-xl shadow-rose-500/20"
-          : isSelected
-          ? "border-blue-500 bg-blue-50/80 shadow-xl shadow-blue-500/20"
-          : "border-slate-200/80 bg-white/80 hover:border-slate-300 hover:bg-slate-50/80 hover:shadow-lg"
-      } ${isDragging ? "shadow-2xl scale-105" : ""}`}
-      onClick={onClick}
-      whileHover={{ y: -2 }}
-    >
-      <div className="flex items-start gap-5">
-        <div
-          {...attributes}
-          {...listeners}
-          className="flex-shrink-0 cursor-grab active:cursor-grabbing p-2 hover:bg-slate-100/80 rounded-xl transition-colors"
-        >
-          <LucideIcons.GripVertical className="h-5 w-5 text-slate-400" strokeWidth={2} />
-        </div>
+    <div className="relative flex items-start gap-4">
+      {/* Vertical Timeline Line - Only show if not last step */}
+      {index < 1000 && (
+        <div className="absolute left-5 top-12 w-0.5 h-8 bg-slate-200" />
+      )}
+      
+      {/* Step Number Badge */}
+      <div className="relative z-10 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 font-bold text-sm shadow-sm border-2 border-white flex-shrink-0">
+        {index + 1}
+      </div>
 
-        <div className="flex-shrink-0">
-          <div
-            className={`flex h-12 w-12 items-center justify-center rounded-xl shadow-sm ${
-              metadata.color === "blue"
-                ? "bg-blue-100 text-blue-700"
-                : metadata.color === "green"
-                ? "bg-green-100 text-green-700"
-                : metadata.color === "yellow"
-                ? "bg-yellow-100 text-yellow-700"
-                : "bg-purple-100 text-purple-700"
-            }`}
-          >
-            <IconComponent className="h-6 w-6" strokeWidth={1.5} />
+      {/* Step Card */}
+      <motion.div
+        ref={setNodeRef}
+        style={style}
+        layout
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, x: -20 }}
+        className={`group relative flex-1 rounded-2xl bg-white shadow-sm border border-slate-100 px-5 py-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-md ${
+          isSelected ? "ring-2 ring-blue-500 bg-blue-50/30" : ""
+        } ${hasError ? "ring-1 ring-orange-300 bg-orange-50/20" : ""}`}
+        onClick={onClick}
+      >
+        <div className="flex items-center gap-4">
+          {/* Icon */}
+          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+            metadata.color === "blue" ? "bg-blue-100 text-blue-600" :
+            metadata.color === "green" ? "bg-green-100 text-green-600" :
+            metadata.color === "yellow" ? "bg-yellow-100 text-yellow-600" :
+            "bg-purple-100 text-purple-600"
+          }`}>
+            <IconComponent className="h-5 w-5" strokeWidth={2} />
           </div>
-        </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Step {index + 1}</span>
-            <span className="text-xs text-slate-300">•</span>
-            <span className="text-xs font-semibold text-slate-600">{metadata.label}</span>
-            {hasError && (
-              <div
-                className="relative"
-                onMouseEnter={() => setShowTooltip(true)}
-                onMouseLeave={() => setShowTooltip(false)}
-              >
-                <AlertTriangle className="h-4 w-4 text-rose-600" strokeWidth={2.5} />
-                {showTooltip && validationError && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute left-0 top-full mt-2 z-50 w-64 rounded-lg bg-slate-900 text-white text-xs p-3 shadow-xl"
-                  >
-                    <p className="font-semibold mb-1">⚠️ Configuration Missing</p>
-                    <p>{validationError}</p>
-                    <div className="absolute -top-1 left-4 h-2 w-2 rotate-45 bg-slate-900" />
-                  </motion.div>
-                )}
-              </div>
-            )}
+          {/* Title */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h4 className="text-base font-bold text-slate-800 tracking-tight truncate">{step.title}</h4>
+              {hasError && (
+                <div className="relative">
+                  <AlertTriangle 
+                    className="h-4 w-4 text-orange-500 cursor-help" 
+                    onMouseEnter={() => setShowTooltip(true)}
+                    onMouseLeave={() => setShowTooltip(false)}
+                  />
+                  {showTooltip && validationError && (
+                    <div className="absolute left-0 top-6 z-50 rounded-lg bg-slate-900 text-white text-xs p-2 shadow-xl whitespace-nowrap">
+                      {validationError}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-          <h3 className="text-base font-bold text-slate-900 mb-1">{step.title}</h3>
-          {step.config.outputVariableName && (
-            <p className="text-xs text-slate-500 mt-2 font-medium">
-              Output: <span className="font-mono text-blue-600 font-semibold">{step.config.outputVariableName}</span>
-            </p>
-          )}
-        </div>
 
-        <div className="flex-shrink-0 flex items-center gap-3">
-          {isSelected && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="h-2.5 w-2.5 rounded-full bg-blue-500 shadow-lg shadow-blue-500/50"
-            />
-          )}
+          {/* Drag Handle */}
+          <div className="cursor-grab active:cursor-grabbing p-2 text-slate-400 hover:text-slate-600" {...attributes} {...listeners}>
+            <LucideIcons.GripVertical className="h-4 w-4" strokeWidth={2} />
+          </div>
+
+          {/* Delete Button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               onDelete();
             }}
-            className="opacity-0 group-hover:opacity-100 transition-opacity rounded-xl p-2 text-slate-400 hover:bg-rose-100/80 hover:text-rose-700"
-            title="Delete step"
+            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
           >
-            <X className="h-4 w-4" strokeWidth={2.5} />
+            <X className="h-4 w-4" strokeWidth={2} />
           </button>
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 }
 
@@ -167,41 +144,45 @@ export function SortableCanvas({
   onDeleteStep,
   validationErrors,
 }: SortableCanvasProps) {
-  const { setNodeRef, isOver } = useDroppable({
+  const { setNodeRef: setCanvasRef, isOver: isCanvasOver } = useDroppable({
     id: "canvas-drop-zone",
+  });
+  
+  // Additional drop zone at the end of the list for adding new steps
+  const { setNodeRef: setEndRef, isOver: isEndOver } = useDroppable({
+    id: "canvas-end-drop-zone",
   });
 
   return (
     <div
-      ref={setNodeRef}
-      className={`h-full overflow-y-auto bg-gradient-to-br from-slate-50/30 via-white to-white p-10 transition-all duration-300 ${
-        isOver ? "bg-blue-50/60" : ""
+      ref={setCanvasRef}
+      className={`relative h-full w-full overflow-y-auto overflow-x-hidden transition-all duration-700 ${
+        isCanvasOver ? "bg-blue-50/30" : ""
       }`}
+      style={{ minHeight: 0 }}
     >
       {steps.length === 0 ? (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center justify-center h-full min-h-[500px] rounded-3xl border-2 border-dashed border-slate-300/80 bg-gradient-to-br from-slate-50/50 via-white to-white backdrop-blur-sm"
+          className="flex flex-col items-center justify-center h-full min-h-[400px] text-center"
         >
-          <motion.div
-            initial={{ scale: 0.9 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring" }}
-            className="flex h-24 w-24 items-center justify-center rounded-3xl bg-blue-100/80 mb-8 shadow-lg"
-          >
-            <LucideIcons.Move className="h-12 w-12 text-blue-600" strokeWidth={1.5} />
-          </motion.div>
-          <h3 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight">
-            Drag your first Atomic Task here
+          <div className="relative mb-6">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-indigo-100/50 rounded-3xl blur-2xl" />
+            <div className="relative h-16 w-16 rounded-2xl bg-white/80 backdrop-blur-sm border border-gray-200/50 flex items-center justify-center shadow-sm">
+              <LucideIcons.Move className="h-7 w-7 text-[#86868b]" strokeWidth={1.5} />
+            </div>
+          </div>
+          <h3 className="text-base font-extrabold text-slate-800 tracking-tight mb-1.5">
+            Drag atomic tasks here
           </h3>
-          <p className="text-base text-slate-600 text-center max-w-md font-medium leading-relaxed">
-            Start building your procedure by dragging atomic actions from the left sidebar
+          <p className="text-sm text-slate-600 max-w-xs leading-relaxed">
+            Start building your procedure by dragging tasks from the toolbox
           </p>
         </motion.div>
       ) : (
         <SortableContext items={steps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-5 max-w-3xl mx-auto">
+          <div className="space-y-8 max-w-2xl mx-auto py-4">
             <AnimatePresence>
               {steps.map((step, index) => (
                 <SortableStepItem
@@ -215,6 +196,15 @@ export function SortableCanvas({
                 />
               ))}
             </AnimatePresence>
+            {/* Drop zone at the end for adding new steps */}
+            <div 
+              ref={setEndRef}
+              className={`h-20 rounded-2xl border-2 border-dashed transition-all ${
+                isEndOver 
+                  ? "border-blue-400/60 bg-blue-50/40" 
+                  : "border-slate-200"
+              }`}
+            />
           </div>
         </SortableContext>
       )}

@@ -199,15 +199,17 @@ export default function OperatorInbox() {
   };
 
   return (
-    <div className="flex h-full bg-slate-50">
-      {/* Left: Task List */}
-      <div className={`${isMobile ? "w-full" : "w-96"} border-r border-slate-200 bg-white flex flex-col ${isMobile && selectedTask ? "hidden" : ""}`}>
-        {/* Header */}
-        <div className="border-b border-slate-200 bg-white p-6 flex-shrink-0">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50/40 via-white to-cyan-50/40 relative overflow-hidden font-sans">
+      <div className="flex h-screen">
+        {/* Left: Task List - Floating Glass Sidebar */}
+        <div className={`${isMobile ? "w-full" : "w-96"} flex flex-col ${isMobile && selectedTask ? "hidden" : ""} p-6`}>
+          <div className="h-full rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="border-b border-slate-100 bg-white/50 backdrop-blur-sm p-6 flex-shrink-0">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">My Tasks</h1>
-              <p className="mt-1 text-sm text-slate-600">
+              <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">My Tasks</h1>
+              <p className="mt-1 text-sm text-slate-600 font-medium">
                 {stats.total} {stats.total === 1 ? "task" : "tasks"} pending
               </p>
             </div>
@@ -221,59 +223,64 @@ export default function OperatorInbox() {
               placeholder="Search tasks..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+              className="w-full rounded-full bg-white/70 backdrop-blur-sm border border-white/60 shadow-sm pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white/90 transition-all"
             />
           </div>
 
-          {/* Filter Tabs */}
-          <div className="flex gap-2">
+          {/* Filter Tabs - iOS Segmented Control */}
+          <div className="inline-flex rounded-full bg-white/70 backdrop-blur-sm border border-white/60 shadow-sm p-1 w-full">
             <button
               onClick={() => setFilter("all")}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+              className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold tracking-tight transition-all ${
                 filter === "all"
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-white text-slate-800 shadow-md"
+                  : "text-slate-600 hover:text-slate-800"
               }`}
             >
               All ({stats.total})
             </button>
             <button
               onClick={() => setFilter("in_progress")}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+              className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold tracking-tight transition-all ${
                 filter === "in_progress"
-                  ? "bg-blue-600 text-white"
-                  : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  ? "bg-white text-slate-800 shadow-md"
+                  : "text-slate-600 hover:text-slate-800"
               }`}
             >
               Active ({stats.inProgress})
             </button>
             <button
               onClick={() => setFilter("flagged")}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+              className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold tracking-tight transition-all ${
                 filter === "flagged"
-                  ? "bg-rose-600 text-white"
-                  : "bg-rose-50 text-rose-700 hover:bg-rose-100"
+                  ? "bg-white text-slate-800 shadow-md"
+                  : "text-slate-600 hover:text-slate-800"
               }`}
             >
               Flagged ({stats.flagged})
             </button>
           </div>
-        </div>
+          </div>
 
         {/* Task List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto p-4">
           {filteredTasks.length === 0 ? (
             <div className="p-8 text-center">
-              <CheckCircle2 className="mx-auto h-12 w-12 text-slate-300" />
-              <p className="mt-4 text-sm font-medium text-slate-900">
+              <div className="relative mb-4 inline-block">
+                <div className="absolute inset-0 bg-gradient-to-br from-green-100/50 to-emerald-100/50 rounded-3xl blur-2xl" />
+                <div className="relative h-16 w-16 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 flex items-center justify-center shadow-lg">
+                  <CheckCircle2 className="h-8 w-8 text-green-500" />
+                </div>
+              </div>
+              <p className="mt-4 text-sm font-extrabold text-slate-900">
                 {searchQuery ? "No tasks found" : "All caught up!"}
               </p>
-              <p className="mt-1 text-xs text-slate-600">
+              <p className="mt-1 text-xs text-slate-600 font-medium">
                 {searchQuery ? "Try a different search term" : "No pending tasks"}
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="space-y-3">
               {filteredTasks.map((task, index) => {
                 const currentStep = getCurrentStep(task);
                 const isSelected = selectedTask?.id === task.id;
@@ -291,12 +298,12 @@ export default function OperatorInbox() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
                     onClick={() => handleTaskClick(task)}
-                    className={`w-full p-5 text-left transition-all touch-manipulation ${
+                    className={`w-full rounded-2xl p-5 text-left transition-all touch-manipulation ${
                       isSelected
-                        ? "bg-slate-100 border-l-4 border-slate-900"
+                        ? "bg-white shadow-xl border-2 border-blue-500/50"
                         : isFlagged
-                        ? "bg-rose-50/50 hover:bg-rose-50"
-                        : "hover:bg-slate-50"
+                        ? "bg-rose-50/50 hover:bg-rose-50/70 border border-rose-200/50"
+                        : "bg-white/50 hover:bg-white/70 border border-white/60 shadow-sm hover:shadow-md"
                     }`}
                   >
                     <div className="flex items-start gap-4">
@@ -370,17 +377,19 @@ export default function OperatorInbox() {
             </div>
           )}
         </div>
-      </div>
+          </div>
+        </div>
 
-      {/* Right: Task Preview */}
-      <div className={`${isMobile ? "hidden" : "flex-1"} overflow-y-auto bg-white`}>
+      {/* Right: Task Preview - Floating Glass Panel */}
+      <div className={`${isMobile ? "hidden" : "flex-1"} p-6`}>
+        <div className="h-full rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 overflow-hidden">
         {selectedTask ? (
           <div className="h-full flex flex-col">
             {/* Header */}
-            <div className="border-b border-slate-200 bg-gradient-to-br from-slate-50 to-white p-8 flex-shrink-0">
+            <div className="border-b border-slate-100 bg-white/50 backdrop-blur-sm p-8 flex-shrink-0">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h1 className="text-3xl font-bold text-slate-900 mb-2">
+                  <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 mb-2">
                     {selectedTask.procedureTitle}
                   </h1>
                   {selectedTask.status === "FLAGGED" && (
@@ -429,7 +438,7 @@ export default function OperatorInbox() {
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+                      className="rounded-2xl bg-white/70 backdrop-blur-sm border border-white/60 p-8 shadow-lg"
                     >
                       <div className="flex items-start gap-4 mb-6">
                         <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
@@ -504,7 +513,7 @@ export default function OperatorInbox() {
                   {canAccessTask(selectedTask) ? (
                     <Link
                       href={`/run/${selectedTask.id}`}
-                      className="group inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-4 text-base font-semibold text-white transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-500/25"
+                      className="group inline-flex items-center gap-3 rounded-full bg-[#007AFF] px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-[#0071E3] hover:shadow-lg"
                     >
                       <Play className="h-5 w-5" />
                       Open Task
@@ -534,14 +543,21 @@ export default function OperatorInbox() {
               animate={{ opacity: 1, y: 0 }}
               className="text-center"
             >
-              <Mail className="mx-auto h-16 w-16 text-slate-300" />
-              <p className="mt-4 text-lg font-semibold text-slate-900">Select a task</p>
-              <p className="mt-2 text-sm text-slate-600 max-w-sm">
+              <div className="relative mb-6 inline-block">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-indigo-100/50 rounded-3xl blur-2xl" />
+                <div className="relative h-20 w-20 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 flex items-center justify-center shadow-lg">
+                  <Mail className="h-10 w-10 text-slate-400" />
+                </div>
+              </div>
+              <p className="mt-4 text-xl font-extrabold text-slate-900">Select a task</p>
+              <p className="mt-2 text-sm text-slate-600 font-medium max-w-sm">
                 Choose a task from the list to view details and get started
               </p>
             </motion.div>
           </div>
         )}
+        </div>
+      </div>
       </div>
     </div>
   );
