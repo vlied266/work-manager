@@ -160,6 +160,7 @@ export default function FeaturesPage() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1, delay: 0.3 }}
               className="inline-flex items-center justify-center mb-8"
+              style={{ background: 'transparent' }}
             >
               <motion.div
                 animate={{
@@ -171,24 +172,9 @@ export default function FeaturesPage() {
                   repeat: Infinity,
                   ease: "easeInOut",
                 }}
-                className="relative"
+                style={{ background: 'transparent' }}
               >
-                <div className="relative h-24 w-24 rounded-3xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-xl border border-white/40 shadow-2xl flex items-center justify-center">
-                  <Logo size="medium" />
-                </div>
-                {/* Glow effect */}
-                <motion.div
-                  className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-400/30 to-purple-400/30 blur-2xl -z-10"
-                  animate={{
-                    scale: [1, 1.2, 1],
-                    opacity: [0.5, 0.8, 0.5],
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                />
+                <Logo size="medium" />
               </motion.div>
             </motion.div>
 

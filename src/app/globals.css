@@ -16,3 +16,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Canvas transparency for Logo */
+canvas {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+

@@ -233,25 +233,45 @@ export default function Logo({ size = 'medium', className = '' }: LogoProps) {
 
   return (
     <div 
-      className={`relative ${className}`}
-      style={{ width: `${canvas}px`, height: `${canvas}px` }}
+      className={`relative inline-block ${className}`}
+      style={{ 
+        width: `${canvas}px`, 
+        height: `${canvas}px`,
+        background: 'transparent',
+        padding: 0,
+        margin: 0,
+        border: 'none',
+        outline: 'none',
+        lineHeight: 0
+      }}
     >
       <Canvas
         camera={{ position: [0, 0, camera], fov: 50 }}
         dpr={[1, 2]}
         style={{ 
-          background: 'transparent',
+          background: 'transparent !important',
           width: '100%',
-          height: '100%'
+          height: '100%',
+          display: 'block',
+          padding: 0,
+          margin: 0,
+          border: 'none !important',
+          outline: 'none !important',
+          verticalAlign: 'top'
         }}
         gl={{ 
           antialias: true, 
           alpha: true,
-          powerPreference: "high-performance"
+          powerPreference: "high-performance",
+          preserveDrawingBuffer: false,
+          premultipliedAlpha: false
+        }}
+        onCreated={({ gl, scene }) => {
+          gl.setClearColor(0x000000, 0);
+          gl.clearColor(0, 0, 0, 0);
+          scene.background = null;
         }}
       >
-        <color attach="background" args={['transparent']} />
-        
         {/* Enhanced Lighting */}
         <ambientLight intensity={0.5} />
         <directionalLight position={[5, 5, 5]} intensity={1.5} />
