@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import Link from "next/link";
-import { Sparkles, Zap, Users, Layers, ArrowRight, Check, Circle, Move, Bot, BarChart3, TrendingUp, Activity, Github, Twitter, Linkedin, Mail, LayoutDashboard } from "lucide-react";
+import { Sparkles, Zap, Users, Layers, ArrowRight, Check, Circle, Move, Bot, BarChart3, TrendingUp, Activity, Github, Twitter, Linkedin, Mail, LayoutDashboard, Eye, Rocket } from "lucide-react";
 import { motion } from "framer-motion";
 import HeroAnimation from "@/components/HeroAnimation";
 import Logo from "@/components/Logo";
@@ -486,13 +486,59 @@ export default function LandingPage() {
             </motion.p>
           </div>
 
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-            {/* Feature 1: Atomic Tasks */}
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+            {/* Feature 1: AI-Powered Architecture (Magic Builder) */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
+              whileHover={{ y: -4 }}
+              className="group relative rounded-2xl border border-slate-200 bg-white p-10 transition-all hover:border-purple-300 hover:shadow-lg overflow-hidden"
+            >
+              {/* Animated Background Gradient */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-br from-purple-50/0 via-purple-50/0 to-purple-50/0 group-hover:from-purple-50/30 group-hover:via-purple-50/20 group-hover:to-purple-50/10 transition-all duration-500"
+                initial={false}
+              />
+              
+              {/* Icon Container with Sparkles Animation */}
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-100 to-purple-50 text-purple-600 mb-8">
+                <Sparkles className="h-8 w-8" />
+                <motion.div
+                  className="absolute inset-0 rounded-2xl"
+                  animate={{
+                    opacity: [0.3, 0.6, 0.3],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                >
+                  <Sparkles className="h-8 w-8 text-purple-400" />
+                </motion.div>
+              </div>
+              
+              <h3 className="relative text-2xl font-extrabold tracking-tight text-slate-900 mb-3">
+                Built by AI. Refined by You.
+              </h3>
+              <p className="relative mt-4 text-base leading-7 text-slate-600">
+                Don't start from scratch. Just describe your process in plain English, and our Magic Builder constructs the entire workflow instantly.
+              </p>
+              <div className="relative mt-4">
+                <span className="inline-flex items-center rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700 border border-purple-200">
+                  Prompt-to-Process
+                </span>
+              </div>
+            </motion.div>
+
+            {/* Feature 2: Atomic Precision (The Studio) */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 }}
               whileHover={{ y: -4 }}
               className="group relative rounded-2xl border border-slate-200 bg-white p-10 transition-all hover:border-blue-300 hover:shadow-lg overflow-hidden"
             >
@@ -503,7 +549,7 @@ export default function LandingPage() {
               />
               
               {/* Icon Container with Atomic Animation */}
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-8">
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-blue-50 text-blue-600 mb-8">
                 {/* Atomic Structure: Central nucleus with orbiting electrons */}
                 <div className="relative w-12 h-12">
                   {/* Central Nucleus */}
@@ -543,83 +589,15 @@ export default function LandingPage() {
                 </div>
               </div>
               
-              <h3 className="relative text-2xl font-semibold text-slate-900">Atomic Tasks</h3>
+              <h3 className="relative text-2xl font-extrabold tracking-tight text-slate-900 mb-3">
+                Eliminate Ambiguity.
+              </h3>
               <p className="relative mt-4 text-base leading-7 text-slate-600">
-                Break down complex processes into indivisible, manageable units. Each task is atomic—simple, clear, and executable.
+                Stop assigning vague tasks. Break work down into atomic, executable steps (Input, Logic, Action) so everyone knows exactly what to do.
               </p>
             </motion.div>
 
-            {/* Feature 2: Drag & Drop Builder */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              whileHover={{ y: -4 }}
-              className="group relative rounded-2xl border border-slate-200 bg-white p-10 transition-all hover:border-purple-300 hover:shadow-lg overflow-hidden"
-            >
-              {/* Animated Background Gradient */}
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-br from-purple-50/0 via-purple-50/0 to-purple-50/0 group-hover:from-purple-50/30 group-hover:via-purple-50/20 group-hover:to-purple-50/10 transition-all duration-500"
-                initial={false}
-              />
-              
-              {/* Icon Container with Drag & Drop Animation */}
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 mb-8">
-                <div className="relative w-12 h-12">
-                  {/* Base Layer */}
-                  <motion.div
-                    className="absolute top-2 left-2 w-6 h-6 rounded-lg bg-purple-200/50"
-                    animate={{
-                      y: [0, -2, 0],
-                    }}
-                    transition={{
-                      duration: 1.5,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
-                  
-                  {/* Dragging Layer */}
-                  <motion.div
-                    className="absolute top-0 left-0 w-6 h-6 rounded-lg bg-purple-600 shadow-lg"
-                    animate={{
-                      x: [0, 8, 0],
-                      y: [0, -8, 0],
-                      rotate: [0, 5, 0],
-                      scale: [1, 1.1, 1],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
-                  
-                  {/* Drop Target Indicator */}
-                  <motion.div
-                    className="absolute bottom-0 right-0 w-4 h-4 rounded border-2 border-dashed border-purple-400"
-                    animate={{
-                      scale: [1, 1.2, 1],
-                      opacity: [0.5, 1, 0.5],
-                    }}
-                    transition={{
-                      duration: 1.5,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: 0.5,
-                    }}
-                  />
-                </div>
-              </div>
-              
-              <h3 className="relative text-2xl font-semibold text-slate-900">Drag & Drop Builder</h3>
-              <p className="relative mt-4 text-base leading-7 text-slate-600">
-                Create workflows visually. No coding required. Drag atomic tasks, connect them, and build powerful processes.
-              </p>
-            </motion.div>
-
-            {/* Feature 3: Team Management */}
+            {/* Feature 3: Real-Time Observation (The Monitor) */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -634,95 +612,42 @@ export default function LandingPage() {
                 initial={false}
               />
               
-              {/* Icon Container with Team Animation */}
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-green-50 text-green-600 mb-8">
-                <div className="relative w-12 h-12 flex items-center justify-center">
-                  {/* Team Members as Circles */}
-                  {[
-                    { x: 0, y: -8, delay: 0 },
-                    { x: -8, y: 4, delay: 0.2 },
-                    { x: 8, y: 4, delay: 0.4 },
-                  ].map((member, i) => (
-                    <motion.div
-                      key={i}
-                      className="absolute w-4 h-4 bg-green-600 rounded-full"
-                      style={{
-                        x: member.x,
-                        y: member.y,
-                      }}
-                      animate={{
-                        y: [member.y, member.y - 2, member.y],
-                        scale: [1, 1.1, 1],
-                      }}
-                      transition={{
-                        duration: 1.5,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                        delay: member.delay,
-                      }}
-                    />
-                  ))}
-                  
-                  {/* Connection Lines (appear on hover) */}
-                  <motion.svg
-                    className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-30 transition-opacity"
-                    viewBox="0 0 48 48"
-                  >
-                    <motion.line
-                      x1="24"
-                      y1="16"
-                      x2="16"
-                      y2="28"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      initial={{ pathLength: 0 }}
-                      whileHover={{ pathLength: 1 }}
-                      transition={{ duration: 0.5 }}
-                    />
-                    <motion.line
-                      x1="24"
-                      y1="16"
-                      x2="32"
-                      y2="28"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      initial={{ pathLength: 0 }}
-                      whileHover={{ pathLength: 1 }}
-                      transition={{ duration: 0.5, delay: 0.1 }}
-                    />
-                    <motion.line
-                      x1="16"
-                      y1="28"
-                      x2="32"
-                      y2="28"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      initial={{ pathLength: 0 }}
-                      whileHover={{ pathLength: 1 }}
-                      transition={{ duration: 0.5, delay: 0.2 }}
-                    />
-                  </motion.svg>
-                </div>
+              {/* Icon Container with Eye Animation */}
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-green-100 to-green-50 text-green-600 mb-8">
+                <Eye className="h-8 w-8" />
+                {/* Pulsing rings for observation */}
+                {[0, 1].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute inset-0 rounded-2xl border-2 border-green-400"
+                    animate={{
+                      scale: [1, 1.3, 1],
+                      opacity: [0.6, 0, 0.6],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeOut",
+                      delay: i * 0.5,
+                    }}
+                  />
+                ))}
               </div>
               
-              <h3 className="relative text-2xl font-semibold text-slate-900">Team Management</h3>
+              <h3 className="relative text-2xl font-extrabold tracking-tight text-slate-900 mb-3">
+                God-Mode for Operations.
+              </h3>
               <p className="relative mt-4 text-base leading-7 text-slate-600">
-                Assign tasks to teams or individuals. Track progress, manage roles, and ensure accountability across your organization.
+                Track every active run in real-time. See exactly which step a process is on, identify bottlenecks instantly, and intervene before deadlines are missed.
               </p>
             </motion.div>
-          </div>
 
-          {/* Additional Features */}
-          <div className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-2">
-            {/* Smart Automation */}
+            {/* Feature 4: Instant Library (Template Gallery) */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
               whileHover={{ y: -4 }}
               className="group relative rounded-2xl border border-slate-200 bg-white p-10 transition-all hover:border-orange-300 hover:shadow-lg overflow-hidden"
             >
@@ -732,217 +657,31 @@ export default function LandingPage() {
                 initial={false}
               />
               
-              {/* Icon Container with Automation Animation */}
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-50 text-orange-600 mb-8">
-                <div className="relative w-12 h-12">
-                  {/* Bot Icon */}
-                  <Bot className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-6 w-6" />
-                  
-                  {/* Pulsing Rings (Automation Activity) */}
-                  {[0, 1, 2].map((i) => (
-                    <motion.div
-                      key={i}
-                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-orange-400"
-                      style={{
-                        width: 12 + i * 8,
-                        height: 12 + i * 8,
-                      }}
-                      animate={{
-                        scale: [1, 1.5, 1],
-                        opacity: [0.8, 0, 0.8],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeOut",
-                        delay: i * 0.3,
-                      }}
-                    />
-                  ))}
-                  
-                  {/* Data Flow Lines */}
-                  <motion.svg
-                    className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition-opacity"
-                    viewBox="0 0 48 48"
-                  >
-                    {/* Horizontal Flow */}
-                    <motion.path
-                      d="M 8 24 L 40 24"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      fill="none"
-                      initial={{ pathLength: 0, opacity: 0 }}
-                      whileHover={{ pathLength: 1, opacity: 1 }}
-                      transition={{ duration: 0.8 }}
-                    />
-                    {/* Vertical Flow */}
-                    <motion.path
-                      d="M 24 8 L 24 40"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      fill="none"
-                      initial={{ pathLength: 0, opacity: 0 }}
-                      whileHover={{ pathLength: 1, opacity: 1 }}
-                      transition={{ duration: 0.8, delay: 0.2 }}
-                    />
-                    {/* Diagonal Flows */}
-                    <motion.path
-                      d="M 12 12 L 36 36"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      fill="none"
-                      initial={{ pathLength: 0, opacity: 0 }}
-                      whileHover={{ pathLength: 1, opacity: 0.6 }}
-                      transition={{ duration: 0.8, delay: 0.4 }}
-                    />
-                    <motion.path
-                      d="M 36 12 L 12 36"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      fill="none"
-                      initial={{ pathLength: 0, opacity: 0 }}
-                      whileHover={{ pathLength: 1, opacity: 0.6 }}
-                      transition={{ duration: 0.8, delay: 0.6 }}
-                    />
-                  </motion.svg>
-                </div>
+              {/* Icon Container with Rocket Animation */}
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-100 to-orange-50 text-orange-600 mb-8">
+                <Rocket className="h-8 w-8" />
+                <motion.div
+                  className="absolute -top-1 -right-1"
+                  animate={{
+                    y: [0, -4, 0],
+                    rotate: [0, 15, 0],
+                  }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                >
+                  <Rocket className="h-6 w-6 text-orange-500" />
+                </motion.div>
               </div>
               
-              <h3 className="relative text-2xl font-semibold text-slate-900">Smart Automation</h3>
+              <h3 className="relative text-2xl font-extrabold tracking-tight text-slate-900 mb-3">
+                Day One Value.
+              </h3>
               <p className="relative mt-4 text-base leading-7 text-slate-600">
-                Automate data piping between steps. Compare values automatically. Validate inputs. Let the system do the heavy lifting.
+                Launch professional workflows for HR, Finance, and Ops in seconds using our pre-built, industry-standard template library.
               </p>
-              
-              {/* Animated Feature Pills */}
-              <div className="relative mt-6 flex flex-wrap gap-2">
-                {["Auto-Compare", "Data Piping", "Validation"].map((tag, i) => (
-                  <motion.span
-                    key={tag}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.3, delay: 0.5 + i * 0.1 }}
-                    className="inline-flex items-center rounded-full bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700 border border-orange-200"
-                  >
-                    {tag}
-                  </motion.span>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* Real-Time Analytics */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              whileHover={{ y: -4 }}
-              className="group relative rounded-2xl border border-slate-200 bg-white p-10 transition-all hover:border-indigo-300 hover:shadow-lg overflow-hidden"
-            >
-              {/* Animated Background Gradient */}
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-br from-indigo-50/0 via-indigo-50/0 to-indigo-50/0 group-hover:from-indigo-50/30 group-hover:via-indigo-50/20 group-hover:to-indigo-50/10 transition-all duration-500"
-                initial={false}
-              />
-              
-              {/* Icon Container with Analytics Animation */}
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 mb-8">
-                <div className="relative w-12 h-12">
-                  {/* Chart Icon */}
-                  <BarChart3 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-6 w-6" />
-                  
-                  {/* Animated Chart Bars */}
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex items-end gap-1 h-8">
-                    {[0.3, 0.6, 0.9, 0.5, 0.8].map((height, i) => (
-                      <motion.div
-                        key={i}
-                        className="w-1.5 bg-indigo-500 rounded-t"
-                        style={{ height: `${height * 100}%` }}
-                        animate={{
-                          height: [
-                            `${height * 100}%`,
-                            `${(height + 0.2) * 100}%`,
-                            `${height * 100}%`,
-                          ],
-                        }}
-                        transition={{
-                          duration: 1.5 + i * 0.2,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: i * 0.1,
-                        }}
-                      />
-                    ))}
-                  </div>
-                  
-                  {/* Trending Up Arrow */}
-                  <motion.div
-                    className="absolute -top-1 -right-1"
-                    animate={{
-                      y: [0, -4, 0],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  >
-                    <TrendingUp className="h-4 w-4 text-green-500" />
-                  </motion.div>
-                  
-                  {/* Activity Indicator Dots */}
-                  <div className="absolute -bottom-1 -left-1 flex gap-0.5">
-                    {[0, 1, 2].map((i) => (
-                      <motion.div
-                        key={i}
-                        className="w-1 h-1 rounded-full bg-indigo-400"
-                        animate={{
-                          scale: [1, 1.5, 1],
-                          opacity: [0.5, 1, 0.5],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: i * 0.2,
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              
-              <h3 className="relative text-2xl font-semibold text-slate-900">Real-Time Analytics</h3>
-              <p className="relative mt-4 text-base leading-7 text-slate-600">
-                Track productivity, monitor performance, and gain insights into your team's workflow efficiency.
-              </p>
-              
-              {/* Animated Stats Preview */}
-              <div className="relative mt-6 grid grid-cols-3 gap-3">
-                {[
-                  { label: "Tasks", value: "98%", colorClass: "text-indigo-600" },
-                  { label: "Speed", value: "2.4x", colorClass: "text-green-600" },
-                  { label: "Quality", value: "A+", colorClass: "text-blue-600" },
-                ].map((stat, i) => (
-                  <motion.div
-                    key={stat.label}
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.3, delay: 0.6 + i * 0.1 }}
-                    className="text-center"
-                  >
-                    <div className={`text-lg font-bold ${stat.colorClass}`}>
-                      {stat.value}
-                    </div>
-                    <div className="text-xs text-slate-500 mt-1">{stat.label}</div>
-                  </motion.div>
-                ))}
-              </div>
             </motion.div>
           </div>
         </div>

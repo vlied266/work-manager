@@ -2,109 +2,158 @@
 
 import { motion } from "framer-motion";
 import { 
-  BookOpen, Search, FileText, Video, Code, 
+  BookOpen, Search, FileText, Code, 
   ArrowRight, Sparkles, Zap, Users, Settings
 } from "lucide-react";
 import { LandingNavbar } from "@/components/layout/landing-navbar";
 import { LandingFooter } from "@/components/layout/landing-footer";
+import TableOfContents from "@/components/documentation/table-of-contents";
 import Link from "next/link";
 
 export default function DocumentationPage() {
-  const categories = [
+  const sections = [
     {
-      icon: Zap,
+      id: "getting-started",
       title: "Getting Started",
-      description: "Learn the basics and build your first workflow",
-      articles: [
-        "Introduction to WorkOS",
-        "Creating Your First Procedure",
-        "Understanding Atomic Tasks",
-        "AI-Powered Workflow Generation",
+      content: [
+        "Welcome to WorkOS! This guide will help you get started with building your first workflow. WorkOS is a platform that transforms complex processes into atomic, executable tasks.",
+        "To begin, create an account and set up your organization. Once you're logged in, you can start building procedures using our visual builder or our AI-powered Magic Builder.",
+        "Our AI features can generate entire workflows from natural language descriptions. Simply describe what you want to accomplish, and our AI will create a complete procedure with all the necessary steps.",
       ],
-      color: "blue",
+      subsections: [
+        {
+          id: "introduction",
+          title: "Introduction to WorkOS",
+          content: [
+            "WorkOS is built on the principle of atomic tasks—breaking down complex processes into indivisible, manageable units. Each task is clear, executable, and measurable.",
+            "Our platform supports 16 predefined atomic actions, including Input, Compare, Authorize, Validate, and more. These actions can be combined to create powerful workflows.",
+            "WorkOS also includes AI-powered features that can automatically generate procedures from natural language descriptions, making it easy to get started even if you're not familiar with workflow design.",
+          ],
+        },
+        {
+          id: "creating-first-procedure",
+          title: "Creating Your First Procedure",
+          content: [
+            "To create your first procedure, navigate to the Studio and click 'Create Procedure'. You can either build it manually using the drag-and-drop builder or use our AI Magic Builder.",
+            "With the Magic Builder, simply describe your process in plain English. For example: 'Create a process for employee onboarding that collects personal information, verifies documents, and sends a welcome email.'",
+            "The AI will generate a complete procedure with all necessary steps. You can then customize it, add additional steps, or modify existing ones to fit your exact needs.",
+          ],
+        },
+        {
+          id: "understanding-atomic-tasks",
+          title: "Understanding Atomic Tasks",
+          content: [
+            "Atomic tasks are the building blocks of WorkOS. Each task represents a single, indivisible action that must be completed before moving to the next step.",
+            "Tasks can be configured with specific requirements, validation rules, and assignment logic. This ensures that every step is clear and executable.",
+            "When a task is completed, the workflow automatically moves to the next step. This creates a clear, linear progression through your process.",
+          ],
+        },
+      ],
     },
     {
-      icon: FileText,
-      title: "Guides",
-      description: "Step-by-step tutorials for common tasks",
-      articles: [
-        "Building Complex Workflows",
-        "Team Management & Assignments",
-        "Using AI to Generate Procedures",
-        "Integration Best Practices",
-      ],
-      color: "purple",
-    },
-    {
-      icon: Code,
-      title: "API Reference",
-      description: "Complete API documentation and examples",
-      articles: [
-        "Authentication",
-        "Procedures API",
-        "Runs API",
-        "Webhooks",
-      ],
-      color: "green",
-    },
-    {
-      icon: Settings,
-      title: "Configuration",
-      description: "Settings, permissions, and customization",
-      articles: [
-        "Organization Settings",
-        "User Permissions",
-        "Billing & Subscriptions",
-        "Security & Compliance",
-      ],
-      color: "orange",
-    },
-    {
-      icon: Users,
-      title: "Team Collaboration",
-      description: "Working with teams and assignments",
-      articles: [
-        "Creating Teams",
-        "Task Assignments",
-        "Notifications & Comments",
-        "Activity Tracking",
-      ],
-      color: "indigo",
-    },
-    {
-      icon: Sparkles,
+      id: "ai-features",
       title: "AI Features",
-      description: "Leverage AI to automate workflow creation",
-      articles: [
-        "AI Procedure Builder",
-        "Natural Language Processing",
-        "Smart Suggestions",
-        "Code Generation",
+      content: [
+        "WorkOS includes powerful AI features that can automate workflow creation and provide intelligent suggestions. Our AI is trained on thousands of workflows and can generate procedures that follow best practices.",
+        "The AI Magic Builder can create complete procedures from natural language descriptions. Simply describe what you want to accomplish, and the AI will generate a workflow with all necessary steps.",
+        "Our AI can also provide suggestions for improving existing workflows, identifying potential bottlenecks, and optimizing task assignments.",
       ],
-      color: "yellow",
+      subsections: [
+        {
+          id: "ai-procedure-builder",
+          title: "AI Procedure Builder",
+          content: [
+            "The AI Procedure Builder is our most powerful feature. It can generate complete workflows from simple text descriptions, saving you hours of manual work.",
+            "To use the AI Builder, navigate to the Studio and click 'Magic Builder'. Enter a description of your process, and the AI will generate a complete procedure with all necessary steps.",
+            "The AI considers best practices, common patterns, and your organization's existing workflows when generating new procedures. This ensures that generated workflows are both functional and optimized.",
+          ],
+        },
+        {
+          id: "natural-language-processing",
+          title: "Natural Language Processing",
+          content: [
+            "Our AI uses advanced natural language processing to understand your descriptions and convert them into structured workflows. It can understand complex requirements and generate appropriate task sequences.",
+            "The AI can identify key actions, required inputs, decision points, and approval steps from your description. It then creates a workflow that implements these requirements.",
+            "You can refine the generated workflow by providing additional context or making manual adjustments. The AI learns from your feedback to improve future suggestions.",
+          ],
+        },
+      ],
+    },
+    {
+      id: "api-reference",
+      title: "API Reference",
+      content: [
+        "WorkOS provides a comprehensive REST API that allows you to integrate our platform with your existing tools and systems. The API is designed to be simple, consistent, and powerful.",
+        "All API requests require authentication using an API key. You can generate API keys from your organization settings. Keep your API keys secure and never share them publicly.",
+        "The API follows RESTful principles and uses standard HTTP methods. Responses are returned in JSON format, and errors follow a consistent structure.",
+      ],
+      subsections: [
+        {
+          id: "authentication",
+          title: "Authentication",
+          content: [
+            "All API requests must include an API key in the Authorization header. The API key should be prefixed with 'Bearer'.",
+            "You can generate API keys from your organization settings. Each key has specific permissions and can be revoked at any time.",
+            "API keys are scoped to your organization and can only access resources that belong to your organization. This ensures that your data remains secure.",
+          ],
+        },
+        {
+          id: "procedures-api",
+          title: "Procedures API",
+          content: [
+            "The Procedures API allows you to create, read, update, and delete procedures programmatically. You can also list all procedures in your organization and filter them by various criteria.",
+            "When creating a procedure via API, you must provide all required fields, including the procedure name, description, and steps. Steps must be defined using our atomic action format.",
+            "You can also start procedure runs via the API, which allows you to trigger workflows programmatically from your own applications.",
+          ],
+        },
+      ],
+    },
+    {
+      id: "team-collaboration",
+      title: "Team Collaboration",
+      content: [
+        "WorkOS is designed for team collaboration. You can create teams, assign tasks to specific users or teams, and track progress across your organization.",
+        "Tasks can be assigned to individuals, teams, or set up as a queue where any team member can claim them. This flexibility allows you to model various workflow patterns.",
+        "All team members receive notifications when tasks are assigned to them, when tasks are completed, or when comments are added to workflows.",
+      ],
+      subsections: [
+        {
+          id: "creating-teams",
+          title: "Creating Teams",
+          content: [
+            "Teams allow you to group users together and assign tasks to entire teams rather than individuals. This is useful for processes where any team member can handle a task.",
+            "To create a team, navigate to Settings > Teams and click 'Create Team'. Add team members and configure team settings such as default assignments and notification preferences.",
+            "Teams can be used in task assignments, allowing you to create workflows where tasks are assigned to teams rather than specific individuals.",
+          ],
+        },
+        {
+          id: "task-assignments",
+          title: "Task Assignments",
+          content: [
+            "Tasks can be assigned in three ways: to the process starter, to a specific user, or to a team queue. The assignment type is configured when creating or editing a procedure step.",
+            "When a task is assigned to a team queue, any member of that team can claim the task. This is useful for processes where multiple people can handle the same type of task.",
+            "You can also configure automatic assignments based on workload, skills, or other criteria. This ensures that tasks are distributed efficiently across your team.",
+          ],
+        },
+      ],
     },
   ];
 
-  const colorClasses = {
-    blue: "bg-blue-50 text-blue-600 border-blue-200",
-    purple: "bg-purple-50 text-purple-600 border-purple-200",
-    green: "bg-green-50 text-green-600 border-green-200",
-    orange: "bg-orange-50 text-orange-600 border-orange-200",
-    indigo: "bg-indigo-50 text-indigo-600 border-indigo-200",
-    yellow: "bg-yellow-50 text-yellow-600 border-yellow-200",
-  };
+  const headings = sections.flatMap((section) => [
+    { id: section.id, title: section.title, level: 1 },
+    ...(section.subsections?.map((sub) => ({
+      id: sub.id,
+      title: sub.title,
+      level: 2,
+    })) || []),
+  ]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50/40 via-white to-cyan-50/40">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50/50 via-white to-blue-50/30">
       <LandingNavbar />
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 sm:py-24 lg:py-32">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-          <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-blue-200 blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-96 h-96 rounded-full bg-purple-200 blur-3xl" />
-        </div>
-
+      <section className="relative overflow-hidden py-16 sm:py-20">
         <div className="relative mx-auto max-w-[1600px] px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -116,119 +165,96 @@ export default function DocumentationPage() {
               <BookOpen className="h-4 w-4 text-blue-600" />
               <span className="text-sm font-semibold text-blue-900">Complete Documentation</span>
             </div>
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900">
+            <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight text-slate-900 mb-4">
               Documentation
             </h1>
-            <p className="mt-6 text-xl leading-8 text-slate-600 sm:text-2xl">
+            <p className="text-xl leading-relaxed text-slate-600 mb-6">
               Everything you need to master WorkOS. From basics to advanced features, including our AI-powered tools.
             </p>
+            
+            {/* Search Bar */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="relative max-w-2xl mx-auto"
+            >
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search documentation..."
+                className="w-full rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg shadow-black/5 pl-12 pr-6 py-4 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
+              />
+            </motion.div>
           </motion.div>
         </div>
       </section>
 
-      {/* Search Bar */}
-      <section className="py-8">
-        <div className="mx-auto max-w-4xl px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="relative"
-          >
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search documentation..."
-              className="w-full rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 pl-12 pr-6 py-4 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
-            />
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Categories Grid */}
-      <section className="py-20 sm:py-24 lg:py-32">
+      {/* Main Content with TOC */}
+      <section className="py-12">
         <div className="mx-auto max-w-[1600px] px-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {categories.map((category, i) => (
-              <motion.div
-                key={category.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                whileHover={{ y: -4 }}
-                className="group relative rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-8 transition-all hover:shadow-2xl hover:bg-white/80"
-              >
-                {/* Icon */}
-                <div className={`flex h-16 w-16 items-center justify-center rounded-2xl ${colorClasses[category.color as keyof typeof colorClasses]} mb-6 shadow-lg`}>
-                  <category.icon className="h-8 w-8" />
-                </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-12 lg:gap-16">
+            {/* Left Sidebar - TOC */}
+            <aside className="hidden lg:block">
+              <TableOfContents headings={headings} />
+            </aside>
 
-                {/* Title & Description */}
-                <h3 className="text-2xl font-extrabold tracking-tight text-slate-900 mb-3">
-                  {category.title}
-                </h3>
-                <p className="text-base leading-7 text-slate-600 mb-6">
-                  {category.description}
-                </p>
+            {/* Main Content */}
+            <main className="max-w-3xl mx-auto lg:mx-0">
+              <article className="prose prose-slate max-w-none">
+                <div className="space-y-16">
+                  {sections.map((section, i) => (
+                    <motion.section
+                      key={section.id}
+                      id={section.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.5, delay: i * 0.05 }}
+                      className="scroll-mt-24"
+                    >
+                      <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 mb-6">
+                        {section.title}
+                      </h2>
+                      <div className="space-y-6 mb-8">
+                        {section.content.map((paragraph, j) => (
+                          <p
+                            key={j}
+                            className="text-lg leading-loose text-slate-600"
+                          >
+                            {paragraph}
+                          </p>
+                        ))}
+                      </div>
 
-                {/* Articles */}
-                <ul className="space-y-2 mb-6">
-                  {category.articles.map((article, j) => (
-                    <li key={j} className="flex items-center gap-2 text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
-                      <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
-                      <span>{article}</span>
-                    </li>
+                      {/* Subsections */}
+                      {section.subsections && (
+                        <div className="space-y-12 mt-12">
+                          {section.subsections.map((subsection, j) => (
+                            <div key={subsection.id} id={subsection.id} className="scroll-mt-24">
+                              <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 mb-4">
+                                {subsection.title}
+                              </h3>
+                              <div className="space-y-6">
+                                {subsection.content.map((paragraph, k) => (
+                                  <p
+                                    key={k}
+                                    className="text-lg leading-loose text-slate-600"
+                                  >
+                                    {paragraph}
+                                  </p>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </motion.section>
                   ))}
-                </ul>
-
-                {/* CTA */}
-                <Link href="/sign-up">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#007AFF] px-6 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-[#0071E3] hover:shadow-lg"
-                  >
-                    Read More
-                    <ArrowRight className="h-4 w-4" />
-                  </motion.button>
-                </Link>
-              </motion.div>
-            ))}
+                </div>
+              </article>
+            </main>
           </div>
-        </div>
-      </section>
-
-      {/* Quick Links */}
-      <section className="py-20 sm:py-24 lg:py-32 bg-white/50 backdrop-blur-sm">
-        <div className="mx-auto max-w-[1600px] px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="mx-auto max-w-3xl text-center rounded-[2.5rem] bg-gradient-to-br from-blue-50/80 to-purple-50/80 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-12"
-          >
-            <div className="inline-flex items-center justify-center h-20 w-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 text-white mb-6 shadow-xl">
-              <Video className="h-10 w-10" />
-            </div>
-            <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 mb-4">
-              Video Tutorials
-            </h2>
-            <p className="text-xl text-slate-600 mb-8">
-              Watch step-by-step video guides to master WorkOS. Learn how to use AI to generate workflows automatically.
-            </p>
-            <Link href="/sign-up">
-              <motion.button
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                className="inline-flex items-center gap-2 rounded-full bg-[#007AFF] px-8 py-4 text-base font-semibold text-white shadow-lg transition-all hover:bg-[#0071E3] hover:shadow-xl"
-              >
-                Watch Tutorials
-                <ArrowRight className="h-5 w-5" />
-              </motion.button>
-            </Link>
-          </motion.div>
         </div>
       </section>
 
@@ -236,4 +262,3 @@ export default function DocumentationPage() {
     </div>
   );
 }
-

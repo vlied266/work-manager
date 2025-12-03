@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Inbox,
@@ -17,6 +18,7 @@ import {
   TrendingUp,
   Clock,
   CreditCard,
+  LogOut,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Logo from "@/components/Logo";
@@ -39,11 +41,21 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const pathname = usePathname();
   const [userId, setUserId] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push("/sign-in");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   // Get current user from Firebase Auth and listen to profile changes
   useEffect(() => {
@@ -178,7 +190,7 @@ export default function DashboardLayout({
               </nav>
 
               {/* User Profile */}
-              <div className="border-t border-slate-200 p-4">
+              <div className="border-t border-slate-200 p-4 space-y-3">
                 {loading ? (
                   <div className="flex items-center gap-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 animate-pulse" />
@@ -188,44 +200,54 @@ export default function DashboardLayout({
                     </div>
                   </div>
                 ) : userProfile ? (
-                  <Link href="/profile" className="flex items-center gap-3 hover:bg-slate-50 rounded-lg p-1 -m-1 transition-colors">
-                    {/* Avatar */}
-                    <div className="flex-shrink-0 relative">
-                      {userProfile.photoURL && userProfile.photoURL.trim() !== "" ? (
-                        <img
-                          src={userProfile.photoURL}
-                          alt={userProfile.displayName}
-                          className="h-8 w-8 rounded-full object-cover border border-slate-200"
-                          onError={(e) => {
-                            // Hide image and show fallback
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const parent = target.parentElement;
-                            if (parent && !parent.querySelector('.avatar-fallback')) {
-                              const fallback = document.createElement('div');
-                              fallback.className = 'avatar-fallback flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white text-xs font-semibold shadow-sm';
-                              fallback.textContent = userProfile.displayName.charAt(0).toUpperCase();
-                              parent.appendChild(fallback);
-                            }
-                          }}
-                        />
-                      ) : null}
-                      {(!userProfile.photoURL || userProfile.photoURL.trim() === "") && (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white text-xs font-semibold shadow-sm">
-                          {userProfile.displayName.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                    </div>
-                    {/* Name and Email */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-slate-900 truncate">
-                        {userProfile.displayName}
-                      </p>
-                      <p className="text-xs text-slate-500 truncate">
-                        {userProfile.email}
-                      </p>
-                    </div>
-                  </Link>
+                  <>
+                    <Link href="/profile" className="flex items-center gap-3 hover:bg-slate-50 rounded-lg p-1 -m-1 transition-colors">
+                      {/* Avatar */}
+                      <div className="flex-shrink-0 relative">
+                        {userProfile.photoURL && userProfile.photoURL.trim() !== "" ? (
+                          <img
+                            src={userProfile.photoURL}
+                            alt={userProfile.displayName}
+                            className="h-8 w-8 rounded-full object-cover border border-slate-200"
+                            onError={(e) => {
+                              // Hide image and show fallback
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent && !parent.querySelector('.avatar-fallback')) {
+                                const fallback = document.createElement('div');
+                                fallback.className = 'avatar-fallback flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white text-xs font-semibold shadow-sm';
+                                fallback.textContent = userProfile.displayName.charAt(0).toUpperCase();
+                                parent.appendChild(fallback);
+                              }
+                            }}
+                          />
+                        ) : null}
+                        {(!userProfile.photoURL || userProfile.photoURL.trim() === "") && (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white text-xs font-semibold shadow-sm">
+                            {userProfile.displayName.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      {/* Name and Email */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-slate-900 truncate">
+                          {userProfile.displayName}
+                        </p>
+                        <p className="text-xs text-slate-500 truncate">
+                          {userProfile.email}
+                        </p>
+                      </div>
+                    </Link>
+                    {/* Logout Button */}
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-red-50 hover:text-red-700 transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Log Out</span>
+                    </button>
+                  </>
                 ) : (
                   <div className="flex items-center gap-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-700">

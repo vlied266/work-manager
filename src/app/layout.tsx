@@ -9,6 +9,10 @@ export const metadata: Metadata = {
   description: "B2B Process Execution Engine",
   manifest: "/manifest.json",
   themeColor: "#0f172a",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
   viewport: {
     width: "device-width",
     initialScale: 1,
