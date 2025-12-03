@@ -38,6 +38,10 @@ export default function SignInPage() {
 
       console.log("Success! Redirecting...", user.uid);
 
+      // Get the ID token and set it as a cookie for middleware authentication
+      const idToken = await user.getIdToken();
+      document.cookie = `workos_token=${idToken}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+
       // Fetch user profile from Firestore
       const userDoc = await getDoc(doc(db, "users", user.uid));
       

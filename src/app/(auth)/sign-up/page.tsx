@@ -40,6 +40,10 @@ export default function SignUpPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
       const user = userCredential.user;
 
+      // Get the ID token and set it as a cookie for middleware authentication
+      const idToken = await user.getIdToken();
+      document.cookie = `workos_token=${idToken}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+
       // Create user profile in Firestore
       const userProfile = {
         email: user.email,
