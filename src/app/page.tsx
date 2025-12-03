@@ -442,6 +442,63 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Workflow Directory Sync */}
+      <section className="bg-slate-50">
+        <div className="mx-auto max-w-6xl px-6 py-20 sm:py-24 lg:py-28">
+          <div className="max-w-3xl space-y-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
+              Workflow Directory Sync
+            </p>
+            <h2 className="text-4xl sm:text-5xl font-semibold tracking-tight text-slate-900">
+              SCIM-grade context for every atomic workflow.
+            </h2>
+            <p className="text-lg leading-8 text-slate-600">
+              Plug directly into the identity and HR systems your enterprise teams already trust. Atomic
+              Engine mirrors org charts, permissions, and status changes so every run stays perfectly in sync.
+            </p>
+            <div className="pt-2">
+              <Link
+                href="/integrations"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-400"
+              >
+                Browse integrations
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-12 h-px w-full bg-slate-200" />
+
+          <div className="mt-12 grid gap-8 md:grid-cols-2">
+            <div className="flex items-start gap-5 rounded-3xl border border-white bg-white p-8 shadow-[0_20px_80px_rgba(15,23,42,0.08)]">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white shadow-lg shadow-slate-900/30">
+                <Users className="h-6 w-6" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-semibold text-slate-900">Auto-provision squads</h3>
+                <p className="text-base leading-7 text-slate-600">
+                  Map teams and permissions from Okta, Entra ID, OneLogin, and more directly into atomic roles.
+                  Every new hire is assigned to the right workflow the moment they join.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-5 rounded-3xl border border-white bg-white p-8 shadow-[0_20px_80px_rgba(15,23,42,0.08)]">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 text-white shadow-lg shadow-slate-900/30">
+                <Layers className="h-6 w-6" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-semibold text-slate-900">HRIS-aware playbooks</h3>
+                <p className="text-base leading-7 text-slate-600">
+                  Ingest org charts from Rippling, BambooHR, or Workday to auto-fill task owners, reviewers, and
+                  SLAs. Atomic playbooks always know who is accountable.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/50">
         {/* Premium Decorative Background Elements */}
