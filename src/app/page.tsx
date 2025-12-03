@@ -130,7 +130,7 @@ export default function LandingPage() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6 }}
-                className="w-full max-w-2xl space-y-8"
+                className="relative z-10 w-full max-w-2xl space-y-8"
               >
                 <motion.h1
                   initial={{ opacity: 0, y: 20 }}
@@ -208,7 +208,7 @@ export default function LandingPage() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
-                className="w-full lg:w-[520px]"
+                className="relative z-0 w-full lg:w-[520px]"
               >
                 <HeroAnimation />
               </motion.div>
