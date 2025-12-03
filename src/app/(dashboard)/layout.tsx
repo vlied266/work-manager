@@ -51,6 +51,8 @@ export default function DashboardLayout({
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      // Clear the auth cookie
+      document.cookie = "workos_token=; path=/; max-age=0; SameSite=Lax";
       router.push("/sign-in");
     } catch (error) {
       console.error("Error signing out:", error);
