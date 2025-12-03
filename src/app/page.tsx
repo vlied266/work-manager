@@ -443,58 +443,116 @@ export default function LandingPage() {
       </section>
 
       {/* Workflow Directory Sync */}
-      <section className="bg-slate-50">
+      <section className="bg-[#f9f9fb]">
         <div className="mx-auto max-w-6xl px-6 py-20 sm:py-24 lg:py-28">
-          <div className="max-w-3xl space-y-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
-              Workflow Directory Sync
-            </p>
-            <h2 className="text-4xl sm:text-5xl font-semibold tracking-tight text-slate-900">
-              SCIM-grade context for every atomic workflow.
-            </h2>
-            <p className="text-lg leading-8 text-slate-600">
-              Plug directly into the identity and HR systems your enterprise teams already trust. Atomic
-              Engine mirrors org charts, permissions, and status changes so every run stays perfectly in sync.
-            </p>
-            <div className="pt-2">
-              <Link
-                href="/integrations"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-400"
-              >
-                Browse integrations
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+          <div className="grid gap-12 lg:grid-cols-[minmax(0,420px)_1fr]">
+            <div className="space-y-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">
+                Directory Sync
+              </p>
+              <h2 className="text-4xl sm:text-5xl font-semibold tracking-tight text-slate-900">
+                SCIM + HRIS intelligence for every atomic run.
+              </h2>
+              <p className="text-lg leading-8 text-slate-600">
+                Sync Atomic Engine with Okta, Entra ID, BambooHR, Rippling, and more. We mirror every org change
+                so workflow owners, reviewers, and fallback paths update themselves.
+              </p>
+              <div className="flex flex-col gap-3 text-sm text-slate-500">
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-slate-200" />
+                  <span className="text-xs uppercase tracking-[0.35em] text-slate-400">
+                    Trusted connectors
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {["Okta", "Entra ID", "OneLogin", "Rippling", "BambooHR", "Workday"].map((label) => (
+                    <span
+                      key={label}
+                      className="rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600"
+                    >
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="pt-2">
+                <Link
+                  href="/integrations"
+                  className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-7 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-800"
+                >
+                  Add directory sync to Atomic
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+            <div className="rounded-[32px] border border-white bg-white p-8 shadow-[0_40px_120px_rgba(15,23,42,0.08)]">
+              <div className="flex items-center justify-between text-sm text-slate-500">
+                <span className="font-semibold text-slate-900">Lifecycle events</span>
+                <span>Live feed</span>
+              </div>
+              <div className="mt-6 space-y-4">
+                {[
+                  {
+                    title: "Onboarded new Solutions pod",
+                    body: "3 members imported from Okta → mapped to Review + Approver steps inside “Quarterly Risk Run”.",
+                  },
+                  {
+                    title: "Role change detected",
+                    body: "BambooHR moved Priya to Finance Ops. Atomic reassigned her tasks in the “Spend Approval” template.",
+                  },
+                  {
+                    title: "User deactivated",
+                    body: "Rippling flagged Mark as inactive. All pending atomic tasks reassigned to his squad lead.",
+                  },
+                ].map((item, idx) => (
+                  <div key={item.title} className="rounded-2xl border border-slate-100/80 bg-slate-50/40 p-5">
+                    <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-slate-400">
+                      <span>Event {idx + 1}</span>
+                      <span>Synced</span>
+                    </div>
+                    <h3 className="mt-3 text-lg font-semibold text-slate-900">{item.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{item.body}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
           <div className="mt-12 h-px w-full bg-slate-200" />
 
           <div className="mt-12 grid gap-8 md:grid-cols-2">
-            <div className="flex items-start gap-5 rounded-3xl border border-white bg-white p-8 shadow-[0_20px_80px_rgba(15,23,42,0.08)]">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white shadow-lg shadow-slate-900/30">
-                <Users className="h-6 w-6" />
+            {[
+              {
+                icon: <Users className="h-6 w-6" />,
+                title: "Provision atomic squads",
+                body: "Map identity groups to atomic roles with a click. New hires inherit the right runbooks, SLAs, and dashboards instantly.",
+              },
+              {
+                icon: <Layers className="h-6 w-6" />,
+                title: "HRIS-aware workflows",
+                body: "Pull reporting lines and PTO states from HR platforms so escalations, approvals, and coverage plans stay accurate.",
+              },
+            ].map((feature, idx) => (
+              <div
+                key={feature.title}
+                className="flex items-start gap-5 rounded-3xl border border-white bg-white p-8 shadow-[0_25px_90px_rgba(15,23,42,0.08)]"
+              >
+                <div
+                  className={`flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-lg ${
+                    idx === 0
+                      ? "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 shadow-slate-900/30"
+                      : "bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 shadow-slate-900/30"
+                  }`}
+                >
+                  {feature.icon}
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-xl font-semibold text-slate-900">{feature.title}</h3>
+                  <p className="text-base leading-7 text-slate-600">{feature.body}</p>
+                </div>
               </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-semibold text-slate-900">Auto-provision squads</h3>
-                <p className="text-base leading-7 text-slate-600">
-                  Map teams and permissions from Okta, Entra ID, OneLogin, and more directly into atomic roles.
-                  Every new hire is assigned to the right workflow the moment they join.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-5 rounded-3xl border border-white bg-white p-8 shadow-[0_20px_80px_rgba(15,23,42,0.08)]">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 text-white shadow-lg shadow-slate-900/30">
-                <Layers className="h-6 w-6" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-semibold text-slate-900">HRIS-aware playbooks</h3>
-                <p className="text-base leading-7 text-slate-600">
-                  Ingest org charts from Rippling, BambooHR, or Workday to auto-fill task owners, reviewers, and
-                  SLAs. Atomic playbooks always know who is accountable.
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
