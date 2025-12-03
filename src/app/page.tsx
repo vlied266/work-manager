@@ -122,7 +122,7 @@ export default function LandingPage() {
       </motion.nav>
 
       {/* Hero Section - Unified Container */}
-      <section className="relative overflow-visible bg-gradient-to-br from-slate-50 via-white to-blue-50/40">
+      <section className="relative overflow-visible bg-white">
         {/* Unified Container with Shared Background */}
         <div className="mx-auto max-w-[1600px] px-6 py-8 sm:py-12 lg:py-16 relative">
           {/* Shared Background Container - Completely Transparent to Match Hero Background */}
