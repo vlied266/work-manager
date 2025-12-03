@@ -4,7 +4,6 @@ import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, AlertCircle } from "lucide-react";
 import Logo from "@/components/Logo";
@@ -14,7 +13,6 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
-  const router = useRouter();
 
   const handleSignIn = async (e: React.FormEvent) => {
     // 1. Stop reload - MUST be first
@@ -43,23 +41,28 @@ export default function SignInPage() {
       // Fetch user profile from Firestore
       const userDoc = await getDoc(doc(db, "users", user.uid));
       
+      // Determine redirect path based on role
+      let redirectPath = "/onboarding"; // Default
+      
       if (userDoc.exists()) {
         const userData = userDoc.data();
         const role = userData.role;
 
         // Smart redirect based on role
         if (role === "ADMIN" || role === "MANAGER") {
-          router.push("/dashboard");
+          redirectPath = "/dashboard";
         } else if (role === "OPERATOR") {
-          router.push("/inbox");
+          redirectPath = "/inbox";
         } else {
           // No role assigned, redirect to onboarding
-          router.push("/onboarding");
+          redirectPath = "/onboarding";
         }
-      } else {
-        // User document doesn't exist, redirect to onboarding
-        router.push("/onboarding");
       }
+      
+      // Use native browser redirect to force full page reload
+      // This ensures middleware and auth guards re-evaluate the session
+      console.log("Redirecting to:", redirectPath);
+      window.location.href = redirectPath;
     } catch (err: any) {
       // 3. Log to console for debugging
       console.error("Login Error Full Object:", err);
