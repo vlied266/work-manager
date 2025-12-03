@@ -364,7 +364,7 @@ export default function LandingPage() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6 }}
-                className="space-y-6"
+                className="space-y-6 rounded-3xl bg-white p-8 shadow-xl shadow-slate-900/5 border border-white/80"
               >
                 <motion.h1
                   initial={{ opacity: 0, y: 20 }}
