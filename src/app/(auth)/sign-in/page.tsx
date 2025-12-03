@@ -13,25 +13,32 @@ export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string>("");
   const router = useRouter();
 
   const handleSignIn = async (e: React.FormEvent) => {
+    // 1. Stop reload - MUST be first
     e.preventDefault();
-    setError(null);
+    
     setLoading(true);
+    setError(""); // Reset previous errors
 
     try {
-      // Trim email to remove trailing spaces
-      const trimmedEmail = email.trim();
+      // 2. Remove spaces from email
+      const cleanEmail = email.trim();
       
-      if (!trimmedEmail) {
+      console.log("Attempting login with:", cleanEmail);
+      
+      if (!cleanEmail) {
         setError("Please enter your email address.");
+        setLoading(false);
         return;
       }
 
-      const userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, password);
+      const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
       const user = userCredential.user;
+
+      console.log("Success! Redirecting...", user.uid);
 
       // Fetch user profile from Firestore
       const userDoc = await getDoc(doc(db, "users", user.uid));
@@ -54,15 +61,18 @@ export default function SignInPage() {
         router.push("/onboarding");
       }
     } catch (err: any) {
-      console.error("Sign in error:", err);
+      // 3. Log to console for debugging
+      console.error("Login Error Full Object:", err);
+      console.error("Error Code:", err.code);
+      console.error("Error Message:", err.message);
       
-      // Provide user-friendly error messages
-      let errorMessage = "Failed to sign in. Please check your credentials.";
+      // 4. Show friendly error - FORCE error display
+      let errorMessage = "Login failed. Please try again.";
       
       if (err.code === "auth/invalid-credential" || err.code === "auth/wrong-password") {
-        errorMessage = "Incorrect email or password. Please check your credentials and try again.";
+        errorMessage = "Email or password is incorrect.";
       } else if (err.code === "auth/user-not-found") {
-        errorMessage = "No account found with this email. Please sign up first.";
+        errorMessage = "Email or password is incorrect.";
       } else if (err.code === "auth/invalid-email") {
         errorMessage = "Invalid email address. Please check your email and try again.";
       } else if (err.code === "auth/user-disabled") {
@@ -75,7 +85,9 @@ export default function SignInPage() {
         errorMessage = err.message;
       }
       
+      // FORCE error display
       setError(errorMessage);
+      console.log("Error message set to:", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -108,10 +120,10 @@ export default function SignInPage() {
             </p>
           </div>
 
-          {error && (
+          {error && error.length > 0 && (
             <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4">
               <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-rose-600" />
+                <AlertCircle className="h-5 w-5 text-rose-600 flex-shrink-0" />
                 <p className="text-sm font-medium text-rose-900">{error}</p>
               </div>
             </div>
