@@ -121,300 +121,64 @@ export default function LandingPage() {
         </div>
       </motion.nav>
 
-      {/* Hero Section - Unified Container */}
-      <section className="relative overflow-visible bg-white">
-        {/* Unified Container with Shared Background */}
-        <div className="mx-auto max-w-[1600px] px-6 py-8 sm:py-12 lg:py-16 relative">
-          {/* Shared Background Container - Completely Transparent to Match Hero Background */}
-          <div className="relative overflow-visible p-8 sm:p-12 lg:p-16" style={{ background: 'transparent' }}>
-            {/* Premium Animated Color Orbs with Glassmorphism */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              {/* Main Cyan/Teal Orb - Top Left - Premium */}
-              <motion.div
-                className="absolute rounded-full blur-3xl"
-                style={{
-                  width: '800px',
-                  height: '800px',
-                  background: 'radial-gradient(circle, rgba(79, 240, 183, 0.6) 0%, rgba(6, 182, 212, 0.4) 25%, rgba(14, 165, 233, 0.2) 50%, transparent 75%)',
-                  top: '-30%',
-                  left: '-20%',
-                  filter: 'blur(80px)',
-                }}
-                animate={{
-                  x: [0, 60, 0],
-                  y: [0, 40, 0],
-                  scale: [1, 1.2, 1],
-                  opacity: [0.5, 0.7, 0.5],
-                  rotate: [0, 180, 360],
-                }}
-                transition={{
-                  duration: 15,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
-              
-              {/* Main Purple/Pink Orb - Bottom Right - Premium */}
-              <motion.div
-                className="absolute rounded-full blur-3xl"
-                style={{
-                  width: '800px',
-                  height: '800px',
-                  background: 'radial-gradient(circle, rgba(139, 92, 246, 0.6) 0%, rgba(168, 85, 247, 0.4) 25%, rgba(192, 132, 252, 0.2) 50%, transparent 75%)',
-                  bottom: '-30%',
-                  right: '-20%',
-                  filter: 'blur(80px)',
-                }}
-                animate={{
-                  x: [0, -60, 0],
-                  y: [0, -40, 0],
-                  scale: [1, 1.2, 1],
-                  opacity: [0.5, 0.7, 0.5],
-                  rotate: [360, 180, 0],
-                }}
-                transition={{
-                  duration: 15,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 3,
-                }}
-              />
-              
-              {/* Blue Accent - Top Right - Premium */}
-              <motion.div
-                className="absolute rounded-full blur-3xl"
-                style={{
-                  width: '600px',
-                  height: '600px',
-                  background: 'radial-gradient(circle, rgba(59, 130, 246, 0.5) 0%, rgba(37, 99, 235, 0.3) 30%, rgba(29, 78, 216, 0.15) 60%, transparent 80%)',
-                  top: '0%',
-                  right: '5%',
-                  filter: 'blur(70px)',
-                }}
-                animate={{
-                  x: [0, -40, 0],
-                  y: [0, 30, 0],
-                  scale: [1, 1.25, 1],
-                  opacity: [0.4, 0.6, 0.4],
-                  rotate: [0, -90, 0],
-                }}
-                transition={{
-                  duration: 14,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 1.5,
-                }}
-              />
-              
-              {/* Purple Accent - Bottom Center - Premium */}
-              <motion.div
-                className="absolute rounded-full blur-3xl"
-                style={{
-                  width: '550px',
-                  height: '550px',
-                  background: 'radial-gradient(circle, rgba(168, 85, 247, 0.5) 0%, rgba(139, 92, 246, 0.3) 30%, rgba(124, 58, 237, 0.15) 60%, transparent 80%)',
-                  bottom: '-10%',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  filter: 'blur(70px)',
-                }}
-                animate={{
-                  x: [0, 35, 0],
-                  y: [0, -25, 0],
-                  scale: [1, 1.22, 1],
-                  opacity: [0.4, 0.6, 0.4],
-                  rotate: [0, 90, 0],
-                }}
-                transition={{
-                  duration: 13,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 0.8,
-                }}
-              />
-              
-              {/* Cyan Accent - Top Center - Premium */}
-              <motion.div
-                className="absolute rounded-full blur-3xl"
-                style={{
-                  width: '500px',
-                  height: '500px',
-                  background: 'radial-gradient(circle, rgba(6, 182, 212, 0.5) 0%, rgba(79, 240, 183, 0.3) 30%, rgba(34, 211, 238, 0.15) 60%, transparent 80%)',
-                  top: '10%',
-                  left: '30%',
-                  filter: 'blur(65px)',
-                }}
-                animate={{
-                  x: [0, -35, 0],
-                  y: [0, 35, 0],
-                  scale: [1, 1.3, 1],
-                  opacity: [0.35, 0.55, 0.35],
-                  rotate: [0, -180, 0],
-                }}
-                transition={{
-                  duration: 16,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 2,
-                }}
-              />
-
-              {/* Pink Accent - Center Left - New */}
-              <motion.div
-                className="absolute rounded-full blur-3xl"
-                style={{
-                  width: '450px',
-                  height: '450px',
-                  background: 'radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, rgba(219, 39, 119, 0.25) 35%, rgba(190, 24, 93, 0.15) 60%, transparent 80%)',
-                  top: '50%',
-                  left: '10%',
-                  transform: 'translateY(-50%)',
-                  filter: 'blur(60px)',
-                }}
-                animate={{
-                  x: [0, 30, 0],
-                  y: [0, -20, 0],
-                  scale: [1, 1.18, 1],
-                  opacity: [0.3, 0.5, 0.3],
-                  rotate: [0, 120, 0],
-                }}
-                transition={{
-                  duration: 12,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 1.2,
-                }}
-              />
-
-              {/* Enhanced Floating Bubbles with Varied Sizes */}
-              {[...Array(10)].map((_, i) => {
-                const colors = [
-                  'radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, rgba(37, 99, 235, 0.15) 50%, transparent 70%)',
-                  'radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, rgba(168, 85, 247, 0.15) 50%, transparent 70%)',
-                  'radial-gradient(circle, rgba(6, 182, 212, 0.3) 0%, rgba(79, 240, 183, 0.15) 50%, transparent 70%)',
-                  'radial-gradient(circle, rgba(236, 72, 153, 0.3) 0%, rgba(219, 39, 119, 0.15) 50%, transparent 70%)',
-                ];
-                return (
-                  <motion.div
-                    key={i}
-                    className="absolute rounded-full blur-2xl"
-                    style={{
-                      width: `${120 + i * 25}px`,
-                      height: `${120 + i * 25}px`,
-                      background: colors[i % colors.length],
-                      top: `${5 + (i * 9) % 80}%`,
-                      left: `${8 + (i * 11) % 75}%`,
-                      filter: 'blur(50px)',
-                    }}
-                    animate={{
-                      x: [0, Math.sin(i) * 35, 0],
-                      y: [0, Math.cos(i) * 35, 0],
-                      scale: [1, 1.15, 1],
-                      opacity: [0.25, 0.45, 0.25],
-                      rotate: [0, 360, 0],
-                    }}
-                    transition={{
-                      duration: 10 + i * 1.5,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: i * 0.3,
-                    }}
-                  />
-                );
-              })}
-
-              {/* Glowing Particles */}
-              {[...Array(15)].map((_, i) => (
-                <motion.div
-                  key={`particle-${i}`}
-                  className="absolute rounded-full"
-                  style={{
-                    width: `${4 + (i % 3) * 2}px`,
-                    height: `${4 + (i % 3) * 2}px`,
-                    background: i % 4 === 0 
-                      ? 'rgba(59, 130, 246, 0.8)'
-                      : i % 4 === 1
-                      ? 'rgba(139, 92, 246, 0.8)'
-                      : i % 4 === 2
-                      ? 'rgba(6, 182, 212, 0.8)'
-                      : 'rgba(236, 72, 153, 0.8)',
-                    top: `${10 + (i * 6) % 85}%`,
-                    left: `${5 + (i * 7) % 90}%`,
-                    boxShadow: `0 0 ${8 + i * 2}px currentColor`,
-                  }}
-                  animate={{
-                    y: [0, -30, 0],
-                    opacity: [0.3, 1, 0.3],
-                    scale: [0.8, 1.2, 0.8],
-                  }}
-                  transition={{
-                    duration: 3 + (i % 3) * 0.5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: i * 0.2,
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* Content Grid - Text and Sphere in same container */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center relative z-10">
-              {/* Left Column: Text Content */}
+      {/* Hero Section */}
+      <section className="relative bg-white">
+        <div className="px-6 sm:px-10 lg:px-16">
+          <div className="mx-auto max-w-6xl">
+            <div className="flex flex-col-reverse lg:flex-row lg:items-start lg:justify-between gap-12 lg:gap-16 py-16 lg:py-28">
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6 }}
-                className="space-y-6 rounded-3xl bg-white p-8 shadow-xl shadow-slate-900/5 border border-white/80"
+                className="w-full max-w-2xl space-y-8"
               >
                 <motion.h1
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.1 }}
-                  className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 leading-tight"
+                  className="text-[2.75rem] sm:text-6xl lg:text-[4.5rem] font-semibold leading-[1.05] text-slate-900 tracking-tight"
                 >
-                  Your workflows,{" "}
-                  <br />
-                  <span className="text-slate-600">Atomic Ready.</span>
+                  Your workflows,
+                  <span className="block bg-gradient-to-r from-[#a163f1] via-[#6363f1] via-[#3498ea] to-[#40dfa3] bg-clip-text text-transparent">
+                    Atomic Ready.
+                  </span>
                 </motion.h1>
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.2 }}
-                  className="text-xl leading-8 text-slate-600 sm:text-2xl"
+                  className="text-lg sm:text-xl text-slate-600 leading-8 max-w-2xl"
                 >
                   Transform complex processes into atomic tasks. Build workflows in minutes instead of months.
                 </motion.p>
-                
-                {/* Buttons - Moved here */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.3 }}
-                  className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-4"
+                  className="flex flex-col sm:flex-row items-start sm:items-center gap-4"
                 >
                   {!loading && (
                     <>
                       {user ? (
                         <Link
                           href="/dashboard"
-                          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white transition-all hover:scale-105 hover:bg-slate-800 shadow-lg"
+                          className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-8 py-4 text-base font-semibold text-white transition hover:bg-slate-800"
                         >
                           <LayoutDashboard className="h-5 w-5" />
                           Go to Dashboard
-                          <ArrowRight className="h-5 w-5" />
                         </Link>
                       ) : (
                         <>
                           <Link
                             href="/sign-up"
-                            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white transition-all hover:scale-105 hover:bg-slate-800 shadow-lg"
+                            className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-8 py-4 text-base font-semibold text-white transition hover:bg-slate-800"
                           >
                             Start for Free
                             <ArrowRight className="h-5 w-5" />
                           </Link>
                           <Link
                             href="/sign-in"
-                            className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-8 py-4 text-base font-semibold text-slate-700 transition-all hover:bg-slate-50"
+                            className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-8 py-4 text-base font-semibold text-slate-700 transition hover:border-slate-400"
                           >
                             Sign In
                           </Link>
@@ -423,37 +187,28 @@ export default function LandingPage() {
                     </>
                   )}
                 </motion.div>
-
-                {/* Trust Indicators */}
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.6, delay: 0.4 }}
-                  className="flex items-center gap-6 pt-2"
+                  className="flex flex-wrap gap-6 text-sm text-slate-500"
                 >
                   <div className="flex items-center gap-2">
-                    <Check className="h-5 w-5 text-green-600" />
-                    <span className="text-sm text-slate-600">No credit card required</span>
+                    <Check className="h-4 w-4 text-green-600" />
+                    No credit card required
                   </div>
                   <div className="flex items-center gap-2">
-                    <Check className="h-5 w-5 text-green-600" />
-                    <span className="text-sm text-slate-600">14-day free trial</span>
+                    <Check className="h-4 w-4 text-green-600" />
+                    14-day free trial
                   </div>
                 </motion.div>
               </motion.div>
 
-              {/* Right Column: Atomic Structure */}
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
-                className="relative w-full"
-                style={{ 
-                  margin: 0, 
-                  padding: 0, 
-                  background: 'transparent',
-                  backgroundColor: 'transparent',
-                }}
+                className="w-full lg:w-[520px]"
               >
                 <HeroAnimation />
               </motion.div>
