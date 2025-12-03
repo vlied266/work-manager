@@ -22,7 +22,15 @@ export default function SignInPage() {
     setLoading(true);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // Trim email to remove trailing spaces
+      const trimmedEmail = email.trim();
+      
+      if (!trimmedEmail) {
+        setError("Please enter your email address.");
+        return;
+      }
+
+      const userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, password);
       const user = userCredential.user;
 
       // Fetch user profile from Firestore
@@ -51,12 +59,14 @@ export default function SignInPage() {
       // Provide user-friendly error messages
       let errorMessage = "Failed to sign in. Please check your credentials.";
       
-      if (err.code === "auth/invalid-credential") {
-        errorMessage = "Invalid email or password. Please check your credentials and try again.";
+      if (err.code === "auth/invalid-credential" || err.code === "auth/wrong-password") {
+        errorMessage = "Incorrect email or password. Please check your credentials and try again.";
       } else if (err.code === "auth/user-not-found") {
         errorMessage = "No account found with this email. Please sign up first.";
-      } else if (err.code === "auth/wrong-password") {
-        errorMessage = "Incorrect password. Please try again.";
+      } else if (err.code === "auth/invalid-email") {
+        errorMessage = "Invalid email address. Please check your email and try again.";
+      } else if (err.code === "auth/user-disabled") {
+        errorMessage = "This account has been disabled. Please contact support.";
       } else if (err.code === "auth/too-many-requests") {
         errorMessage = "Too many failed attempts. Please try again later.";
       } else if (err.code === "auth/network-request-failed") {
@@ -116,7 +126,8 @@ export default function SignInPage() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value.trim())}
+                onBlur={(e) => setEmail(e.target.value.trim())}
                 required
                 placeholder="you@example.com"
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200"

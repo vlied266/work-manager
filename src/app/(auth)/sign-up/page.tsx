@@ -23,13 +23,27 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // Trim inputs to remove trailing spaces
+      const trimmedEmail = email.trim();
+      const trimmedDisplayName = displayName.trim();
+      
+      if (!trimmedEmail) {
+        setError("Please enter your email address.");
+        return;
+      }
+
+      if (!trimmedDisplayName) {
+        setError("Please enter your full name.");
+        return;
+      }
+
+      const userCredential = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
       const user = userCredential.user;
 
       // Create user profile in Firestore
       const userProfile = {
         email: user.email,
-        displayName: displayName || user.email?.split("@")[0] || "User",
+        displayName: trimmedDisplayName || user.email?.split("@")[0] || "User",
         role: "OPERATOR" as const, // Default role for new users
         teamIds: [],
         organizationId: "", // Will be set during onboarding
@@ -44,7 +58,23 @@ export default function SignUpPage() {
       router.push("/onboarding");
     } catch (err: any) {
       console.error("Sign up error:", err);
-      setError(err.message || "Failed to create account. Please try again.");
+      
+      // Provide user-friendly error messages
+      let errorMessage = "Failed to create account. Please try again.";
+      
+      if (err.code === "auth/email-already-in-use") {
+        errorMessage = "An account with this email already exists. Please sign in instead.";
+      } else if (err.code === "auth/invalid-email") {
+        errorMessage = "Invalid email address. Please check your email and try again.";
+      } else if (err.code === "auth/weak-password") {
+        errorMessage = "Password is too weak. Please use a stronger password (at least 6 characters).";
+      } else if (err.code === "auth/network-request-failed") {
+        errorMessage = "Network error. Please check your connection and try again.";
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -96,6 +126,7 @@ export default function SignUpPage() {
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
+                onBlur={(e) => setDisplayName(e.target.value.trim())}
                 required
                 placeholder="John Doe"
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
@@ -110,7 +141,8 @@ export default function SignUpPage() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value.trim())}
+                onBlur={(e) => setEmail(e.target.value.trim())}
                 required
                 placeholder="you@example.com"
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
