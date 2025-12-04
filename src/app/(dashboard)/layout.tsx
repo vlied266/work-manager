@@ -96,13 +96,15 @@ export default function DashboardLayout({
         unsubscribeProfile = onSnapshot(userDocRef, (userDoc) => {
           if (userDoc.exists()) {
             const data = userDoc.data();
+            const normalizedOrgId = data.orgId || data.organizationId || "";
             // Get photoURL from Firestore first, then fallback to Auth
-            const photoURL = (data.photoURL && data.photoURL.trim() !== "") 
-              ? data.photoURL 
-              : (user.photoURL && user.photoURL.trim() !== "") 
-                ? user.photoURL 
-                : undefined;
-            
+            const photoURL =
+              data.photoURL && data.photoURL.trim() !== ""
+                ? data.photoURL
+                : user.photoURL && user.photoURL.trim() !== ""
+                  ? user.photoURL
+                  : undefined;
+
             const profile: UserProfile = {
               id: userDoc.id,
               uid: user.uid,
@@ -112,17 +114,18 @@ export default function DashboardLayout({
               jobTitle: data.jobTitle || undefined,
               role: data.role || "OPERATOR",
               teamIds: data.teamIds || [],
-              organizationId: data.organizationId || "",
+              organizationId: normalizedOrgId,
+              orgId: data.orgId,
               createdAt: data.createdAt?.toDate() || new Date(),
               updatedAt: data.updatedAt?.toDate() || new Date(),
             };
-            
-            console.log("User Profile loaded in sidebar:", { 
-              photoURL: profile.photoURL, 
+
+            console.log("User Profile loaded in sidebar:", {
+              photoURL: profile.photoURL,
               displayName: profile.displayName,
-              hasPhotoURL: !!profile.photoURL 
+              hasPhotoURL: !!profile.photoURL,
             });
-            
+
             setUserProfile(profile);
           } else {
             // Fallback to auth user data if profile doesn't exist
@@ -135,6 +138,7 @@ export default function DashboardLayout({
               role: "OPERATOR",
               teamIds: [],
               organizationId: "",
+              orgId: "",
               createdAt: new Date(),
               updatedAt: new Date(),
             } as UserProfile);
@@ -158,6 +162,17 @@ export default function DashboardLayout({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!userProfile) return;
+    if (pathname?.startsWith("/onboarding")) return;
+
+    const hasOrgId = Boolean(userProfile.orgId || userProfile.organizationId);
+    if (!hasOrgId) {
+      router.replace("/onboarding");
+    }
+  }, [loading, userProfile, router, pathname]);
 
   return (
     <OrganizationProvider>
