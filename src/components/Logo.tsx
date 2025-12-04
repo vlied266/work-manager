@@ -1,15 +1,17 @@
 "use client";
 
+type LogoSize = "small" | "medium" | "large";
+
 interface LogoProps {
-  size?: "small" | "medium" | "large";
+  size?: LogoSize;
   className?: string;
 }
 
-const SIZE_MAP = {
-  small: 40,
-  medium: 64,
-  large: 120,
-} as const;
+const SIZE_MAP: Record<LogoSize, number> = {
+  small: 32,
+  medium: 56,
+  large: 96,
+};
 
 export default function Logo({ size = "medium", className = "" }: LogoProps) {
   const dimension = SIZE_MAP[size];
@@ -17,10 +19,7 @@ export default function Logo({ size = "medium", className = "" }: LogoProps) {
   return (
     <div
       className={`relative inline-flex items-center justify-center ${className}`}
-      style={{
-        width: dimension,
-        height: dimension,
-      }}
+      style={{ width: dimension, height: dimension }}
       aria-label="WorkOS Atomic mark"
     >
       <svg
@@ -31,100 +30,92 @@ export default function Logo({ size = "medium", className = "" }: LogoProps) {
         aria-hidden="true"
       >
         <defs>
-          <radialGradient id="coreGlow" cx="50%" cy="45%" r="60%">
-            <stop offset="0%" stopColor="#f8fafc" />
-            <stop offset="55%" stopColor="#94a3b8" />
-            <stop offset="100%" stopColor="#0f172a" />
-          </radialGradient>
-          <radialGradient id="shellGlow" cx="50%" cy="50%" r="70%">
-            <stop offset="0%" stopColor="rgba(96,165,250,0.65)" />
-            <stop offset="70%" stopColor="rgba(14,165,233,0.25)" />
-            <stop offset="100%" stopColor="rgba(14,165,233,0)" />
-          </radialGradient>
-          <linearGradient id="arcGradientA" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#a163f1" />
-            <stop offset="60%" stopColor="#6363f1" />
-            <stop offset="100%" stopColor="#3498ea" />
+          <linearGradient id="diamondFill" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#0f1c3d" />
+            <stop offset="45%" stopColor="#6c4bff" />
+            <stop offset="100%" stopColor="#35d4c2" />
           </linearGradient>
-          <linearGradient id="arcGradientB" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#3498ea" />
-            <stop offset="100%" stopColor="#40dfa3" />
-          </linearGradient>
-          <linearGradient id="nodeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id="diamondStroke" x1="0%" y1="100%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#a163f1" />
-            <stop offset="100%" stopColor="#40dfa3" />
+            <stop offset="60%" stopColor="#6366f1" />
+            <stop offset="100%" stopColor="#3cc9eb" />
+          </linearGradient>
+          <linearGradient id="facetStroke" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#0f172a" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.45" />
           </linearGradient>
         </defs>
 
-        {/* Soft background halo */}
-        <circle
-          cx="60"
-          cy="60"
-          r="46"
-          fill="url(#shellGlow)"
-          opacity="0.6"
+        {/* Shadow */}
+        <rect
+          x="24"
+          y="24"
+          width="72"
+          height="72"
+          rx="6"
+          transform="rotate(45 60 60)"
+          fill="rgba(15,23,42,0.08)"
         />
 
-        {/* Elliptical orbital rings */}
-        <ellipse
-          cx="60"
-          cy="62"
-          rx="42"
-          ry="26"
-          fill="none"
-          stroke="url(#arcGradientA)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          transform="rotate(-15 60 62)"
-          opacity="0.9"
-        />
-        <ellipse
-          cx="60"
-          cy="58"
-          rx="36"
-          ry="22"
-          fill="none"
-          stroke="url(#arcGradientB)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          transform="rotate(18 60 58)"
-          opacity="0.8"
+        {/* Diamond */}
+        <rect
+          x="26"
+          y="26"
+          width="68"
+          height="68"
+          rx="5"
+          transform="rotate(45 60 60)"
+          fill="url(#diamondFill)"
+          stroke="url(#diamondStroke)"
+          strokeWidth="4.5"
         />
 
-        {/* Flowing arc inspired by hero ribbon */}
+        {/* Inner facet */}
+        <rect
+          x="40"
+          y="40"
+          width="40"
+          height="40"
+          rx="4"
+          transform="rotate(45 60 60)"
+          fill="rgba(255,255,255,0.08)"
+          stroke="rgba(255,255,255,0.25)"
+          strokeWidth="1.25"
+        />
+
+        {/* Facet diagonals */}
         <path
-          d="M32 74 C44 58, 54 48, 70 42 C84 38, 96 42, 104 52"
-          fill="none"
-          stroke="url(#arcGradientA)"
-          strokeWidth="4"
+          d="M60 34 L60 86"
+          stroke="url(#facetStroke)"
+          strokeWidth="2"
           strokeLinecap="round"
-          opacity="0.85"
         />
         <path
-          d="M20 58 C32 66, 44 70, 58 68 C72 66, 88 56, 98 44"
-          fill="none"
-          stroke="url(#arcGradientB)"
-          strokeWidth="3"
+          d="M34 60 L86 60"
+          stroke="rgba(255,255,255,0.15)"
+          strokeWidth="2"
           strokeLinecap="round"
-          opacity="0.8"
         />
-
-        {/* Central core */}
-        <circle cx="60" cy="60" r="20" fill="url(#coreGlow)" />
-
-        {/* Core highlight */}
         <path
-          d="M48 56 C54 48, 66 48, 72 56"
-          fill="none"
-          stroke="rgba(255,255,255,0.35)"
-          strokeWidth="4"
-          strokeLinecap="round"
+          d="M42 42 L78 78"
+          stroke="rgba(15,23,42,0.35)"
+          strokeWidth="1.2"
+        />
+        <path
+          d="M78 42 L42 78"
+          stroke="rgba(15,23,42,0.35)"
+          strokeWidth="1.2"
         />
 
-        {/* Orbiting data nodes */}
-        <circle cx="88" cy="48" r="6" fill="url(#nodeGradient)" />
-        <circle cx="32" cy="76" r="5" fill="url(#nodeGradient)" opacity="0.85" />
-        <circle cx="82" cy="86" r="4" fill="#40dfa3" opacity="0.7" />
+        {/* Highlight glints */}
+        <path
+          d="M48 50 C54 44, 66 44, 72 50"
+          stroke="rgba(255,255,255,0.4)"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          fill="none"
+        />
+        <circle cx="60" cy="72" r="4" fill="rgba(255,255,255,0.25)" />
       </svg>
     </div>
   );
