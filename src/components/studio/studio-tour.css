@@ -1,28 +1,24 @@
-/* Ensure driver.js buttons are clickable and visible */
-.driver-close-btn,
-.driver-next-btn,
-.driver-previous-btn {
+/* Force driver.js UI above layout glass layers */
+.driver-popover,
+.driver-popover * {
+  pointer-events: auto !important;
+  z-index: 10002 !important;
+}
+
+.driver-popover-close-btn,
+.driver-popover-navigation-btns button,
+.driver-popover-footer button {
   cursor: pointer !important;
   pointer-events: auto !important;
-  z-index: 10000 !important;
+  z-index: 10003 !important;
   position: relative !important;
 }
 
-.driver-popover {
-  z-index: 10000 !important;
-}
-
-.driver-overlay {
-  z-index: 9999 !important;
-}
-
-/* Ensure buttons are not blocked */
 .driver-popover-footer {
   pointer-events: auto !important;
 }
 
-.driver-popover-footer button {
-  pointer-events: auto !important;
-  cursor: pointer !important;
+.driver-overlay {
+  z-index: 10001 !important;
 }
 
