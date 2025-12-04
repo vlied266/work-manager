@@ -445,7 +445,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
             </div>
 
             {/* Center Pane: Canvas - Floating Glass Island */}
-            <div data-tour="canvas" className="h-full flex flex-col relative">
+            <div data-tour="canvas" className="h-full min-h-0 flex flex-col relative">
               {/* Editable H1 Title */}
               <div className="mb-6">
                 <input
@@ -457,7 +457,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                 />
               </div>
 
-              <div className="h-full flex flex-col rounded-[2.5rem] overflow-hidden bg-white/70 backdrop-blur-2xl border border-white/60 shadow-2xl shadow-black/5 relative">
+              <div className="h-full min-h-0 flex flex-col rounded-[2.5rem] overflow-hidden bg-white/70 backdrop-blur-2xl border border-white/60 shadow-2xl shadow-black/5 relative">
                 {/* Mode Toggle Pill - Fixed Header */}
                 <div className="flex-shrink-0 flex items-center justify-center py-4 border-b border-slate-100 bg-white/50 backdrop-blur-sm">
                   <div className="bg-white/80 backdrop-blur-xl rounded-full p-1 shadow-lg shadow-black/10 flex items-center gap-1">
