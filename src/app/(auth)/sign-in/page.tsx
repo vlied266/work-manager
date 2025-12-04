@@ -1,14 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Loader2, AlertCircle } from "lucide-react";
 import Logo from "@/components/Logo";
 
 export default function SignInPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,6 +50,12 @@ export default function SignInPage() {
       // Fetch user profile from Firestore
       const userDoc = await getDoc(doc(db, "users", user.uid));
       
+      // Check if there's a redirect parameter (e.g., from invitation)
+      if (redirect) {
+        window.location.href = redirect;
+        return;
+      }
+
       // Determine redirect path based on role
       let redirectPath = "/onboarding"; // Default
       

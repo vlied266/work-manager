@@ -8,12 +8,14 @@ import { Team, UserProfile, Organization } from "@/types/schema";
 import { useOrgQuery, useOrgId, useOrgDataCreator } from "@/hooks/useOrgData";
 import { checkUsageLimit, getPlanLimits } from "@/lib/billing/limits";
 import { UpgradeModal } from "@/components/billing/upgrade-modal";
+import { GeneralTab } from "@/components/settings/GeneralTab";
+import { InviteUserForm } from "@/components/settings/InviteUserForm";
 
 // Prevent SSR/prerendering - this page requires client-side auth
 export const dynamic = 'force-dynamic';
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<"teams" | "users" | "roles">("teams");
+  const [activeTab, setActiveTab] = useState<"general" | "teams" | "users">("general");
   const [teams, setTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -225,6 +227,8 @@ export default function SettingsPage() {
             <div className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-8">
 
               {/* Tab Content */}
+              {activeTab === "general" && <GeneralTab />}
+
               {activeTab === "teams" && (
                 <div className="space-y-8">
                   {/* Create Team */}
@@ -314,78 +318,7 @@ export default function SettingsPage() {
                   {/* Invite User */}
                   <div className="rounded-2xl bg-white/50 backdrop-blur-sm border border-white/60 p-6">
                     <h2 className="text-xl font-extrabold tracking-tight text-slate-900 mb-6">Invite User</h2>
-                    <div className="space-y-5">
-                      <div className="grid gap-5 md:grid-cols-2">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                            Email
-                          </label>
-                          <input
-                            type="email"
-                            value={userEmail}
-                            onChange={(e) => setUserEmail(e.target.value)}
-                            placeholder="user@example.com"
-                            className="w-full rounded-xl border-0 bg-white/50 shadow-inner px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                            Display Name
-                          </label>
-                          <input
-                            type="text"
-                            value={userDisplayName}
-                            onChange={(e) => setUserDisplayName(e.target.value)}
-                            placeholder="John Doe"
-                            className="w-full rounded-xl border-0 bg-white/50 shadow-inner px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid gap-5 md:grid-cols-2">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                            Role
-                          </label>
-                          <select
-                            value={userRole}
-                            onChange={(e) => setUserRole(e.target.value as any)}
-                            className="w-full rounded-xl border-0 bg-white/50 shadow-inner px-4 py-3 text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-                          >
-                            <option value="OPERATOR">Operator (Can only Run)</option>
-                            <option value="ADMIN">Admin (Can Design)</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                            Teams (optional)
-                          </label>
-                          <select
-                            multiple
-                            value={selectedTeamIds}
-                            onChange={(e) =>
-                              setSelectedTeamIds(
-                                Array.from(e.target.selectedOptions, (option) => option.value)
-                              )
-                            }
-                            className="w-full rounded-xl border-0 bg-white/50 shadow-inner px-4 py-3 text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[48px]"
-                          >
-                            {teams.map((team) => (
-                              <option key={team.id} value={team.id}>
-                                {team.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                      <button
-                        onClick={handleInviteUser}
-                        disabled={!userEmail.trim() || !userDisplayName.trim() || creating}
-                        className="inline-flex items-center gap-2 rounded-full bg-[#007AFF] px-6 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-[#0071E3] hover:shadow-lg disabled:opacity-50"
-                      >
-                        <UserPlus className="h-4 w-4" />
-                        {creating ? "Inviting..." : "Invite User"}
-                      </button>
-                    </div>
+                    <InviteUserForm />
                   </div>
 
                   {/* Users List - Airtable Style */}

@@ -4,18 +4,21 @@ import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Loader2, AlertCircle } from "lucide-react";
 import Logo from "@/components/Logo";
 
 export default function SignUpPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +60,12 @@ export default function SignUpPage() {
       };
 
       await setDoc(doc(db, "users", user.uid), userProfile);
+
+      // Check if there's a redirect parameter (e.g., from invitation)
+      if (redirect) {
+        window.location.href = redirect;
+        return;
+      }
 
       // Smart redirect based on role
       // New users without organization go to onboarding

@@ -6,6 +6,7 @@
 import Papa from "papaparse";
 import { createWorker } from "tesseract.js";
 import { AtomicStep } from "@/types/schema";
+import { resolveVariables } from "@/lib/engine/variable-parser";
 
 /**
  * Run Context - Shared memory for all steps
@@ -13,6 +14,261 @@ import { AtomicStep } from "@/types/schema";
  */
 export interface RunContext {
   [variableName: string]: any;
+}
+
+/**
+ * Execute an atomic action with variable resolution
+ * 
+ * Before executing any step, valid placeholders in step.config are replaced
+ * with real data from context using mustache syntax (e.g., {{ step_1.output.email }}).
+ * 
+ * @param step - The atomic step to execute
+ * @param context - The run context containing variable values
+ * @returns Execution result with output, outcome, and optional error message
+ */
+export async function executeAtomicAction(
+  step: AtomicStep,
+  context: RunContext
+): Promise<{ output: any; outcome: "SUCCESS" | "FAILURE"; error?: string }> {
+  try {
+    // Step 1: Resolve variables in step.config
+    const resolvedConfig = resolveVariables(step.config, context);
+
+    // Step 2: Execute based on action type
+    switch (step.action) {
+      case "INPUT": {
+        // INPUT action: User provides data
+        // The actual input value should come from user interaction, not from config
+        // For now, return the resolved config as output
+        // In a real execution, this would wait for user input
+        const inputValue = resolvedConfig.inputValue || resolvedConfig.defaultValue;
+        
+        // Validate input if validation rules exist
+        if (inputValue !== undefined && inputValue !== null) {
+          const validation = validateInput(inputValue, resolvedConfig);
+          if (!validation.valid) {
+            return {
+              output: null,
+              outcome: "FAILURE",
+              error: validation.error || "Input validation failed",
+            };
+          }
+        }
+
+        return {
+          output: inputValue || resolvedConfig,
+          outcome: "SUCCESS",
+        };
+      }
+
+      case "COMPARE": {
+        // COMPARE action: Compare two values from context
+        const targetA = resolvedConfig.targetA;
+        const targetB = resolvedConfig.targetB;
+        const comparisonType = resolvedConfig.comparisonType || "exact";
+
+        if (!targetA || !targetB) {
+          return {
+            output: null,
+            outcome: "FAILURE",
+            error: "Both targetA and targetB must be specified for comparison",
+          };
+        }
+
+        // Get values from context
+        const valA = getContextValue(context, targetA);
+        const valB = getContextValue(context, targetB);
+
+        // Evaluate comparison
+        const result = evaluateComparison(valA, valB, comparisonType);
+
+        return {
+          output: {
+            match: result.match,
+            diff: result.diff,
+            details: result.details,
+            valueA: valA,
+            valueB: valB,
+          },
+          outcome: result.match ? "SUCCESS" : "FAILURE",
+        };
+      }
+
+      case "CALCULATE": {
+        // CALCULATE action: Perform mathematical calculation
+        const formula = resolvedConfig.formula;
+        const variables = resolvedConfig.variables || {};
+
+        if (!formula) {
+          return {
+            output: null,
+            outcome: "FAILURE",
+            error: "Formula is required for CALCULATE action",
+          };
+        }
+
+        // Get variable values from context
+        const varValues: Record<string, number> = {};
+        for (const [key, varName] of Object.entries(variables)) {
+          const value = getContextValue(context, varName as string);
+          if (value !== undefined) {
+            varValues[key] = parseFloat(String(value)) || 0;
+          } else {
+            varValues[key] = 0;
+          }
+        }
+
+        // Replace variables in formula
+        let formulaToEval = formula;
+        for (const [key, value] of Object.entries(varValues)) {
+          formulaToEval = formulaToEval.replace(new RegExp(`\\b${key}\\b`, "g"), String(value));
+        }
+
+        // Evaluate formula (simplified - in production, use a safe math evaluator)
+        try {
+          // Basic safety: only allow numbers, operators, parentheses, and spaces
+          if (!/^[0-9+\-*/().\s]+$/.test(formulaToEval)) {
+            throw new Error("Invalid characters in formula");
+          }
+
+          // Use Function constructor for evaluation (be careful in production!)
+          const result = Function(`"use strict"; return (${formulaToEval})`)();
+
+          return {
+            output: {
+              result,
+              formula: formulaToEval,
+              variables: varValues,
+            },
+            outcome: "SUCCESS",
+          };
+        } catch (error) {
+          return {
+            output: null,
+            outcome: "FAILURE",
+            error: `Calculation failed: ${(error as Error).message}`,
+          };
+        }
+      }
+
+      case "VALIDATE": {
+        // VALIDATE action: Validate data against rules
+        const target = resolvedConfig.target;
+        const validationRule = resolvedConfig.validationRule;
+        const rule = resolvedConfig.rule || "REGEX";
+        const valueToCompare = resolvedConfig.value;
+
+        if (!target) {
+          return {
+            output: null,
+            outcome: "FAILURE",
+            error: "target is required for VALIDATE action",
+          };
+        }
+
+        // Get value from context
+        const value = getContextValue(context, target);
+
+        // Perform validation based on rule type
+        let isValid = false;
+        let errorMessage = "";
+
+        switch (rule) {
+          case "GREATER_THAN":
+            const numGT = parseFloat(String(value));
+            const compareGT = parseFloat(String(valueToCompare));
+            if (isNaN(numGT) || isNaN(compareGT)) {
+              isValid = false;
+              errorMessage = "Both values must be numbers for GREATER_THAN comparison";
+            } else {
+              isValid = numGT > compareGT;
+              if (!isValid) {
+                errorMessage = `Value ${numGT} is not greater than ${compareGT}`;
+              }
+            }
+            break;
+
+          case "LESS_THAN":
+            const numLT = parseFloat(String(value));
+            const compareLT = parseFloat(String(valueToCompare));
+            if (isNaN(numLT) || isNaN(compareLT)) {
+              isValid = false;
+              errorMessage = "Both values must be numbers for LESS_THAN comparison";
+            } else {
+              isValid = numLT < compareLT;
+              if (!isValid) {
+                errorMessage = `Value ${numLT} is not less than ${compareLT}`;
+              }
+            }
+            break;
+
+          case "EQUAL":
+            isValid = String(value) === String(valueToCompare);
+            if (!isValid) {
+              errorMessage = `Value "${value}" does not equal "${valueToCompare}"`;
+            }
+            break;
+
+          case "CONTAINS":
+            const strValue = String(value || "");
+            const strCompare = String(valueToCompare || "");
+            isValid = strValue.includes(strCompare);
+            if (!isValid) {
+              errorMessage = `Value "${strValue}" does not contain "${strCompare}"`;
+            }
+            break;
+
+          case "REGEX":
+          default:
+            if (!validationRule) {
+              return {
+                output: null,
+                outcome: "FAILURE",
+                error: "validationRule (regex pattern) is required for REGEX validation",
+              };
+            }
+            try {
+              const regex = new RegExp(validationRule);
+              isValid = regex.test(String(value || ""));
+              if (!isValid) {
+                errorMessage = resolvedConfig.errorMessage || "Value does not match required pattern";
+              }
+            } catch (error) {
+              return {
+                output: null,
+                outcome: "FAILURE",
+                error: `Invalid regex pattern: ${(error as Error).message}`,
+              };
+            }
+            break;
+        }
+
+        return {
+          output: {
+            valid: isValid,
+            value,
+            error: isValid ? undefined : errorMessage,
+          },
+          outcome: isValid ? "SUCCESS" : "FAILURE",
+          error: isValid ? undefined : errorMessage,
+        };
+      }
+
+      default:
+        // For other actions, return resolved config as output
+        return {
+          output: resolvedConfig,
+          outcome: "SUCCESS",
+        };
+    }
+  } catch (error) {
+    // Error handling: wrap in try-catch
+    return {
+      output: null,
+      outcome: "FAILURE",
+      error: `Execution failed: ${(error as Error).message}`,
+    };
+  }
 }
 
 /**
