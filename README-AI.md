@@ -10,6 +10,13 @@ Add the following to your `.env.local` file:
 OPENAI_API_KEY=your_openai_api_key_here
 ```
 
+## Fallback Behavior
+
+- When `OPENAI_API_KEY` is missing or OpenAI is temporarily unavailable, `/api/ai/generate-procedure` now returns a deterministic workflow built from the request description.
+- The JSON payload includes a `source` field so you can tell whether the steps came from `openai` or the local `fallback` generator.
+- Fallback workflows always stay within the 15 Atomic Actions and ensure each step has the required config, so you can keep building while credentials are being configured.
+- Add your real API key as soon as possible to regain richer, AI-generated procedures.
+
 ## Features
 
 ### 1. Magic Builder
