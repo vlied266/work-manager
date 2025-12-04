@@ -1,10 +1,13 @@
 "use client";
 
+import { motion } from "framer-motion";
+
 type LogoSize = "small" | "medium" | "large";
 
 interface LogoProps {
   size?: LogoSize;
   className?: string;
+  animated?: boolean;
 }
 
 const SIZE_MAP: Record<LogoSize, number> = {
@@ -13,8 +16,13 @@ const SIZE_MAP: Record<LogoSize, number> = {
   large: 92,
 };
 
-export default function Logo({ size = "medium", className = "" }: LogoProps) {
+export default function Logo({ size = "medium", className = "", animated = false }: LogoProps) {
   const dimension = SIZE_MAP[size];
+  const centerX = 60;
+  const centerY = 60;
+  const coreRadius = 12;
+  const orbitRadius = 28;
+  const particleRadius = 4;
 
   return (
     <div
@@ -28,55 +36,136 @@ export default function Logo({ size = "medium", className = "" }: LogoProps) {
         height={dimension}
         role="presentation"
         aria-hidden="true"
+        className="drop-shadow-lg"
       >
         <defs>
-          <linearGradient id="diamondFill" x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#0f172a" />
-            <stop offset="45%" stopColor="#5f3df0" />
-            <stop offset="100%" stopColor="#29d3c1" />
-          </linearGradient>
-          <linearGradient id="diamondEdge" x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#221a52" stopOpacity="0.7" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.55" />
+          {/* Core gradient */}
+          <radialGradient id="coreGradient" cx="50%" cy="50%">
+            <stop offset="0%" stopColor="#3b82f6" stopOpacity="1" />
+            <stop offset="70%" stopColor="#6366f1" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.8" />
+          </radialGradient>
+
+          {/* Particle gradient */}
+          <radialGradient id="particleGradient" cx="50%" cy="50%">
+            <stop offset="0%" stopColor="#60a5fa" stopOpacity="1" />
+            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.8" />
+          </radialGradient>
+
+          {/* Glow effect */}
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+            <feMerge>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+
+          {/* Shine effect */}
+          <linearGradient id="shine" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="50%" stopColor="#ffffff" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </linearGradient>
         </defs>
 
-        {/* Drop shadow */}
-        <rect
-          x="30"
-          y="30"
-          width="60"
-          height="60"
-          rx="4"
-          transform="rotate(45 60 60)"
-          fill="rgba(15,23,42,0.08)"
-        />
-
-        {/* Solid diamond */}
-        <rect
-          x="32"
-          y="32"
-          width="56"
-          height="56"
-          rx="4"
-          transform="rotate(45 60 60)"
-          fill="url(#diamondFill)"
-          stroke="url(#diamondEdge)"
-          strokeWidth="3"
-        />
-
-        {/* Subtle beveled edge */}
-        <path
-          d="M60 26 L94 60 L60 94 L26 60 Z"
+        {/* Outer glow ring */}
+        <circle
+          cx={centerX}
+          cy={centerY}
+          r={orbitRadius + 8}
           fill="none"
-          stroke="rgba(255,255,255,0.25)"
-          strokeWidth="1.4"
-          strokeLinecap="round"
+          stroke="url(#particleGradient)"
+          strokeWidth="1"
+          opacity="0.2"
         />
 
-        {/* Core glint */}
-        <circle cx="60" cy="52" r="6" fill="rgba(255,255,255,0.5)" />
-        <circle cx="60" cy="52" r="10" fill="rgba(255,255,255,0.08)" />
+        {/* Orbiting particles (3 particles representing atomic structure) */}
+        {[0, 120, 240].map((angle, index) => {
+          const radian = (angle * Math.PI) / 180;
+          const x = centerX + orbitRadius * Math.cos(radian);
+          const y = centerY + orbitRadius * Math.sin(radian);
+          
+          return (
+            <g key={index}>
+              {/* Particle orbit path (subtle) */}
+              <circle
+                cx={centerX}
+                cy={centerY}
+                r={orbitRadius}
+                fill="none"
+                stroke="rgba(59, 130, 246, 0.1)"
+                strokeWidth="0.5"
+                strokeDasharray="2 4"
+              />
+              
+              {/* Particle */}
+              <circle
+                cx={x}
+                cy={y}
+                r={particleRadius}
+                fill="url(#particleGradient)"
+                filter="url(#glow)"
+                opacity="0.9"
+              >
+                {animated && (
+                  <animate
+                    attributeName="opacity"
+                    values="0.6;1;0.6"
+                    dur="2s"
+                    repeatCount="indefinite"
+                    begin={`${index * 0.3}s`}
+                  />
+                )}
+              </circle>
+              
+              {/* Particle inner highlight */}
+              <circle
+                cx={x}
+                cy={y}
+                r={particleRadius * 0.5}
+                fill="rgba(255, 255, 255, 0.6)"
+              />
+            </g>
+          );
+        })}
+
+        {/* Central core (nucleus) */}
+        <circle
+          cx={centerX}
+          cy={centerY}
+          r={coreRadius}
+          fill="url(#coreGradient)"
+          filter="url(#glow)"
+        />
+
+        {/* Core inner highlight */}
+        <circle
+          cx={centerX}
+          cy={centerY - coreRadius * 0.3}
+          r={coreRadius * 0.5}
+          fill="rgba(255, 255, 255, 0.4)"
+        />
+
+        {/* Core shine overlay */}
+        <ellipse
+          cx={centerX}
+          cy={centerY - coreRadius * 0.4}
+          rx={coreRadius * 0.8}
+          ry={coreRadius * 0.4}
+          fill="url(#shine)"
+          opacity="0.5"
+        />
+
+        {/* Subtle outer ring for depth */}
+        <circle
+          cx={centerX}
+          cy={centerY}
+          r={orbitRadius + 4}
+          fill="none"
+          stroke="rgba(59, 130, 246, 0.15)"
+          strokeWidth="1"
+        />
       </svg>
     </div>
   );

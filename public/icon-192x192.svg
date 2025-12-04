@@ -1,17 +1,67 @@
-<svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="WorkOS app icon">
+<svg width="192" height="192" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="WorkOS app icon">
   <defs>
-    <linearGradient id="diamondFill192" x1="32" y1="160" x2="160" y2="32" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0f172a" />
-      <stop offset="0.55" stop-color="#5c40f2" />
-      <stop offset="1" stop-color="#29d3c1" />
-    </linearGradient>
-    <linearGradient id="diamondStroke192" x1="32" y1="160" x2="160" y2="32" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#241b52" />
-      <stop offset="1" stop-color="#dff9ff" />
+    <radialGradient id="coreGradient192" cx="50%" cy="50%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="1" />
+      <stop offset="70%" stop-color="#6366f1" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.8" />
+    </radialGradient>
+
+    <radialGradient id="particleGradient192" cx="50%" cy="50%">
+      <stop offset="0%" stop-color="#60a5fa" stop-opacity="1" />
+      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.8" />
+    </radialGradient>
+
+    <filter id="glow192">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+      <feMerge>
+        <feMergeNode in="coloredBlur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <linearGradient id="shine192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0" />
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
     </linearGradient>
   </defs>
-  <rect width="192" height="192" rx="32" fill="#ffffff"/>
-  <path d="M96 28 L168 100 L96 172 L24 100 Z" fill="url(#diamondFill192)" stroke="url(#diamondStroke192)" stroke-width="6" stroke-linejoin="round"/>
-  <path d="M96 52 L144 100 L96 148 L48 100 Z" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.2)" stroke-width="3" stroke-linejoin="round"/>
-  <circle cx="96" cy="80" r="16" fill="rgba(255,255,255,0.4)" />
+
+  <!-- Background circle -->
+  <circle cx="60" cy="60" r="58" fill="#ffffff" />
+  
+  <!-- Outer glow ring -->
+  <circle cx="60" cy="60" r="36" fill="none" stroke="url(#particleGradient192)" stroke-width="1" opacity="0.2" />
+
+  <!-- Particle orbit path -->
+  <circle cx="60" cy="60" r="28" fill="none" stroke="rgba(59, 130, 246, 0.1)" stroke-width="0.5" stroke-dasharray="2 4" />
+
+  <!-- Particle 1 (top-right) -->
+  <g>
+    <circle cx="84.24" cy="35.76" r="4" fill="url(#particleGradient192)" filter="url(#glow192)" opacity="0.9" />
+    <circle cx="84.24" cy="35.76" r="2" fill="rgba(255, 255, 255, 0.6)" />
+  </g>
+
+  <!-- Particle 2 (bottom-left) -->
+  <g>
+    <circle cx="35.76" cy="84.24" r="4" fill="url(#particleGradient192)" filter="url(#glow192)" opacity="0.9" />
+    <circle cx="35.76" cy="84.24" r="2" fill="rgba(255, 255, 255, 0.6)" />
+  </g>
+
+  <!-- Particle 3 (left) -->
+  <g>
+    <circle cx="36" cy="60" r="4" fill="url(#particleGradient192)" filter="url(#glow192)" opacity="0.9" />
+    <circle cx="36" cy="60" r="2" fill="rgba(255, 255, 255, 0.6)" />
+  </g>
+
+  <!-- Central core (nucleus) -->
+  <circle cx="60" cy="60" r="12" fill="url(#coreGradient192)" filter="url(#glow192)" />
+
+  <!-- Core inner highlight -->
+  <circle cx="60" cy="56.4" r="6" fill="rgba(255, 255, 255, 0.4)" />
+
+  <!-- Core shine overlay -->
+  <ellipse cx="60" cy="55.2" rx="9.6" ry="4.8" fill="url(#shine192)" opacity="0.5" />
+
+  <!-- Subtle outer ring for depth -->
+  <circle cx="60" cy="60" r="32" fill="none" stroke="rgba(59, 130, 246, 0.15)" stroke-width="1" />
 </svg>

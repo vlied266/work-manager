@@ -10,8 +10,14 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   themeColor: "#0f172a",
   icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192x192.svg", sizes: "192x192", type: "image/svg+xml" },
+      { url: "/icon-512x512.svg", sizes: "512x512", type: "image/svg+xml" },
+    ],
+    apple: [
+      { url: "/icon-192x192.svg", sizes: "192x192", type: "image/svg+xml" },
+    ],
   },
   viewport: {
     width: "device-width",
