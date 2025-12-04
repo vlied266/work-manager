@@ -42,6 +42,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
           (userDoc) => {
             if (userDoc.exists()) {
               const data = userDoc.data();
+              const normalizedOrgId = data.orgId || data.organizationId || "";
               const profile: UserProfile = {
                 id: userDoc.id,
                 uid: user.uid,
@@ -51,13 +52,14 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
                 jobTitle: data.jobTitle || undefined,
                 role: data.role || "OPERATOR",
                 teamIds: data.teamIds || [],
-                organizationId: data.organizationId || "",
+                organizationId: normalizedOrgId,
+                orgId: data.orgId,
                 createdAt: data.createdAt?.toDate() || new Date(),
                 updatedAt: data.updatedAt?.toDate() || new Date(),
               };
 
               setUserProfile(profile);
-              setOrganizationId(profile.organizationId || null);
+              setOrganizationId(normalizedOrgId || null);
               setLoading(false);
             } else {
               // Fallback to auth user data
@@ -70,6 +72,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
                 role: "OPERATOR",
                 teamIds: [],
                 organizationId: "",
+                orgId: "",
                 createdAt: new Date(),
                 updatedAt: new Date(),
               });

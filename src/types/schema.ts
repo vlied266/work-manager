@@ -225,6 +225,7 @@ export interface UserProfile {
   role: "ADMIN" | "MANAGER" | "OPERATOR";
   teamIds: string[];
   organizationId: string;
+  orgId?: string;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -51,6 +51,7 @@ export default function SignUpPage() {
         role: "OPERATOR" as const, // Default role for new users
         teamIds: [],
         organizationId: "", // Will be set during onboarding
+        orgId: "",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
