@@ -19,6 +19,9 @@ import {
 import { TrendingUp, Users, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
 import { useOrgQuery } from "@/hooks/useOrgData";
 
+// Prevent SSR/prerendering - this page requires client-side auth
+export const dynamic = 'force-dynamic';
+
 const COLORS = {
   completed: "#10b981", // green
   flagged: "#ef4444", // rose
@@ -39,7 +42,7 @@ export default function AnalyticsPage() {
     }
 
     const unsubscribe = onSnapshot(
-      q,
+      runsQuery,
       (snapshot) => {
         const runs = snapshot.docs.map((doc) => {
           const data = doc.data();
@@ -64,7 +67,7 @@ export default function AnalyticsPage() {
     );
 
     return () => unsubscribe();
-  }, [organizationId]);
+  }, [runsQuery]);
 
   // Calculate tasks completed per day (last 7 days)
   const tasksPerDay = useMemo(() => {
@@ -279,7 +282,7 @@ export default function AnalyticsPage() {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
                 outerRadius={100}
                 fill="#8884d8"
                 dataKey="value"

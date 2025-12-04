@@ -10,6 +10,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useOrgQuery } from "@/hooks/useOrgData";
+import { useOrganization } from "@/contexts/OrganizationContext";
+
+// Prevent SSR/prerendering - this page requires client-side auth
+export const dynamic = 'force-dynamic';
 
 export default function OperatorInbox() {
   const [pendingTasks, setPendingTasks] = useState<ActiveRun[]>([]);
@@ -19,20 +24,26 @@ export default function OperatorInbox() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "in_progress" | "flagged">("all");
-  const [userId] = useState("user-1"); // TODO: Get from auth context
-  const [organizationId] = useState("default-org"); // TODO: Get from auth context
   const [isMobile, setIsMobile] = useState(false);
+  
+  const { userProfile: orgUserProfile } = useOrganization();
+  const userId = orgUserProfile?.uid || null;
+
+  // Use organization-scoped query hook with additional status filter
+  const runsQuery = useOrgQuery("active_runs", [
+    where("status", "in", ["IN_PROGRESS", "FLAGGED"])
+  ]);
 
   useEffect(() => {
-    // Fetch active runs assigned to this user
-    const q = query(
-      collection(db, "active_runs"),
-      where("organizationId", "==", organizationId),
-      where("status", "in", ["IN_PROGRESS", "FLAGGED"])
-    );
+    if (!runsQuery || !userId) {
+      setLoading(false);
+      return;
+    }
 
+    // Fetch active runs assigned to this user
+    // Query is automatically filtered by organizationId via useOrgQuery
     const unsubscribe = onSnapshot(
-      q,
+      runsQuery,
       async (snapshot) => {
         const runs = snapshot.docs.map((doc) => {
           const data = doc.data();
@@ -65,15 +76,17 @@ export default function OperatorInbox() {
         });
 
         setPendingTasks(userTasks);
-        setLoading(false);
+        
+        // Update user profile from context
+        if (orgUserProfile) {
+          setUserProfile(orgUserProfile);
+        }
 
         // Fetch procedures for context
         const procIds = [...new Set(userTasks.map((t) => t.procedureId))];
         const procMap: Record<string, Procedure> = {};
         for (const procId of procIds) {
-          const procDoc = await import("firebase/firestore").then((m) =>
-            m.getDoc(m.doc(db, "procedures", procId))
-          );
+          const procDoc = await getDoc(doc(db, "procedures", procId));
           if (procDoc.exists()) {
             const data = procDoc.data();
             procMap[procId] = {
@@ -86,6 +99,7 @@ export default function OperatorInbox() {
           }
         }
         setProcedures(procMap);
+        setLoading(false);
       },
       (error) => {
         console.error("Error fetching tasks:", error);
@@ -94,7 +108,7 @@ export default function OperatorInbox() {
     );
 
     return () => unsubscribe();
-  }, [userId, organizationId]);
+  }, [runsQuery, userId, orgUserProfile]);
 
   useEffect(() => {
     const checkMobile = () => {

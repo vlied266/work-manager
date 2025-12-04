@@ -10,6 +10,9 @@ import { exportToCSV, generateRunCertificate, exportRunToCSV } from "@/lib/expor
 import { motion } from "framer-motion";
 import { useOrgQuery } from "@/hooks/useOrgData";
 
+// Prevent SSR/prerendering - this page requires client-side auth
+export const dynamic = 'force-dynamic';
+
 export default function HistoryPage() {
   const [runs, setRuns] = useState<ActiveRun[]>([]);
   const [procedures, setProcedures] = useState<Record<string, Procedure>>({});
@@ -29,7 +32,7 @@ export default function HistoryPage() {
     }
 
     const unsubscribe = onSnapshot(
-      q,
+      runsQuery,
       async (snapshot) => {
         const runsData = snapshot.docs.map((doc) => {
           const data = doc.data();
@@ -76,7 +79,7 @@ export default function HistoryPage() {
     );
 
     return () => unsubscribe();
-  }, [organizationId]);
+  }, [runsQuery]);
 
   const handleExportAll = () => {
     setExporting(true);

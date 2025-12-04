@@ -10,6 +10,9 @@ import { exportToCSV, generateRunCertificate, exportRunToCSV } from "@/lib/expor
 import { Procedure } from "@/types/schema";
 import { useOrgQuery } from "@/hooks/useOrgData";
 
+// Prevent SSR/prerendering - this page requires client-side auth
+export const dynamic = 'force-dynamic';
+
 export default function MonitorPage() {
   const [runs, setRuns] = useState<ActiveRun[]>([]);
   const [procedures, setProcedures] = useState<Record<string, Procedure>>({});
@@ -27,7 +30,7 @@ export default function MonitorPage() {
     }
 
     const unsubscribe = onSnapshot(
-      q,
+      runsQuery,
       async (snapshot) => {
         const runsData = snapshot.docs.map((doc) => {
           const data = doc.data();
@@ -74,7 +77,7 @@ export default function MonitorPage() {
     );
 
     return () => unsubscribe();
-  }, [organizationId]);
+  }, [runsQuery]);
 
   const filteredRuns = runs.filter((run) => {
     if (filter === "all") return true;

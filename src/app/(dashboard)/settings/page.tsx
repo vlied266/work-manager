@@ -9,6 +9,9 @@ import { useOrgQuery, useOrgId, useOrgDataCreator } from "@/hooks/useOrgData";
 import { checkUsageLimit, getPlanLimits } from "@/lib/billing/limits";
 import { UpgradeModal } from "@/components/billing/upgrade-modal";
 
+// Prevent SSR/prerendering - this page requires client-side auth
+export const dynamic = 'force-dynamic';
+
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<"teams" | "users" | "roles">("teams");
   const [teams, setTeams] = useState<Team[]>([]);

@@ -12,6 +12,9 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useOrgQuery } from "@/hooks/useOrgData";
 
+// Prevent SSR/prerendering - this page requires client-side auth
+export const dynamic = 'force-dynamic';
+
 export default function DashboardPage() {
   const [activeRuns, setActiveRuns] = useState<ActiveRun[]>([]);
   const [procedures, setProcedures] = useState<Record<string, Procedure>>({});
