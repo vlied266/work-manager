@@ -19,13 +19,15 @@ import {
   Clock,
   CreditCard,
   LogOut,
+  Target,
+  User,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Logo from "@/components/Logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { UserProfile } from "@/types/schema";
 
-const navigation = [
+const ADMIN_NAVIGATION = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Inbox", href: "/inbox", icon: Inbox },
   { name: "Studio", href: "/studio", icon: Sparkles },
@@ -34,6 +36,13 @@ const navigation = [
   { name: "Analytics", href: "/analytics", icon: TrendingUp },
   { name: "Billing", href: "/billing", icon: CreditCard },
   { name: "Settings", href: "/settings", icon: Settings },
+];
+
+const MEMBER_NAVIGATION = [
+  { name: "My Tasks", href: "/inbox", icon: Inbox },
+  { name: "Focus Mode", href: "/focus", icon: Target },
+  { name: "My History", href: "/history", icon: Clock },
+  { name: "Profile", href: "/profile", icon: User },
 ];
 
 export default function DashboardLayout({
@@ -47,6 +56,13 @@ export default function DashboardLayout({
   const [userId, setUserId] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const normalizedRole = (userProfile?.role ?? "ADMIN").toUpperCase();
+  const isAdmin = normalizedRole === "ADMIN";
+  const navigation = isAdmin ? ADMIN_NAVIGATION : MEMBER_NAVIGATION;
+  const roleLabel = isAdmin ? "Admin" : "Member";
+  const roleBadgeClasses = isAdmin
+    ? "bg-blue-100 text-blue-700"
+    : "bg-slate-100 text-slate-600";
 
   const handleLogout = async () => {
     try {
@@ -233,9 +249,16 @@ export default function DashboardLayout({
                       </div>
                       {/* Name and Email */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-slate-900 truncate">
-                          {userProfile.displayName}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-medium text-slate-900 truncate">
+                            {userProfile.displayName}
+                          </p>
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${roleBadgeClasses}`}
+                          >
+                            {roleLabel}
+                          </span>
+                        </div>
                         <p className="text-xs text-slate-500 truncate">
                           {userProfile.email}
                         </p>
