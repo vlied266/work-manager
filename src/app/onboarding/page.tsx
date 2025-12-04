@@ -112,9 +112,9 @@ export default function OnboardingPage() {
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 backdrop-blur">
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
-              WorkOS
+              Atomic Work
             </Link>
-            <h1 className="mt-6 text-4xl font-semibold">Welcome to WorkOS</h1>
+            <h1 className="mt-6 text-4xl font-semibold">Welcome to Atomic Work</h1>
             <p className="mt-2 text-base text-white/70">Let&apos;s set up your workspace.</p>
           </div>
 

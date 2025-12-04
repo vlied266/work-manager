@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
@@ -19,7 +19,7 @@ interface Invitation {
   expiresAt?: Date;
 }
 
-export default function AcceptInvitePage() {
+function AcceptInviteContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token");
@@ -292,6 +292,21 @@ export default function AcceptInvitePage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AcceptInvitePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50/40 via-white to-cyan-50/40 flex items-center justify-center p-8">
+        <div className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-12 text-center max-w-md w-full">
+          <div className="mb-6 inline-block h-12 w-12 animate-spin rounded-full border-4 border-slate-300 border-t-slate-900"></div>
+          <p className="text-sm font-semibold text-slate-600">Loading invitation...</p>
+        </div>
+      </div>
+    }>
+      <AcceptInviteContent />
+    </Suspense>
   );
 }
 

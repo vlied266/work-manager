@@ -74,7 +74,7 @@ export default function AboutPage() {
             className="mx-auto max-w-4xl text-center"
           >
             <h1 className="text-6xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight text-slate-900 mb-6">
-              About WorkOS
+              About Atomic Work
             </h1>
             <p className="text-2xl sm:text-3xl leading-relaxed text-slate-600 max-w-3xl mx-auto">
               We're building the operating system for work. Our mission is to eliminate ambiguity and make every process atomic, clear, and executable.
@@ -101,17 +101,17 @@ export default function AboutPage() {
                 </span>
               </div>
               <h2 className="text-5xl sm:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight">
-                Why we built WorkOS?
+                Why we built Atomic Work?
               </h2>
               <div className="space-y-6 text-lg sm:text-xl leading-relaxed text-slate-700">
                 <p>
-                  WorkOS was founded in 2024 with a simple but powerful idea: work should be broken down into atomic, indivisible tasks that are clear, executable, and measurable.
+                  Atomic Work was founded in 2024 with a simple but powerful idea: work should be broken down into atomic, indivisible tasks that are clear, executable, and measurable.
                 </p>
                 <p>
                   We noticed that teams were struggling with complex processes, unclear workflows, and a lack of visibility into what was actually happening. Traditional project management tools weren't solving the fundamental problem.
                 </p>
                 <p>
-                  So we built WorkOS—a platform that transforms complex processes into atomic tasks. We believe that when work is atomic, it becomes manageable, trackable, and ultimately, more successful.
+                  So we built Atomic Work—a platform that transforms complex processes into atomic tasks. We believe that when work is atomic, it becomes manageable, trackable, and ultimately, more successful.
                 </p>
               </div>
             </motion.div>
@@ -291,7 +291,7 @@ export default function AboutPage() {
               Join Us on This Journey
             </h2>
             <p className="text-xl text-slate-600 mb-8">
-              Be part of the future of work. Start using WorkOS today.
+              Be part of the future of work. Start using Atomic Work today.
             </p>
             <Link href="/sign-up">
               <motion.button

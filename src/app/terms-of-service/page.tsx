@@ -13,16 +13,16 @@ export default function TermsOfServicePage() {
       id: "acceptance-of-terms",
       title: "Acceptance of Terms",
       content: [
-        "By accessing or using WorkOS, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you disagree with any part of these terms, you may not access the service.",
+        "By accessing or using Atomic Work, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you disagree with any part of these terms, you may not access the service.",
         "These terms apply to all users of the service, including without limitation users who are browsers, vendors, customers, merchants, and contributors of content.",
-        "If you are using WorkOS on behalf of an organization, you represent and warrant that you have the authority to bind that organization to these terms.",
+        "If you are using Atomic Work on behalf of an organization, you represent and warrant that you have the authority to bind that organization to these terms.",
       ],
     },
     {
       id: "use-of-service",
       title: "Use of Service",
       content: [
-        "You may use WorkOS for lawful purposes only. You agree not to use the service in any way that violates applicable laws or regulations, or infringes on the rights of others.",
+        "You may use Atomic Work for lawful purposes only. You agree not to use the service in any way that violates applicable laws or regulations, or infringes on the rights of others.",
         "You agree not to use the service to transmit, distribute, store, or destroy material that violates any applicable law or regulation, infringes on intellectual property rights, or is defamatory, obscene, or otherwise objectionable.",
         "You are responsible for all activities that occur under your account, regardless of whether you authorized such activities. You must immediately notify us of any unauthorized use of your account.",
       ],
@@ -40,7 +40,7 @@ export default function TermsOfServicePage() {
       id: "user-accounts",
       title: "User Accounts",
       content: [
-        "You are responsible for maintaining the security of your account and password. WorkOS cannot and will not be liable for any loss or damage from your failure to comply with this security obligation.",
+        "You are responsible for maintaining the security of your account and password. Atomic Work cannot and will not be liable for any loss or damage from your failure to comply with this security obligation.",
         "You agree to notify us immediately of any unauthorized access or use of your account. We reserve the right to suspend or terminate your account if we suspect unauthorized access.",
         "You may not share your account credentials with others or allow others to access your account. Each user must have their own account.",
       ],
@@ -49,7 +49,7 @@ export default function TermsOfServicePage() {
       id: "intellectual-property",
       title: "Intellectual Property",
       content: [
-        "WorkOS and its original content, features, and functionality are owned by WorkOS and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.",
+        "Atomic Work and its original content, features, and functionality are owned by Atomic Work and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.",
         "You may not copy, modify, distribute, sell, or lease any part of our service or included software, nor may you reverse engineer or attempt to extract the source code of that software.",
         "Our trademarks, service marks, and logos may not be used in connection with any product or service without our prior written consent.",
       ],
@@ -58,7 +58,7 @@ export default function TermsOfServicePage() {
       id: "user-content",
       title: "User Content",
       content: [
-        "You retain ownership of any content you create using WorkOS. By using our service, you grant us a worldwide, non-exclusive, royalty-free license to use, store, and process your content as necessary to provide the service.",
+        "You retain ownership of any content you create using Atomic Work. By using our service, you grant us a worldwide, non-exclusive, royalty-free license to use, store, and process your content as necessary to provide the service.",
         "You represent and warrant that you have all rights necessary to grant us the license described above. You will not upload content that infringes on the rights of others.",
         "We reserve the right to remove or refuse to process any content that violates these terms or that we determine is harmful, offensive, or otherwise objectionable.",
       ],
@@ -67,7 +67,7 @@ export default function TermsOfServicePage() {
       id: "prohibited-uses",
       title: "Prohibited Uses",
       content: [
-        "You may not use WorkOS to: violate any laws, infringe on intellectual property rights, transmit harmful code, spam, or engage in any activity that disrupts the service or harms other users.",
+        "You may not use Atomic Work to: violate any laws, infringe on intellectual property rights, transmit harmful code, spam, or engage in any activity that disrupts the service or harms other users.",
         "You may not attempt to gain unauthorized access to any portion of the service, other accounts, computer systems, or networks connected to the service.",
         "You may not use the service to build a competitive product or service, or to copy features, functions, or graphics of the service.",
       ],
@@ -85,7 +85,7 @@ export default function TermsOfServicePage() {
       id: "limitation-of-liability",
       title: "Limitation of Liability",
       content: [
-        "To the maximum extent permitted by law, WorkOS shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly, or any loss of data, use, goodwill, or other intangible losses.",
+        "To the maximum extent permitted by law, Atomic Work shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly, or any loss of data, use, goodwill, or other intangible losses.",
         "Our total liability for any claims arising out of or relating to these terms or the service shall not exceed the amount you paid us in the twelve months preceding the claim.",
         "Some jurisdictions do not allow the exclusion or limitation of liability for consequential or incidental damages, so the above limitation may not apply to you.",
       ],
@@ -137,7 +137,7 @@ export default function TermsOfServicePage() {
               Terms of Service
             </h1>
             <p className="text-xl leading-relaxed text-slate-600 mb-4">
-              Please read these terms carefully before using WorkOS. By using our service, you agree to these terms.
+              Please read these terms carefully before using Atomic Work. By using our service, you agree to these terms.
             </p>
             <p className="text-sm text-slate-500">
               Last Updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}

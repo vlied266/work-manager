@@ -21,7 +21,7 @@ export default function PressKitPage() {
     {
       icon: FileText,
       title: "Press Releases",
-      description: "Latest news and announcements about WorkOS",
+      description: "Latest news and announcements about Atomic Work",
       files: ["Product Launches", "Funding Announcements", "Partnership News"],
       color: "green",
     },
@@ -74,7 +74,7 @@ export default function PressKitPage() {
               Press Kit
             </h1>
             <p className="mt-6 text-xl leading-8 text-slate-600 sm:text-2xl">
-              Everything you need to write about WorkOS. Download assets, press releases, and learn about our AI-powered platform.
+              Everything you need to write about Atomic Work. Download assets, press releases, and learn about our AI-powered platform.
             </p>
           </motion.div>
         </div>
@@ -95,12 +95,12 @@ export default function PressKitPage() {
                 <Sparkles className="h-6 w-6" />
               </div>
               <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">
-                About WorkOS
+                About Atomic Work
               </h2>
             </div>
             <div className="prose prose-slate max-w-none">
               <p className="text-lg text-slate-600 leading-8 mb-6">
-                WorkOS is a workflow automation platform that transforms complex business processes into atomic, manageable tasks. 
+                Atomic Work is a workflow automation platform that transforms complex business processes into atomic, manageable tasks. 
                 Our AI-powered builder allows users to generate complete workflows from natural language descriptions, making 
                 automation accessible to everyone—no coding required.
               </p>

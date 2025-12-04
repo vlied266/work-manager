@@ -104,7 +104,7 @@ export default function IntegrationsSection() {
         <div className="relative flex items-center justify-center min-h-[500px] md:min-h-[600px]">
           {/* Desktop: Absolute positioned satellites */}
           <div className="hidden md:block relative w-full h-full">
-            {/* Central Hub - WorkOS */}
+            {/* Central Hub - Atomic Work */}
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               whileInView={{ opacity: 1, scale: 1 }}

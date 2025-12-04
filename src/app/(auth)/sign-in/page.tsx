@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
@@ -9,7 +9,7 @@ import Link from "next/link";
 import { Loader2, AlertCircle } from "lucide-react";
 import Logo from "@/components/Logo";
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect");
@@ -118,7 +118,7 @@ export default function SignInPage() {
             <Logo size="small" />
             <div>
               <span className="text-xl font-bold text-slate-900 group-hover:text-slate-700 transition-colors block">
-                WorkOS
+                Atomic Work
               </span>
               <div className="text-[10px] text-slate-500 font-medium tracking-wider uppercase">
                 Atomic Engine
@@ -204,6 +204,27 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-50 to-white px-4 py-12">
+        <div className="w-full max-w-md">
+          <div className="mb-8 text-center">
+            <Logo size="small" />
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+            </div>
+          </div>
+        </div>
+      </div>
+    }>
+      <SignInForm />
+    </Suspense>
   );
 }
 

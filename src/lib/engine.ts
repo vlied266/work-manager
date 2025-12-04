@@ -1,5 +1,5 @@
 /**
- * WorkOS Engine - Data Processing & Logic
+ * Atomic Work Engine - Data Processing & Logic
  * Handles intelligent processing of atomic actions
  */
 

@@ -14,7 +14,7 @@ export default function PartnersPage() {
     {
       icon: Users,
       title: "Integration Partners",
-      description: "Connect WorkOS with your platform. We provide APIs, documentation, and AI-powered code generation to make integration seamless.",
+      description: "Connect Atomic Work with your platform. We provide APIs, documentation, and AI-powered code generation to make integration seamless.",
       benefits: [
         "API access and documentation",
         "AI code generation assistance",
@@ -26,7 +26,7 @@ export default function PartnersPage() {
     {
       icon: TrendingUp,
       title: "Reseller Partners",
-      description: "Sell WorkOS to your customers. Earn competitive commissions and provide value-added services with our AI features.",
+      description: "Sell Atomic Work to your customers. Earn competitive commissions and provide value-added services with our AI features.",
       benefits: [
         "Competitive commission rates",
         "Sales enablement resources",
@@ -38,7 +38,7 @@ export default function PartnersPage() {
     {
       icon: Zap,
       title: "Technology Partners",
-      description: "Build complementary solutions. Integrate your AI tools, services, or platforms with WorkOS workflows.",
+      description: "Build complementary solutions. Integrate your AI tools, services, or platforms with Atomic Work workflows.",
       benefits: [
         "Technical integration support",
         "Joint product development",
@@ -78,10 +78,10 @@ export default function PartnersPage() {
               <span className="text-sm font-semibold text-blue-900">Partner Program</span>
             </div>
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900">
-              Partner with WorkOS
+              Partner with Atomic Work
             </h1>
             <p className="mt-6 text-xl leading-8 text-slate-600 sm:text-2xl">
-              Grow your business by partnering with WorkOS. Leverage our AI-powered platform to deliver more value to your customers.
+              Grow your business by partnering with Atomic Work. Leverage our AI-powered platform to deliver more value to your customers.
             </p>
           </motion.div>
         </div>
@@ -155,10 +155,10 @@ export default function PartnersPage() {
               <Sparkles className="h-10 w-10" />
             </div>
             <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 mb-4">
-              Why Partner with WorkOS?
+              Why Partner with Atomic Work?
             </h2>
             <p className="text-xl text-slate-600 mb-8">
-              Join a growing ecosystem of partners leveraging AI-powered workflow automation. Our platform makes it easy to integrate, sell, and build with WorkOS.
+              Join a growing ecosystem of partners leveraging AI-powered workflow automation. Our platform makes it easy to integrate, sell, and build with Atomic Work.
             </p>
             <Link href="/contact">
               <motion.button

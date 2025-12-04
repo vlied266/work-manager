@@ -348,7 +348,7 @@ export default function BackofficePage() {
               <Shield className="h-8 w-8 text-blue-400" />
               <div>
                 <h1 className="text-4xl font-extrabold text-white tracking-tight">
-                  WorkOS Command Center
+                  Atomic Work Command Center
                 </h1>
                 <p className="text-slate-400 text-sm mt-1">
                   Super Admin Dashboard - System Overview

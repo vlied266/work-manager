@@ -120,7 +120,7 @@ export default function IntegrationsPage() {
               Connect Everything
             </h1>
             <p className="mt-6 text-xl leading-8 text-slate-600 sm:text-2xl">
-              Integrate WorkOS with your favorite tools. Our AI-powered integration system makes connecting apps effortless.
+              Integrate Atomic Work with your favorite tools. Our AI-powered integration system makes connecting apps effortless.
             </p>
           </motion.div>
         </div>
@@ -200,7 +200,7 @@ export default function IntegrationsPage() {
               Build Custom Integrations
             </h2>
             <p className="text-xl text-slate-600 mb-8">
-              Use our REST API and webhooks to connect WorkOS with any tool. Our AI can even help generate integration code.
+              Use our REST API and webhooks to connect Atomic Work with any tool. Our AI can even help generate integration code.
             </p>
             <div className="flex items-center justify-center gap-4">
               <Link href="/api">

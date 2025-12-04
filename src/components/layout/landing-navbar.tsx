@@ -48,7 +48,7 @@ export function LandingNavbar() {
             </motion.div>
             <div>
               <span className="text-xl font-bold text-slate-900 group-hover:text-slate-700 transition-colors">
-                WorkOS
+                Atomic Work
               </span>
               <div className="text-[10px] text-slate-500 font-medium tracking-wider uppercase">
                 Atomic Engine

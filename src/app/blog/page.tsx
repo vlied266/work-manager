@@ -35,7 +35,7 @@ export default function BlogPage() {
     },
     {
       id: 3,
-      title: "Building Your First Workflow with WorkOS",
+      title: "Building Your First Workflow with Atomic Work",
       excerpt: "A step-by-step guide to creating your first procedure using our visual builder and AI-powered tools.",
       author: "Michael Park",
       date: "March 5, 2024",
@@ -66,7 +66,7 @@ export default function BlogPage() {
     {
       id: 6,
       title: "API Integration Guide",
-      excerpt: "Learn how to integrate WorkOS with your existing tools and systems using our comprehensive REST API.",
+      excerpt: "Learn how to integrate Atomic Work with your existing tools and systems using our comprehensive REST API.",
       author: "Sarah Johnson",
       date: "February 15, 2024",
       readTime: "10 min read",

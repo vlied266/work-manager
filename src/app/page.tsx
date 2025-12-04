@@ -45,7 +45,7 @@ export default function LandingPage() {
               </motion.div>
               <div>
                 <span className="text-xl font-bold text-slate-900 group-hover:text-slate-700 transition-colors">
-                  WorkOS
+                  Atomic Work
                 </span>
                 <div className="text-[10px] text-slate-500 font-medium tracking-wider uppercase">
                   Atomic Engine
@@ -678,7 +678,7 @@ export default function LandingPage() {
               transition={{ duration: 0.6, delay: 0.5 }}
               className="mt-8 text-xl leading-8 text-slate-600 sm:text-2xl max-w-2xl mx-auto"
             >
-              Join teams that are already using WorkOS to eliminate ambiguity and boost productivity.
+              Join teams that are already using Atomic Work to eliminate ambiguity and boost productivity.
             </motion.p>
 
             {/* CTA Buttons */}
@@ -846,7 +846,7 @@ export default function LandingPage() {
                 </motion.div>
                 <div>
                   <div className="text-xl font-bold text-slate-900 group-hover:text-slate-700 transition-colors">
-                    WorkOS
+                    Atomic Work
                   </div>
                   <div className="text-xs text-slate-500 font-medium tracking-wider uppercase">
                     Atomic Engine
@@ -983,7 +983,7 @@ export default function LandingPage() {
           >
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="text-sm text-slate-500">
-                <p>© {new Date().getFullYear()} WorkOS. All rights reserved.</p>
+                <p>© {new Date().getFullYear()} Atomic Work. All rights reserved.</p>
               </div>
               <div className="flex flex-wrap items-center gap-6 text-sm text-slate-500">
                 <Link

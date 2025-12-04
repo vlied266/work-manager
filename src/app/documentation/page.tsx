@@ -16,18 +16,18 @@ export default function DocumentationPage() {
       id: "getting-started",
       title: "Getting Started",
       content: [
-        "Welcome to WorkOS! This guide will help you get started with building your first workflow. WorkOS is a platform that transforms complex processes into atomic, executable tasks.",
+        "Welcome to Atomic Work! This guide will help you get started with building your first workflow. Atomic Work is a platform that transforms complex processes into atomic, executable tasks.",
         "To begin, create an account and set up your organization. Once you're logged in, you can start building procedures using our visual builder or our AI-powered Magic Builder.",
         "Our AI features can generate entire workflows from natural language descriptions. Simply describe what you want to accomplish, and our AI will create a complete procedure with all the necessary steps.",
       ],
       subsections: [
         {
           id: "introduction",
-          title: "Introduction to WorkOS",
+          title: "Introduction to Atomic Work",
           content: [
-            "WorkOS is built on the principle of atomic tasks—breaking down complex processes into indivisible, manageable units. Each task is clear, executable, and measurable.",
+            "Atomic Work is built on the principle of atomic tasks—breaking down complex processes into indivisible, manageable units. Each task is clear, executable, and measurable.",
             "Our platform supports 16 predefined atomic actions, including Input, Compare, Authorize, Validate, and more. These actions can be combined to create powerful workflows.",
-            "WorkOS also includes AI-powered features that can automatically generate procedures from natural language descriptions, making it easy to get started even if you're not familiar with workflow design.",
+            "Atomic Work also includes AI-powered features that can automatically generate procedures from natural language descriptions, making it easy to get started even if you're not familiar with workflow design.",
           ],
         },
         {
@@ -43,7 +43,7 @@ export default function DocumentationPage() {
           id: "understanding-atomic-tasks",
           title: "Understanding Atomic Tasks",
           content: [
-            "Atomic tasks are the building blocks of WorkOS. Each task represents a single, indivisible action that must be completed before moving to the next step.",
+            "Atomic tasks are the building blocks of Atomic Work. Each task represents a single, indivisible action that must be completed before moving to the next step.",
             "Tasks can be configured with specific requirements, validation rules, and assignment logic. This ensures that every step is clear and executable.",
             "When a task is completed, the workflow automatically moves to the next step. This creates a clear, linear progression through your process.",
           ],
@@ -54,7 +54,7 @@ export default function DocumentationPage() {
       id: "ai-features",
       title: "AI Features",
       content: [
-        "WorkOS includes powerful AI features that can automate workflow creation and provide intelligent suggestions. Our AI is trained on thousands of workflows and can generate procedures that follow best practices.",
+        "Atomic Work includes powerful AI features that can automate workflow creation and provide intelligent suggestions. Our AI is trained on thousands of workflows and can generate procedures that follow best practices.",
         "The AI Magic Builder can create complete procedures from natural language descriptions. Simply describe what you want to accomplish, and the AI will generate a workflow with all necessary steps.",
         "Our AI can also provide suggestions for improving existing workflows, identifying potential bottlenecks, and optimizing task assignments.",
       ],
@@ -83,7 +83,7 @@ export default function DocumentationPage() {
       id: "api-reference",
       title: "API Reference",
       content: [
-        "WorkOS provides a comprehensive REST API that allows you to integrate our platform with your existing tools and systems. The API is designed to be simple, consistent, and powerful.",
+        "Atomic Work provides a comprehensive REST API that allows you to integrate our platform with your existing tools and systems. The API is designed to be simple, consistent, and powerful.",
         "All API requests require authentication using an API key. You can generate API keys from your organization settings. Keep your API keys secure and never share them publicly.",
         "The API follows RESTful principles and uses standard HTTP methods. Responses are returned in JSON format, and errors follow a consistent structure.",
       ],
@@ -112,7 +112,7 @@ export default function DocumentationPage() {
       id: "team-collaboration",
       title: "Team Collaboration",
       content: [
-        "WorkOS is designed for team collaboration. You can create teams, assign tasks to specific users or teams, and track progress across your organization.",
+        "Atomic Work is designed for team collaboration. You can create teams, assign tasks to specific users or teams, and track progress across your organization.",
         "Tasks can be assigned to individuals, teams, or set up as a queue where any team member can claim them. This flexibility allows you to model various workflow patterns.",
         "All team members receive notifications when tasks are assigned to them, when tasks are completed, or when comments are added to workflows.",
       ],
@@ -169,7 +169,7 @@ export default function DocumentationPage() {
               Documentation
             </h1>
             <p className="text-xl leading-relaxed text-slate-600 mb-6">
-              Everything you need to master WorkOS. From basics to advanced features, including our AI-powered tools.
+              Everything you need to master Atomic Work. From basics to advanced features, including our AI-powered tools.
             </p>
             
             {/* Search Bar */}

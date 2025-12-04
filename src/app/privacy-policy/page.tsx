@@ -68,7 +68,7 @@ export default function PrivacyPolicyPage() {
       title: "Third-Party Services",
       content: [
         "We may use third-party services for analytics, payment processing, and other functions. These services have their own privacy policies governing the use of your information.",
-        "When you integrate third-party services with WorkOS, you are subject to both our privacy policy and the privacy policies of those third-party services.",
+        "When you integrate third-party services with Atomic Work, you are subject to both our privacy policy and the privacy policies of those third-party services.",
         "We carefully select our third-party partners and require them to maintain appropriate security measures. However, we are not responsible for the privacy practices of third-party services.",
       ],
     },

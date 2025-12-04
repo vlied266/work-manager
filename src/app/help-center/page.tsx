@@ -28,12 +28,12 @@ export default function HelpCenterPage() {
     },
     {
       question: "What are atomic tasks?",
-      answer: "Atomic tasks are indivisible, single-purpose actions like collecting input, validating data, or requesting approval. They're the building blocks of all workflows in WorkOS.",
+      answer: "Atomic tasks are indivisible, single-purpose actions like collecting input, validating data, or requesting approval. They're the building blocks of all workflows in Atomic Work.",
       category: "Basics",
     },
     {
       question: "How do integrations work?",
-      answer: "WorkOS integrates with popular tools via our API and webhooks. You can also use Zapier to connect with 5000+ apps. Our AI can help generate integration code.",
+      answer: "Atomic Work integrates with popular tools via our API and webhooks. You can also use Zapier to connect with 5000+ apps. Our AI can help generate integration code.",
       category: "Integrations",
     },
     {
@@ -107,7 +107,7 @@ export default function HelpCenterPage() {
               Help Center
             </h1>
             <p className="mt-6 text-xl leading-8 text-slate-600 sm:text-2xl">
-              Find answers, get support, and learn how to make the most of WorkOS and our AI features.
+              Find answers, get support, and learn how to make the most of Atomic Work and our AI features.
             </p>
           </motion.div>
         </div>

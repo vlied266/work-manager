@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "WorkOS - The Atomic Engine",
+  title: "Atomic Work - The Atomic Engine",
   description: "B2B Process Execution Engine",
   manifest: "/manifest.json",
   themeColor: "#0f172a",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "WorkOS",
+    title: "Atomic Work",
   },
 };
 

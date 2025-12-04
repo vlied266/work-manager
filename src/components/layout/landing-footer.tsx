@@ -28,7 +28,7 @@ export function LandingFooter() {
             Ready to streamline your workflow?
           </h2>
           <p className="text-lg text-slate-600 mb-8 max-w-2xl mx-auto">
-            Join thousands of teams using WorkOS to transform their processes into atomic, executable workflows.
+            Join thousands of teams using Atomic Work to transform their processes into atomic, executable workflows.
           </p>
           <Link href="/sign-up" prefetch={false}>
             <motion.button
@@ -62,7 +62,7 @@ export function LandingFooter() {
                 </motion.div>
                 <div>
                   <div className="text-xl font-bold text-slate-900 group-hover:text-slate-700 transition-colors">
-                    WorkOS
+                    Atomic Work
                   </div>
                   <div className="text-xs text-slate-500 font-medium tracking-wider uppercase">
                     Atomic Engine
@@ -196,7 +196,7 @@ export function LandingFooter() {
         >
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-sm text-slate-500">
-              <p>© {new Date().getFullYear()} WorkOS. All rights reserved.</p>
+              <p>© {new Date().getFullYear()} Atomic Work. All rights reserved.</p>
             </div>
             <div className="flex flex-wrap items-center gap-6 text-sm text-slate-500">
               <Link

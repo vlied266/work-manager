@@ -28,7 +28,7 @@ export default function Logo({ size = "medium", className = "", animated = false
     <div
       className={`relative inline-flex items-center justify-center ${className}`}
       style={{ width: dimension, height: dimension }}
-      aria-label="WorkOS Atomic mark"
+      aria-label="Atomic Work Atomic mark"
     >
       <svg
         viewBox="0 0 120 120"

@@ -159,7 +159,7 @@ export default function CookiePolicyPage() {
                 Our Cookie Preferences
               </h3>
               <p className="text-base text-slate-600 leading-7 mb-6">
-                You can manage your cookie preferences directly in your WorkOS account settings. This allows you to control which types of cookies we use, except for essential cookies which are required for the service to function.
+                You can manage your cookie preferences directly in your Atomic Work account settings. This allows you to control which types of cookies we use, except for essential cookies which are required for the service to function.
               </p>
             </div>
           </motion.div>

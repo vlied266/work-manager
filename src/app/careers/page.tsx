@@ -64,14 +64,14 @@ export default function CareersPage() {
       department: "Marketing",
       location: "Remote",
       type: "Full-time",
-      description: "Help developers discover and adopt WorkOS through content, events, and community.",
+      description: "Help developers discover and adopt Atomic Work through content, events, and community.",
     },
     {
       title: "Customer Success Manager",
       department: "Sales",
       location: "San Francisco, CA / Remote",
       type: "Full-time",
-      description: "Help customers succeed with WorkOS and maximize the value of our AI features.",
+      description: "Help customers succeed with Atomic Work and maximize the value of our AI features.",
     },
   ];
 

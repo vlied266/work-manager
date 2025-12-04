@@ -197,7 +197,7 @@ export default function DashboardLayout({
                   <Logo size="small" />
                   <div>
                     <span className="text-lg font-bold text-slate-900 group-hover:text-slate-700 transition-colors block">
-                      WorkOS
+                      Atomic Work
                     </span>
                     <div className="text-[9px] text-slate-500 font-medium tracking-wider uppercase">
                       Atomic Engine

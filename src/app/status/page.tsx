@@ -100,7 +100,7 @@ export default function StatusPage() {
               System Status
             </h1>
             <p className="mt-6 text-xl leading-8 text-slate-600 sm:text-2xl">
-              Real-time status of all WorkOS services, including our AI-powered features.
+              Real-time status of all Atomic Work services, including our AI-powered features.
             </p>
           </motion.div>
         </div>
@@ -120,7 +120,7 @@ export default function StatusPage() {
               Service Status
             </h2>
             <p className="text-xl text-slate-600">
-              Current status of all WorkOS services
+              Current status of all Atomic Work services
             </p>
           </motion.div>
 

@@ -68,7 +68,7 @@ export default function CommunityPage() {
               Community
             </h1>
             <p className="mt-6 text-xl leading-8 text-slate-600 sm:text-2xl">
-              Connect with other WorkOS users, share workflows, get help, and contribute to the future of workflow automation.
+              Connect with other Atomic Work users, share workflows, get help, and contribute to the future of workflow automation.
             </p>
           </motion.div>
         </div>
@@ -125,7 +125,7 @@ export default function CommunityPage() {
               Why Join?
             </h2>
             <p className="text-xl text-slate-600">
-              Connect, learn, and grow with the WorkOS community
+              Connect, learn, and grow with the Atomic Work community
             </p>
           </motion.div>
 
