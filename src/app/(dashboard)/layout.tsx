@@ -21,16 +21,19 @@ import {
   LogOut,
   Target,
   User,
+  FileText,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Logo from "@/components/Logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { GlobalAnnouncement } from "@/components/layout/GlobalAnnouncement";
 import { UserProfile } from "@/types/schema";
 
 const ADMIN_NAVIGATION = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Inbox", href: "/inbox", icon: Inbox },
   { name: "Studio", href: "/studio", icon: Sparkles },
+  { name: "Explore Templates", href: "/explore-templates", icon: FileText },
   { name: "Monitor", href: "/monitor", icon: Monitor },
   { name: "History", href: "/history", icon: Clock },
   { name: "Analytics", href: "/analytics", icon: TrendingUp },
@@ -41,6 +44,7 @@ const ADMIN_NAVIGATION = [
 const MEMBER_NAVIGATION = [
   { name: "My Tasks", href: "/inbox", icon: Inbox },
   { name: "Focus Mode", href: "/focus", icon: Target },
+  { name: "Explore Templates", href: "/explore-templates", icon: FileText },
   { name: "My History", href: "/history", icon: Clock },
   { name: "Profile", href: "/profile", icon: User },
 ];
@@ -56,9 +60,11 @@ export default function DashboardLayout({
   const [userId, setUserId] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const normalizedRole = (userProfile?.role ?? "ADMIN").toUpperCase();
-  const isAdmin = normalizedRole === "ADMIN";
-  const navigation = isAdmin ? ADMIN_NAVIGATION : MEMBER_NAVIGATION;
+  
+  // Only determine role when userProfile is loaded, default to OPERATOR to prevent showing admin menu
+  const normalizedRole = userProfile?.role ? userProfile.role.toUpperCase() : "OPERATOR";
+  const isAdmin = normalizedRole === "ADMIN" || normalizedRole === "MANAGER";
+  const navigation = loading ? [] : (isAdmin ? ADMIN_NAVIGATION : MEMBER_NAVIGATION);
   const roleLabel = isAdmin ? "Admin" : "Member";
   const roleBadgeClasses = isAdmin
     ? "bg-blue-100 text-blue-700"
@@ -153,9 +159,13 @@ export default function DashboardLayout({
   }, []);
 
   return (
-    <div className="flex h-screen bg-slate-50">
-      {/* Sidebar */}
-      <AnimatePresence>
+    <>
+      {/* Global Announcement Banner - Outside flex container to be truly global */}
+      <GlobalAnnouncement />
+      
+      <div className="flex h-screen bg-slate-50">
+        {/* Sidebar */}
+        <AnimatePresence>
         {sidebarOpen && (
           <motion.aside
             initial={{ width: 0, opacity: 0 }}
@@ -188,23 +198,34 @@ export default function DashboardLayout({
 
               {/* Navigation */}
               <nav className="flex-1 space-y-1 px-3 py-4">
-                {navigation.map((item) => {
-                  const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href));
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
-                        isActive
-                          ? "bg-slate-900 text-white shadow-sm"
-                          : "text-slate-700 hover:bg-slate-100"
-                      }`}
-                    >
-                      <item.icon className={`h-4 w-4 ${isActive ? "text-white" : "text-slate-500"}`} />
-                      {item.name}
-                    </Link>
-                  );
-                })}
+                {loading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        className="h-10 bg-slate-200 rounded-xl animate-pulse"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  navigation.map((item) => {
+                    const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href));
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+                          isActive
+                            ? "bg-slate-900 text-white shadow-sm"
+                            : "text-slate-700 hover:bg-slate-100"
+                        }`}
+                      >
+                        <item.icon className={`h-4 w-4 ${isActive ? "text-white" : "text-slate-500"}`} />
+                        {item.name}
+                      </Link>
+                    );
+                  })
+                )}
               </nav>
 
               {/* User Profile */}
@@ -309,7 +330,8 @@ export default function DashboardLayout({
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

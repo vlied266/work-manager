@@ -76,10 +76,8 @@ export default function SignInPage() {
       // 4. Show friendly error - FORCE error display
       let errorMessage = "Login failed. Please try again.";
       
-      if (err.code === "auth/invalid-credential" || err.code === "auth/wrong-password") {
-        errorMessage = "Email or password is incorrect.";
-      } else if (err.code === "auth/user-not-found") {
-        errorMessage = "Email or password is incorrect.";
+      if (err.code === "auth/invalid-credential" || err.code === "auth/wrong-password" || err.code === "auth/user-not-found") {
+        errorMessage = "Email or password is incorrect. If you don't have an account, please sign up first.";
       } else if (err.code === "auth/invalid-email") {
         errorMessage = "Invalid email address. Please check your email and try again.";
       } else if (err.code === "auth/user-disabled") {

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { AtomicStep, AtomicAction } from "@/types/schema";
-import { CheckCircle2, XCircle, AlertTriangle, Upload, FileText, Calendar, Hash, PenTool } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Upload, FileText, Calendar, Hash, PenTool, Paperclip } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
@@ -22,6 +22,8 @@ import { NegotiateRenderer } from "./negotiate-renderer";
 import { TableInputRenderer } from "./table-input-renderer";
 import { GatewayRenderer } from "./gateway-renderer";
 import { AITaskRenderer } from "./ai-task-renderer";
+import { EvidenceUpload } from "./evidence-upload";
+import { DataSourceBadge } from "./data-source-badge";
 
 interface TaskRendererProps {
   step: AtomicStep;
@@ -30,6 +32,7 @@ interface TaskRendererProps {
   runContext: any;
   setProcessing: (value: boolean) => void;
   setValidationError: (error: string | null) => void;
+  validationError?: string | null;
   run: any;
   handleCompleteStep: (outcome: "SUCCESS" | "FAILURE" | "FLAGGED", autoFlagged?: boolean) => void;
   submitting: boolean;
@@ -54,6 +57,8 @@ export function TaskRenderer({
   const [uploading, setUploading] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [mismatchReason, setMismatchReason] = useState(output?.reason || "");
+  const [evidenceUrl, setEvidenceUrl] = useState<string | null>(output?.evidenceUrl || null);
+  const [evidenceFileName, setEvidenceFileName] = useState<string | null>(output?.evidenceFileName || null);
 
   // Safety check: ensure step and config exist
   if (!step) {
@@ -66,25 +71,67 @@ export function TaskRenderer({
 
   // Ensure config exists
   const stepConfig = step.config || {};
+  const requiresEvidence = step.requiresEvidence || false;
+  const organizationId = run?.organizationId || runContext?.organizationId || "default-org";
+  const procedureId = run?.procedureId || runContext?.procedureId || "";
+
+  // Wrapper function to handle completion with evidence validation
+  const handleCompleteWithEvidence = (outcome: "SUCCESS" | "FAILURE" | "FLAGGED", autoFlagged?: boolean) => {
+    if (requiresEvidence && !evidenceUrl) {
+      setValidationError("Evidence is required to complete this task. Please upload a file.");
+      return;
+    }
+    
+    // Include evidence in output
+    const outputWithEvidence = {
+      ...output,
+      evidenceUrl: evidenceUrl || undefined,
+      evidenceFileName: evidenceFileName || undefined,
+    };
+    setOutput(outputWithEvidence);
+    handleCompleteStep(outcome, autoFlagged);
+  };
 
   // Check if this is an AI-automated task
   if (stepConfig.isAiAutomated) {
     return (
-      <AITaskRenderer
-        step={step}
-        run={run}
-        runContext={runContext}
-        onComplete={(aiOutput) => {
-          setOutput(aiOutput);
-          handleCompleteStep("SUCCESS");
-        }}
-      />
+      <div className="space-y-4">
+        <AITaskRenderer
+          step={step}
+          run={run}
+          runContext={runContext}
+          onComplete={(aiOutput) => {
+            setOutput(aiOutput);
+            handleCompleteWithEvidence("SUCCESS");
+          }}
+        />
+        {requiresEvidence && (
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <h3 className="text-sm font-semibold text-slate-900 mb-3">Evidence Required</h3>
+            <EvidenceUpload
+              evidenceUrl={evidenceUrl}
+              onEvidenceChange={(url, fileName) => {
+                setEvidenceUrl(url);
+                setEvidenceFileName(fileName);
+                setOutput({ ...output, evidenceUrl: url || undefined, evidenceFileName: fileName || undefined });
+              }}
+              organizationId={organizationId}
+              procedureId={procedureId}
+              taskId={step.id}
+              disabled={submitting}
+            />
+          </div>
+        )}
+      </div>
     );
   }
 
+  // Render task content
+  let taskContent: React.ReactNode;
+  
   switch (step.action) {
     case "INPUT":
-      return (
+      taskContent = (
         <InputDataRenderer
           step={{ ...step, config: stepConfig }}
           output={output}
@@ -92,27 +139,28 @@ export function TaskRenderer({
           setValidationError={setValidationError}
         />
       );
+      break;
 
     case "COMPARE":
-      return (
+      taskContent = (
         <CompareRenderer
           step={{ ...step, config: stepConfig }}
           output={output}
           setOutput={setOutput}
           runContext={runContext}
           run={run}
-          handleCompleteStep={handleCompleteStep}
-          submitting={submitting}
+          handleCompleteStep={handleCompleteWithEvidence}
+          submitting={submitting || (requiresEvidence && !evidenceUrl)}
           mismatchReason={mismatchReason}
           setMismatchReason={setMismatchReason}
           resolvedConfig={resolvedConfig}
         />
       );
+      break;
 
     case "FETCH":
-    case "IMPORT":
       // For now, treat FETCH as IMPORT_FILE
-      return (
+      taskContent = (
         <ImportFileRenderer
           step={{ ...step, config: stepConfig }}
           output={output}
@@ -126,11 +174,12 @@ export function TaskRenderer({
           setValidationError={setValidationError}
         />
       );
+      break;
 
     case "MOVE_OBJECT":
     case "TRANSFORM_OBJECT":
     case "INSPECT":
-      return (
+      taskContent = (
         <LaborRenderer
           step={{ ...step, config: stepConfig }}
           output={output}
@@ -141,128 +190,139 @@ export function TaskRenderer({
           runId={runId}
         />
       );
+      break;
 
     case "VALIDATE":
-      return (
+      taskContent = (
         <ValidateRenderer
           step={{ ...step, config: stepConfig }}
           output={output}
           setOutput={setOutput}
           runContext={runContext}
-          handleCompleteStep={handleCompleteStep}
-          submitting={submitting}
+          handleCompleteStep={handleCompleteWithEvidence}
+          submitting={submitting || (requiresEvidence && !evidenceUrl)}
         />
       );
+      break;
 
     case "AUTHORIZE":
-      return (
+      taskContent = (
         <AuthorizeRenderer
           step={{ ...step, config: stepConfig }}
           output={output}
           setOutput={setOutput}
-          handleCompleteStep={handleCompleteStep}
-          submitting={submitting}
+          handleCompleteStep={handleCompleteWithEvidence}
+          submitting={submitting || (requiresEvidence && !evidenceUrl)}
           runId={runId}
         />
       );
+      break;
 
     case "GENERATE":
-      return (
+      taskContent = (
         <GenerateRenderer
           step={{ ...step, config: stepConfig }}
           output={output}
           setOutput={setOutput}
           runContext={runContext}
-          handleCompleteStep={handleCompleteStep}
-          submitting={submitting}
+          handleCompleteStep={handleCompleteWithEvidence}
+          submitting={submitting || (requiresEvidence && !evidenceUrl)}
         />
       );
+      break;
 
     case "TRANSMIT":
-      return (
+      taskContent = (
         <TransmitRenderer
           step={{ ...step, config: stepConfig }}
           output={output}
           setOutput={setOutput}
           runContext={runContext}
-          handleCompleteStep={handleCompleteStep}
-          submitting={submitting}
+          handleCompleteStep={handleCompleteWithEvidence}
+          submitting={submitting || (requiresEvidence && !evidenceUrl)}
         />
       );
+      break;
 
     case "STORE":
-      return (
+      taskContent = (
         <StoreRenderer
           step={{ ...step, config: stepConfig }}
           output={output}
           setOutput={setOutput}
           runContext={runContext}
-          handleCompleteStep={handleCompleteStep}
-          submitting={submitting}
+          handleCompleteStep={handleCompleteWithEvidence}
+          submitting={submitting || (requiresEvidence && !evidenceUrl)}
         />
       );
+      break;
 
     case "TRANSFORM":
-      return (
+      taskContent = (
         <TransformRenderer
           step={{ ...step, config: stepConfig }}
           output={output}
           setOutput={setOutput}
           runContext={runContext}
-          handleCompleteStep={handleCompleteStep}
-          submitting={submitting}
+          handleCompleteStep={handleCompleteWithEvidence}
+          submitting={submitting || (requiresEvidence && !evidenceUrl)}
         />
       );
+      break;
 
     case "ORGANISE":
-      return (
+      taskContent = (
         <OrganiseRenderer
           step={{ ...step, config: stepConfig }}
           output={output}
           setOutput={setOutput}
           runContext={runContext}
-          handleCompleteStep={handleCompleteStep}
-          submitting={submitting}
+          handleCompleteStep={handleCompleteWithEvidence}
+          submitting={submitting || (requiresEvidence && !evidenceUrl)}
         />
       );
+      break;
 
     case "CALCULATE":
-      return (
+      taskContent = (
         <CalculateRenderer
           step={{ ...step, config: stepConfig }}
           output={output}
           setOutput={setOutput}
           runContext={runContext}
-          handleCompleteStep={handleCompleteStep}
-          submitting={submitting}
+          handleCompleteStep={handleCompleteWithEvidence}
+          submitting={submitting || (requiresEvidence && !evidenceUrl)}
         />
       );
+      break;
 
     case "NEGOTIATE":
-      return (
+      taskContent = (
         <NegotiateRenderer
           step={{ ...step, config: stepConfig }}
           output={output}
           setOutput={setOutput}
-          handleCompleteStep={handleCompleteStep}
-          submitting={submitting}
+          handleCompleteStep={handleCompleteWithEvidence}
+          submitting={submitting || (requiresEvidence && !evidenceUrl)}
         />
       );
+      break;
 
     case "GATEWAY":
-      return (
+      taskContent = (
         <GatewayRenderer
           step={{ ...step, config: stepConfig }}
           output={output}
           setOutput={setOutput}
           runContext={runContext}
-          handleCompleteStep={handleCompleteStep}
-          submitting={submitting}
+          handleCompleteStep={handleCompleteWithEvidence}
+          submitting={submitting || (requiresEvidence && !evidenceUrl)}
         />
       );
+      break;
 
     default:
-      return (
+      taskContent = (
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-6">
           <p className="text-sm text-slate-600">
             Task type "{step.action}" is not yet implemented.
@@ -270,6 +330,42 @@ export function TaskRenderer({
         </div>
       );
   }
+
+  // Wrap task content with evidence upload if required
+  return (
+    <div className="space-y-4">
+      {taskContent}
+      {requiresEvidence && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+            <Paperclip className="h-4 w-4 text-slate-500" />
+            Evidence Required
+          </h3>
+          <EvidenceUpload
+            evidenceUrl={evidenceUrl}
+            onEvidenceChange={(url, fileName) => {
+              setEvidenceUrl(url);
+              setEvidenceFileName(fileName);
+              setOutput({ ...output, evidenceUrl: url || undefined, evidenceFileName: fileName || undefined });
+              if (url) {
+                setValidationError(null); // Clear validation error when evidence is uploaded
+              }
+            }}
+            organizationId={organizationId}
+            procedureId={procedureId}
+            taskId={step.id}
+            disabled={submitting}
+          />
+          {requiresEvidence && !evidenceUrl && (
+            <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              You must upload evidence before completing this task.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Import File Renderer
@@ -347,7 +443,9 @@ function ImportFileRenderer({
       });
     } catch (error) {
       console.error("Error uploading file:", error);
-      setValidationError(`Failed to upload file: ${(error as Error).message}`);
+      if (setValidationError) {
+        setValidationError(`Failed to upload file: ${(error as Error).message}`);
+      }
       setUploadProgress(0);
     } finally {
       setUploading(false);

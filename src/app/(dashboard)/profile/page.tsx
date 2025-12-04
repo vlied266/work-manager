@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useRef } from "react";
 import { onAuthStateChanged, updateProfile } from "firebase/auth";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { auth, db, storage } from "@/lib/firebase";
-import { UserProfile } from "@/types/schema";
-import { Camera, Save, Loader2, User } from "lucide-react";
+import { UserProfile, Organization } from "@/types/schema";
+import { Camera, Save, Loader2, User, Building2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function ProfilePage() {
@@ -21,6 +21,7 @@ export default function ProfilePage() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"ADMIN" | "MANAGER" | "OPERATOR">("OPERATOR");
   const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const [organizationName, setOrganizationName] = useState<string>("");
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,6 +56,20 @@ export default function ProfilePage() {
           setEmail(profile.email);
           setRole(profile.role);
           setPhotoURL(profile.photoURL || null);
+          
+          // Fetch organization name if organizationId exists
+          if (profile.organizationId) {
+            try {
+              const orgDocRef = doc(db, "organizations", profile.organizationId);
+              const orgDoc = await getDoc(orgDocRef);
+              if (orgDoc.exists()) {
+                const orgData = orgDoc.data() as Organization;
+                setOrganizationName(orgData.name || "");
+              }
+            } catch (error) {
+              console.error("Error fetching organization:", error);
+            }
+          }
         } else {
           // Fallback to auth user data
           setDisplayName(currentUser.displayName || currentUser.email?.split("@")[0] || "User");
@@ -134,9 +149,11 @@ export default function ProfilePage() {
         displayName: displayName.trim(),
       });
 
-      // Update Firestore
+      // Update Firestore - use setDoc with merge to handle case where document doesn't exist
       const userDocRef = doc(db, "users", user.uid);
       const updateData: any = {
+        uid: user.uid,
+        email: user.email || "",
         displayName: displayName.trim(),
         jobTitle: jobTitle.trim() || undefined,
         updatedAt: serverTimestamp(),
@@ -147,7 +164,8 @@ export default function ProfilePage() {
         updateData.photoURL = photoURL;
       }
 
-      await updateDoc(userDocRef, updateData);
+      // Use setDoc with merge: true to create or update
+      await setDoc(userDocRef, updateData, { merge: true });
 
       // Update local profile
       if (userProfile) {
@@ -337,6 +355,26 @@ export default function ProfilePage() {
                   Role is managed by administrators
                 </p>
               </div>
+
+              {/* Organization (Read-only) */}
+              {organizationName && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    Organization
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 flex items-center gap-3 rounded-xl border-0 bg-slate-50/50 shadow-inner px-4 py-3">
+                      <Building2 className="h-4 w-4 text-slate-400" />
+                      <span className="text-sm font-medium text-slate-600">
+                        {organizationName}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500 font-medium">
+                    Your organization membership
+                  </p>
+                </div>
+              )}
 
               {/* Save Button */}
               <div className="pt-6 border-t border-slate-100">

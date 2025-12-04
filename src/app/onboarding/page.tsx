@@ -44,11 +44,22 @@ export default function OnboardingPage() {
         createdAt: serverTimestamp(),
       });
 
-      // Update user profile with organization ID
-      await updateDoc(doc(db, "users", user.uid), {
-        organizationId: orgId,
-        updatedAt: serverTimestamp(),
-      });
+      // Create or update user profile with organization ID
+      // Use setDoc with merge: true to handle both cases (document exists or not)
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          uid: user.uid,
+          email: user.email || "",
+          displayName: user.displayName || user.email?.split("@")[0] || "User",
+          role: "OPERATOR", // Default role
+          teamIds: [],
+          organizationId: orgId,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
 
       // Redirect based on role
       const userDoc = await getDoc(doc(db, "users", user.uid));

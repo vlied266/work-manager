@@ -314,6 +314,31 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
           </div>
         </div>
 
+        {/* Evidence Requirement Section 📎 */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
+            Evidence
+          </h3>
+          <div className="rounded-xl bg-slate-50/50 p-5">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={step.requiresEvidence || false}
+                onChange={(e) => onUpdate({ requiresEvidence: e.target.checked })}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              />
+              <div className="flex-1">
+                <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900">
+                  Require Evidence Upload
+                </span>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Users must upload a file (PDF, Image, Doc) before completing this task
+                </p>
+              </div>
+            </label>
+          </div>
+        </div>
+
         {/* AI Automation Toggle */}
         {(step.action === "GENERATE" || step.action === "TRANSFORM" || step.action === "ORGANISE" || step.action === "CALCULATE") && (
           <div className="space-y-4">

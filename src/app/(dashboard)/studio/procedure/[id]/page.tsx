@@ -15,8 +15,9 @@ import { ConfigPanel } from "@/components/design/config-panel";
 import { useRouter } from "next/navigation";
 import { useProcedureValidation } from "@/hooks/use-procedure-validation";
 import { useStudioTour } from "@/components/studio/StudioTour";
-import { HelpCircle, Edit3, Smartphone } from "lucide-react";
+import { HelpCircle, Edit3, Smartphone, List, Network } from "lucide-react";
 import { MobilePreview } from "@/components/studio/mobile-preview";
+import { VisualEditor } from "@/components/studio/VisualEditor";
 
 interface ProcedureBuilderPageProps {
   params: Promise<{ id: string }>;
@@ -34,6 +35,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [previewMode, setPreviewMode] = useState(false); // false = Edit Mode, true = Preview Mode
+  const [viewMode, setViewMode] = useState<"list" | "canvas">("list"); // "list" = List View, "canvas" = Flow View
 
 
   // Fetch Procedure if editing
@@ -458,47 +460,78 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
               </div>
 
               <div className="h-full min-h-0 flex flex-col rounded-[2.5rem] overflow-hidden bg-white/70 backdrop-blur-2xl border border-white/60 shadow-2xl shadow-black/5 relative">
-                {/* Mode Toggle Pill - Fixed Header */}
-                <div className="flex-shrink-0 flex items-center justify-center py-4 border-b border-slate-100 bg-white/50 backdrop-blur-sm">
+                {/* Mode Toggle Pills - Fixed Header */}
+                <div className="flex-shrink-0 flex items-center justify-between py-4 px-6 border-b border-slate-100 bg-white/50 backdrop-blur-sm">
+                  {/* View Mode Toggle (List/Canvas) */}
                   <div className="bg-white/80 backdrop-blur-xl rounded-full p-1 shadow-lg shadow-black/10 flex items-center gap-1">
                     <button
-                      onClick={() => setPreviewMode(false)}
-                      className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-tight transition-all ${
-                        !previewMode ? "bg-white text-slate-800 shadow-md" : "text-slate-600 hover:text-slate-800"
+                      onClick={() => setViewMode("list")}
+                      className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-tight transition-all flex items-center gap-1.5 ${
+                        viewMode === "list" ? "bg-white text-slate-800 shadow-md" : "text-slate-600 hover:text-slate-800"
                       }`}
                     >
-                      Editor
+                      <List className="h-3.5 w-3.5" />
+                      List View
                     </button>
                     <button
-                      onClick={() => setPreviewMode(true)}
-                      className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-tight transition-all ${
-                        previewMode ? "bg-white text-slate-800 shadow-md" : "text-slate-600 hover:text-slate-800"
+                      onClick={() => setViewMode("canvas")}
+                      className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-tight transition-all flex items-center gap-1.5 ${
+                        viewMode === "canvas" ? "bg-white text-slate-800 shadow-md" : "text-slate-600 hover:text-slate-800"
                       }`}
                     >
-                      Preview
+                      <Network className="h-3.5 w-3.5" />
+                      Flow View
                     </button>
                   </div>
+
+                  {/* Preview Mode Toggle (only show in List View) */}
+                  {viewMode === "list" && (
+                    <div className="bg-white/80 backdrop-blur-xl rounded-full p-1 shadow-lg shadow-black/10 flex items-center gap-1">
+                      <button
+                        onClick={() => setPreviewMode(false)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-tight transition-all ${
+                          !previewMode ? "bg-white text-slate-800 shadow-md" : "text-slate-600 hover:text-slate-800"
+                        }`}
+                      >
+                        Editor
+                      </button>
+                      <button
+                        onClick={() => setPreviewMode(true)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-tight transition-all ${
+                          previewMode ? "bg-white text-slate-800 shadow-md" : "text-slate-600 hover:text-slate-800"
+                        }`}
+                      >
+                        Preview
+                      </button>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Scrollable Content */}
-                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-8">
-                  {previewMode ? (
-                    <div className="flex justify-center min-h-full">
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  {viewMode === "canvas" ? (
+                    <div className="h-full w-full">
+                      <VisualEditor tasks={procedure?.steps || []} />
+                    </div>
+                  ) : previewMode ? (
+                    <div className="flex justify-center min-h-full overflow-y-auto p-8">
                       <MobilePreview
                         step={procedure && selectedStepId ? procedure.steps.find(s => s.id === selectedStepId) || null : null}
                         allSteps={procedure?.steps || []}
                       />
                     </div>
                   ) : (
-                    <SortableCanvas
-                      steps={procedure?.steps || []}
-                      selectedStepId={selectedStepId}
-                      onStepsChange={handleStepsChange}
-                      onStepSelect={handleStepSelect}
-                      onDropAction={handleAddStep}
-                      onDeleteStep={handleDeleteStep}
-                      validationErrors={validationErrorsMap}
-                    />
+                    <div className="h-full overflow-y-auto overflow-x-hidden p-8">
+                      <SortableCanvas
+                        steps={procedure?.steps || []}
+                        selectedStepId={selectedStepId}
+                        onStepsChange={handleStepsChange}
+                        onStepSelect={handleStepSelect}
+                        onDropAction={handleAddStep}
+                        onDeleteStep={handleDeleteStep}
+                        validationErrors={validationErrorsMap}
+                      />
+                    </div>
                   )}
                 </div>
               </div>

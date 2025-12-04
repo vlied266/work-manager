@@ -2,6 +2,9 @@ import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { NextRequest, NextResponse } from "next/server";
 import { AtomicStep, AtomicAction } from "@/types/schema";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { DEFAULT_ENGLISH_PROMPT } from "@/lib/ai/default-prompt";
 
 const ATOMIC_ACTIONS = [
   "INPUT", "FETCH", "TRANSMIT", "STORE",
@@ -21,53 +24,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const systemPrompt = `You are a Business Process Management (BPM) expert. Your task is to convert a user's process description into a structured workflow using ONLY the following 15 Atomic Actions:
-
-${ATOMIC_ACTIONS.map((action, idx) => `${idx + 1}. ${action}`).join("\n")}
-
-Rules:
-1. Use ONLY the actions listed above
-2. Create a logical sequence of steps
-3. Each step should have:
-   - id: A unique identifier (e.g., "step_1", "step_2")
-   - title: A clear, concise title
-   - action: One of the 15 atomic actions
-   - description: Brief description of what this step does
-   - config: Appropriate configuration based on the action type
-
-4. For INPUT actions, include: inputType, fieldLabel, placeholder, required
-5. For IMPORT actions, include: buttonLabel, allowedExtensions
-6. For COMPARE actions, include: targetA, targetB, comparisonType
-7. For AUTHORIZE actions, include: instruction, requireSignature
-8. For GENERATE actions, include: template, outputFormat
-
-Return ONLY a valid JSON array of AtomicStep objects. No markdown, no explanations, just the JSON array.
-
-Example format:
-[
-  {
-    "id": "step_1",
-    "title": "Enter Employee Name",
-    "action": "INPUT",
-    "description": "Collect the employee's full name",
-    "config": {
-      "inputType": "text",
-      "fieldLabel": "Employee Name",
-      "placeholder": "John Doe",
-      "required": true
+    // Fetch dynamic prompt from Firestore, fallback to default
+    let systemPrompt = DEFAULT_ENGLISH_PROMPT;
+    try {
+      const promptDoc = await getDoc(doc(db, "system_configs", "ai_prompts"));
+      if (promptDoc.exists()) {
+        const data = promptDoc.data();
+        if (data.prompt_text && typeof data.prompt_text === "string") {
+          systemPrompt = data.prompt_text;
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching dynamic prompt, using default:", error);
+      // Continue with default prompt
     }
-  },
-  {
-    "id": "step_2",
-    "title": "Upload Receipt",
-    "action": "IMPORT",
-    "description": "Upload expense receipt",
-    "config": {
-      "buttonLabel": "Upload Receipt",
-      "allowedExtensions": ["pdf", "jpg", "png"]
-    }
-  }
-]`;
 
     const result = await generateText({
       model: openai("gpt-4o"),
