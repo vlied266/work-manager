@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AtomicStep, AtomicAction } from "@/types/schema";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { getAdminDb } from "@/lib/firebase-admin";
 import { DEFAULT_ENGLISH_PROMPT } from "@/lib/ai/default-prompt";
 
 const ATOMIC_ACTIONS = [
@@ -13,9 +14,24 @@ const ATOMIC_ACTIONS = [
   "GENERATE", "NEGOTIATE", "AUTHORIZE"
 ];
 
+function formatStaffList(staff: Array<{ displayName?: string; role?: string; email?: string }>): string {
+  if (!staff.length) {
+    return "- No staff records available for this organization.";
+  }
+
+  return staff
+    .map((member) => {
+      const name = member.displayName || member.email || "Unknown";
+      const role = member.role || "Unknown";
+      const email = member.email || "Not provided";
+      return `- Name: ${name}, Role: ${role}, Email: ${email}`;
+    })
+    .join("\n");
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { description } = await req.json();
+    const { description, orgId } = await req.json();
 
     if (!description || typeof description !== "string") {
       return NextResponse.json(
@@ -38,6 +54,33 @@ export async function POST(req: NextRequest) {
       console.error("Error fetching dynamic prompt, using default:", error);
       // Continue with default prompt
     }
+
+    let staffListText = "";
+    const trimmedOrgId = typeof orgId === "string" ? orgId.trim() : "";
+    if (trimmedOrgId) {
+      try {
+        const adminDb = getAdminDb();
+        const usersRef = adminDb.collection("users");
+        let staffSnapshot = await usersRef.where("organizationId", "==", trimmedOrgId).get();
+
+        if (staffSnapshot.empty) {
+          staffSnapshot = await usersRef.where("orgId", "==", trimmedOrgId).get();
+        }
+
+        const staffMembers = staffSnapshot.docs.map((doc) => doc.data() as { displayName?: string; role?: string; email?: string });
+        staffListText = formatStaffList(staffMembers);
+      } catch (staffError) {
+        console.error(`Error fetching staff for org ${trimmedOrgId}:`, staffError);
+        staffListText = "- Unable to load staff records due to an internal error.";
+      }
+    }
+
+    const assignmentInstruction =
+      'Instruction: When generating steps that require human intervention (like "Approval", "Review", "Manual Input"), you MUST populate the `assignee` field in the JSON step object. Choose the most appropriate person from the provided staff list based on their role. If no match is found, leave `assignee` empty.';
+
+    systemPrompt = `${systemPrompt}\n\nOrganization Staff Context:\n${
+      staffListText || "- No staff context provided."
+    }\n\n${assignmentInstruction}`;
 
     const result = await generateText({
       model: openai("gpt-4o"),
@@ -89,6 +132,9 @@ export async function POST(req: NextRequest) {
       }
       if (!step.config) step.config = {};
       if (!step.description) step.description = "";
+      if (step.assignee && typeof step.assignee !== "string") {
+        delete (step as Partial<AtomicStep>).assignee;
+      }
       return step as AtomicStep;
     });
 

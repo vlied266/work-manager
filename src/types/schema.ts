@@ -107,6 +107,7 @@ export interface AtomicStep {
   // Legacy support - keep for backward compatibility
   assigneeType?: "SPECIFIC_USER" | "TEAM" | "STARTER";
   assigneeId?: string; // User ID or Team ID
+  assignee?: string; // Optional display name/email for AI-generated assignment
   requiresEvidence?: boolean; // If true, user must upload a file before completing the task
 
   // Routing Logic (Non-Linear Flow)

@@ -6,12 +6,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { AtomicStep } from "@/types/schema";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 export default function StudioHubPage() {
   const router = useRouter();
   const [magicDescription, setMagicDescription] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { organizationId } = useOrganization();
 
   const handleMagicBuild = async () => {
     if (!magicDescription.trim()) {
@@ -23,10 +25,18 @@ export default function StudioHubPage() {
     setError(null);
 
     try {
+      const payload: { description: string; orgId?: string } = {
+        description: magicDescription,
+      };
+
+      if (organizationId) {
+        payload.orgId = organizationId;
+      }
+
       const response = await fetch("/api/ai/generate-procedure", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: magicDescription }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
