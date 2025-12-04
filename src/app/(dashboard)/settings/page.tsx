@@ -5,6 +5,7 @@ import { collection, addDoc, onSnapshot, query, where, deleteDoc, doc, getDoc } 
 import { db } from "@/lib/firebase";
 import { Plus, Trash2, UserPlus, Users, Building2, CheckCircle2, XCircle } from "lucide-react";
 import { Team, UserProfile, Organization } from "@/types/schema";
+import { useOrgQuery, useOrgId, useOrgDataCreator } from "@/hooks/useOrgData";
 import { checkUsageLimit, getPlanLimits } from "@/lib/billing/limits";
 import { UpgradeModal } from "@/components/billing/upgrade-modal";
 
@@ -13,7 +14,12 @@ export default function SettingsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [organizationId] = useState("default-org"); // TODO: Get from auth context
+  
+  // Use organization-scoped hooks
+  const organizationId = useOrgId();
+  const orgDataCreator = useOrgDataCreator();
+  const teamsQuery = useOrgQuery("teams");
+  const usersQuery = useOrgQuery("users");
 
   // Form states
   const [teamName, setTeamName] = useState("");
@@ -29,12 +35,12 @@ export default function SettingsPage() {
   }>({ isOpen: false, resource: "users" });
 
   useEffect(() => {
-    // Fetch teams
-    const teamsQuery = query(
-      collection(db, "teams"),
-      where("organizationId", "==", organizationId)
-    );
+    if (!teamsQuery || !usersQuery || !organizationId) {
+      setLoading(false);
+      return;
+    }
 
+    // Fetch teams
     const unsubscribeTeams = onSnapshot(
       teamsQuery,
       (snapshot) => {
@@ -44,19 +50,13 @@ export default function SettingsPage() {
           createdAt: doc.data().createdAt?.toDate() || new Date(),
         })) as Team[];
         setTeams(teamsData);
-        setLoading(false);
       },
       (error) => {
         console.error("Error fetching teams:", error);
-        setLoading(false);
       }
     );
 
     // Fetch users
-    const usersQuery = query(
-      collection(db, "users"),
-      where("organizationId", "==", organizationId)
-    );
 
     const unsubscribeUsers = onSnapshot(
       usersQuery,

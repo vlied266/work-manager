@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { onSnapshot, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ActiveRun } from "@/types/schema";
 import { Clock, CheckCircle2, AlertTriangle, XCircle, Download, FileText } from "lucide-react";
 import Link from "next/link";
 import { exportToCSV, generateRunCertificate, exportRunToCSV } from "@/lib/exporter";
 import { Procedure } from "@/types/schema";
-import { doc, getDoc } from "firebase/firestore";
+import { useOrgQuery } from "@/hooks/useOrgData";
 
 export default function MonitorPage() {
   const [runs, setRuns] = useState<ActiveRun[]>([]);
@@ -16,13 +16,15 @@ export default function MonitorPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [filter, setFilter] = useState<"all" | "active" | "flagged" | "completed">("all");
-  const [organizationId] = useState("default-org"); // TODO: Get from auth context
+  
+  // Use organization-scoped query hook (automatically filters by orgId)
+  const runsQuery = useOrgQuery("active_runs");
 
   useEffect(() => {
-    const q = query(
-      collection(db, "active_runs"),
-      where("organizationId", "==", organizationId)
-    );
+    if (!runsQuery) {
+      setLoading(false);
+      return;
+    }
 
     const unsubscribe = onSnapshot(
       q,

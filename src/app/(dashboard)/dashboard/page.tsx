@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { collection, onSnapshot, query, where, doc, getDoc } from "firebase/firestore";
+import { onSnapshot, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Procedure, ActiveRun } from "@/types/schema";
 import { 
@@ -10,21 +10,26 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useOrgQuery } from "@/hooks/useOrgData";
 
 export default function DashboardPage() {
   const [activeRuns, setActiveRuns] = useState<ActiveRun[]>([]);
   const [procedures, setProcedures] = useState<Record<string, Procedure>>({});
   const [loading, setLoading] = useState(true);
-  const [organizationId] = useState("default-org"); // TODO: Get from auth context
   const [filter, setFilter] = useState<"all" | "in_progress" | "completed" | "flagged">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Use organization-scoped query hook (automatically filters by orgId)
+  const runsQuery = useOrgQuery("active_runs");
+
   useEffect(() => {
+    if (!runsQuery) {
+      setLoading(false);
+      return;
+    }
+
     // Fetch ONLY Active Runs (Instances), NOT Templates
-    const runsQuery = query(
-      collection(db, "active_runs"),
-      where("organizationId", "==", organizationId)
-    );
+    // Query is automatically filtered by organizationId via useOrgQuery
 
     const unsubscribeRuns = onSnapshot(
       runsQuery,
@@ -77,7 +82,7 @@ export default function DashboardPage() {
     return () => {
       unsubscribeRuns();
     };
-  }, [organizationId]);
+  }, [runsQuery]);
 
   // Calculate metrics
   const metrics = useMemo(() => {
@@ -140,10 +145,12 @@ export default function DashboardPage() {
   }, [activeRuns, filter, searchQuery]);
 
   const getStatusBadge = (status: ActiveRun["status"]) => {
-    const styles = {
+    const styles: Record<string, string> = {
       IN_PROGRESS: "bg-blue-100 text-blue-700 border-blue-200",
       COMPLETED: "bg-green-100 text-green-700 border-green-200",
       FLAGGED: "bg-rose-100 text-rose-700 border-rose-200",
+      BLOCKED: "bg-slate-100 text-slate-700 border-slate-200",
+      OPEN_FOR_CLAIM: "bg-yellow-100 text-yellow-700 border-yellow-200",
     };
     return styles[status] || styles.IN_PROGRESS;
   };

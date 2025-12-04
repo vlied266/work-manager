@@ -1,29 +1,32 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { collection, onSnapshot, query, where, orderBy, doc, getDoc } from "firebase/firestore";
+import { onSnapshot, doc, getDoc, where, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ActiveRun, Procedure } from "@/types/schema";
 import { FileText, Download, CheckCircle2, AlertTriangle, Clock, XCircle } from "lucide-react";
 import Link from "next/link";
 import { exportToCSV, generateRunCertificate, exportRunToCSV } from "@/lib/exporter";
 import { motion } from "framer-motion";
+import { useOrgQuery } from "@/hooks/useOrgData";
 
 export default function HistoryPage() {
   const [runs, setRuns] = useState<ActiveRun[]>([]);
   const [procedures, setProcedures] = useState<Record<string, Procedure>>({});
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [organizationId] = useState("default-org"); // TODO: Get from auth context
-  const [userId] = useState("user-1"); // TODO: Get from auth context
+
+  // Use organization-scoped query hook with additional filters
+  const runsQuery = useOrgQuery("active_runs", [
+    where("status", "in", ["COMPLETED", "FLAGGED"]),
+    orderBy("completedAt", "desc")
+  ]);
 
   useEffect(() => {
-    const q = query(
-      collection(db, "active_runs"),
-      where("organizationId", "==", organizationId),
-      where("status", "in", ["COMPLETED", "FLAGGED"]),
-      orderBy("completedAt", "desc")
-    );
+    if (!runsQuery) {
+      setLoading(false);
+      return;
+    }
 
     const unsubscribe = onSnapshot(
       q,

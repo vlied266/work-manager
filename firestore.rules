@@ -1,0 +1,178 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is a member of an organization
+    function isOrgMember(orgId) {
+      return request.auth != null && 
+             request.auth.token.orgId == orgId;
+    }
+    
+    // Helper function to check if user is super admin
+    function isSuperAdmin() {
+      return request.auth != null && 
+             request.auth.token.role == 'super_admin';
+    }
+    
+    // Helper function to get user's organization ID from token
+    function getUserOrgId() {
+      return request.auth.token.orgId;
+    }
+    
+    // Helper function to check if user owns the document (for user profile)
+    function isOwner(userId) {
+      return request.auth != null && 
+             request.auth.uid == userId;
+    }
+    
+    // Helper function to check if document belongs to user's organization
+    function belongsToUserOrg() {
+      return request.auth != null && 
+             resource.data.organizationId == getUserOrgId();
+    }
+    
+    // Helper function to check if new document will belong to user's organization
+    function willBelongToUserOrg() {
+      return request.auth != null && 
+             request.resource.data.organizationId == getUserOrgId();
+    }
+    
+    // Users Collection
+    match /users/{userId} {
+      // Super admin can read/write everything
+      allow read, write: if isSuperAdmin();
+      
+      // User can read/write their own profile
+      allow read, write: if isOwner(userId);
+      
+      // Users can read other users in their organization
+      allow read: if belongsToUserOrg();
+      
+      // Users can only create/update users in their organization
+      allow create: if willBelongToUserOrg();
+      allow update: if belongsToUserOrg() && 
+                       request.resource.data.organizationId == resource.data.organizationId;
+    }
+    
+    // Organizations Collection
+    match /organizations/{orgId} {
+      // Super admin can read/write everything
+      allow read, write: if isSuperAdmin();
+      
+      // Users can only read their own organization
+      allow read: if isOrgMember(orgId);
+      
+      // Only super admin can create/update organizations
+      allow create, update: if isSuperAdmin();
+    }
+    
+    // Active Runs Collection
+    match /active_runs/{runId} {
+      // Super admin can read/write everything
+      allow read, write: if isSuperAdmin();
+      
+      // Users can only read/write runs in their organization
+      allow read, write: if belongsToUserOrg();
+      allow create: if willBelongToUserOrg();
+      allow update: if belongsToUserOrg() && 
+                       request.resource.data.organizationId == resource.data.organizationId;
+    }
+    
+    // Procedures Collection
+    match /procedures/{procedureId} {
+      // Super admin can read/write everything
+      allow read, write: if isSuperAdmin();
+      
+      // Users can only read/write procedures in their organization
+      allow read, write: if belongsToUserOrg();
+      allow create: if willBelongToUserOrg();
+      allow update: if belongsToUserOrg() && 
+                      request.resource.data.organizationId == resource.data.organizationId;
+    }
+    
+    // Process Groups Collection
+    match /process_groups/{groupId} {
+      // Super admin can read/write everything
+      allow read, write: if isSuperAdmin();
+      
+      // Users can only read/write process groups in their organization
+      allow read, write: if belongsToUserOrg();
+      allow create: if willBelongToUserOrg();
+      allow update: if belongsToUserOrg() && 
+                      request.resource.data.organizationId == resource.data.organizationId;
+    }
+    
+    // Teams Collection
+    match /teams/{teamId} {
+      // Super admin can read/write everything
+      allow read, write: if isSuperAdmin();
+      
+      // Users can only read/write teams in their organization
+      allow read, write: if belongsToUserOrg();
+      allow create: if willBelongToUserOrg();
+      allow update: if belongsToUserOrg() && 
+                     request.resource.data.organizationId == resource.data.organizationId;
+    }
+    
+    // Global Templates Collection (read-only for regular users)
+    match /global_templates/{templateId} {
+      // Super admin can read/write everything
+      allow read, write: if isSuperAdmin();
+      
+      // All authenticated users can read global templates
+      allow read: if request.auth != null;
+      
+      // Only super admin can create/update global templates
+      allow create, update: if isSuperAdmin();
+    }
+    
+    // System Settings Collection (super admin only)
+    match /system/{document=**} {
+      allow read, write: if isSuperAdmin();
+    }
+    
+    // System Configs Collection (super admin only)
+    match /system_configs/{document=**} {
+      allow read, write: if isSuperAdmin();
+    }
+    
+    // Comments Sub-collection (within active_runs)
+    match /active_runs/{runId}/comments/{commentId} {
+      // Super admin can read/write everything
+      allow read, write: if isSuperAdmin();
+      
+      // Users can read comments on runs in their organization
+      allow read: if get(/databases/$(database)/documents/active_runs/$(runId)).data.organizationId == getUserOrgId();
+      
+      // Users can create comments on runs in their organization
+      allow create: if get(/databases/$(database)/documents/active_runs/$(runId)).data.organizationId == getUserOrgId();
+      
+      // Users can update/delete their own comments
+      allow update, delete: if get(/databases/$(database)/documents/active_runs/$(runId)).data.organizationId == getUserOrgId() &&
+                               request.auth.uid == resource.data.userId;
+    }
+    
+    // Notifications Collection
+    match /notifications/{notificationId} {
+      // Super admin can read/write everything
+      allow read, write: if isSuperAdmin();
+      
+      // Users can only read their own notifications
+      allow read: if request.auth != null && 
+                     request.auth.uid == resource.data.userId;
+      
+      // Users can update their own notifications
+      allow update: if request.auth != null && 
+                       request.auth.uid == resource.data.userId;
+      
+      // System can create notifications (handled server-side)
+      allow create: if request.auth != null;
+    }
+    
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

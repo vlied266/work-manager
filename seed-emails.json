@@ -1,0 +1,47 @@
+{
+  "password": "Test123!@#",
+  "organizations": [
+    {
+      "id": "org_alpha",
+      "name": "Alpha Tech",
+      "users": [
+        "admin@alpha.workos.test",
+        "manager1@alpha.workos.test",
+        "manager2@alpha.workos.test",
+        "employee1@alpha.workos.test",
+        "employee2@alpha.workos.test",
+        "employee3@alpha.workos.test",
+        "employee4@alpha.workos.test",
+        "employee5@alpha.workos.test"
+      ]
+    },
+    {
+      "id": "org_beta",
+      "name": "Beta Logistics",
+      "users": [
+        "admin@beta.workos.test",
+        "manager1@beta.workos.test",
+        "manager2@beta.workos.test",
+        "employee1@beta.workos.test",
+        "employee2@beta.workos.test",
+        "employee3@beta.workos.test",
+        "employee4@beta.workos.test",
+        "employee5@beta.workos.test"
+      ]
+    },
+    {
+      "id": "org_gamma",
+      "name": "Gamma Agency",
+      "users": [
+        "admin@gamma.workos.test",
+        "manager1@gamma.workos.test",
+        "manager2@gamma.workos.test",
+        "employee1@gamma.workos.test",
+        "employee2@gamma.workos.test",
+        "employee3@gamma.workos.test",
+        "employee4@gamma.workos.test",
+        "employee5@gamma.workos.test"
+      ]
+    }
+  ]
+}

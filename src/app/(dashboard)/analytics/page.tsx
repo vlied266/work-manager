@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { onSnapshot } from "firebase/firestore";
 import { ActiveRun } from "@/types/schema";
 import {
   BarChart,
@@ -18,6 +17,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { TrendingUp, Users, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
+import { useOrgQuery } from "@/hooks/useOrgData";
 
 const COLORS = {
   completed: "#10b981", // green
@@ -28,13 +28,15 @@ const COLORS = {
 export default function AnalyticsPage() {
   const [activeRuns, setActiveRuns] = useState<ActiveRun[]>([]);
   const [loading, setLoading] = useState(true);
-  const [organizationId] = useState("default-org"); // TODO: Get from auth context
+  
+  // Use organization-scoped query hook (automatically filters by orgId)
+  const runsQuery = useOrgQuery("active_runs");
 
   useEffect(() => {
-    const q = query(
-      collection(db, "active_runs"),
-      where("organizationId", "==", organizationId)
-    );
+    if (!runsQuery) {
+      setLoading(false);
+      return;
+    }
 
     const unsubscribe = onSnapshot(
       q,

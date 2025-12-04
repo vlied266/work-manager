@@ -50,19 +50,14 @@ export default function OperatorInbox() {
 
         // Filter by assignee: Only show runs assigned to this user or their team
         const userTasks = runs.filter((run) => {
-          // Check status first
-          if (run.status !== "IN_PROGRESS" && run.status !== "FLAGGED") {
-            return false;
-          }
-
           // Check if assigned to this user
-          if ((run as any).assigneeId === userId && (run as any).assigneeType === "USER") {
+          if (run.assigneeId === userId && run.assigneeType === "USER") {
             return true;
           }
 
           // TODO: Check if assigned to user's team
           // For now, if no assignee is set, show it (backward compatibility)
-          if (!(run as any).assigneeId) {
+          if (!run.assigneeId) {
             return true;
           }
 

@@ -28,6 +28,7 @@ import Logo from "@/components/Logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { GlobalAnnouncement } from "@/components/layout/GlobalAnnouncement";
 import { UserProfile } from "@/types/schema";
+import { OrganizationProvider } from "@/contexts/OrganizationContext";
 
 const ADMIN_NAVIGATION = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -159,7 +160,7 @@ export default function DashboardLayout({
   }, []);
 
   return (
-    <>
+    <OrganizationProvider>
       {/* Global Announcement Banner - Outside flex container to be truly global */}
       <GlobalAnnouncement />
       
@@ -331,7 +332,7 @@ export default function DashboardLayout({
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
       </div>
-    </>
+    </OrganizationProvider>
   );
 }
 

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "seed:mock": "tsx scripts/seed-mock-data.ts",
+    "seed:data": "tsx scripts/seed-data.ts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -47,6 +48,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.1.0",
     "@tailwindcss/postcss": "^4",
     "@types/file-saver": "^2.0.7",
     "@types/next-pwa": "^5.6.9",
