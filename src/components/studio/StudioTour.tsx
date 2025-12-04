@@ -5,12 +5,34 @@ import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import "./studio-tour.css";
 
+const TOUR_STORAGE_KEY = "studio-tour-completed";
+
+const safeHasCompletedTour = () => {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(TOUR_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+};
+
+const safeSetTourCompleted = () => {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(TOUR_STORAGE_KEY, "true");
+  } catch {
+    // Ignore storage errors (e.g., Safari private mode) so the tour can still close
+  }
+};
+
 export function useStudioTour(autoStart = false) {
   const driverObj = useRef<ReturnType<typeof driver> | null>(null);
+  const skipCompletionRef = useRef(false);
 
   const startTour = useCallback(() => {
     // Destroy existing instance if any
     if (driverObj.current) {
+      skipCompletionRef.current = true;
       driverObj.current.destroy();
       driverObj.current = null;
     }
@@ -50,8 +72,12 @@ export function useStudioTour(autoStart = false) {
         },
       ],
       onDestroyStarted: () => {
+        if (skipCompletionRef.current) {
+          skipCompletionRef.current = false;
+          return;
+        }
         // Mark tour as completed in localStorage when tour is closed
-        localStorage.setItem("studio-tour-completed", "true");
+        safeSetTourCompleted();
       },
       onDestroyed: () => {
         // Clean up
@@ -66,22 +92,25 @@ export function useStudioTour(autoStart = false) {
   }, []);
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
     // Auto-start if requested and user hasn't completed the tour
-    if (autoStart) {
-      const hasCompletedTour = localStorage.getItem("studio-tour-completed") === "true";
-      if (!hasCompletedTour) {
-        // Small delay to ensure DOM is ready
-        const timer = setTimeout(() => {
-          startTour();
-        }, 1000);
-        return () => clearTimeout(timer);
-      }
+    if (autoStart && !safeHasCompletedTour()) {
+      // Small delay to ensure DOM is ready
+      timer = setTimeout(() => {
+        startTour();
+      }, 1000);
     }
 
     return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
       // Cleanup on unmount
       if (driverObj.current) {
+        skipCompletionRef.current = true;
         driverObj.current.destroy();
+        driverObj.current = null;
       }
     };
   }, [autoStart, startTour]);
