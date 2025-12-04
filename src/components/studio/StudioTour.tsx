@@ -71,15 +71,13 @@ export function useStudioTour(autoStart = false) {
           },
         },
       ],
-      onDestroyStarted: () => {
+      onDestroyed: () => {
         if (skipCompletionRef.current) {
           skipCompletionRef.current = false;
-          return;
+        } else {
+          // Mark tour as completed in localStorage when tour is closed
+          safeSetTourCompleted();
         }
-        // Mark tour as completed in localStorage when tour is closed
-        safeSetTourCompleted();
-      },
-      onDestroyed: () => {
         // Clean up
         driverObj.current = null;
       },
