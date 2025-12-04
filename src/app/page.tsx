@@ -8,6 +8,7 @@ import { Sparkles, Zap, Users, Layers, ArrowRight, Check, Circle, Move, Bot, Bar
 import { motion } from "framer-motion";
 import HeroAnimation from "@/components/HeroAnimation";
 import Logo from "@/components/Logo";
+import IntegrationTree from "@/components/home/IntegrationTree";
 
 export default function LandingPage() {
   const [user, setUser] = useState<any>(null);
@@ -441,6 +442,10 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <div className="bg-gradient-to-b from-white via-slate-50 to-white py-20 sm:py-24 lg:py-28">
+        <IntegrationTree />
+      </div>
 
       {/* CTA Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/50">
