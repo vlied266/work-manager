@@ -7,12 +7,14 @@ import { db } from "@/lib/firebase";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { DEFAULT_ENGLISH_PROMPT } from "@/lib/ai/default-prompt";
 
-const ATOMIC_ACTIONS = [
+const ATOMIC_ACTIONS: AtomicAction[] = [
   "INPUT", "FETCH", "TRANSMIT", "STORE",
   "TRANSFORM", "ORGANISE", "CALCULATE", "COMPARE", "VALIDATE", "GATEWAY",
   "MOVE_OBJECT", "TRANSFORM_OBJECT", "INSPECT",
   "GENERATE", "NEGOTIATE", "AUTHORIZE"
 ];
+
+const GUARDRAIL_CLAUSE = `CRITICAL RULE: You are a strict Process Architect. If the user input is NOT a description of a business process, workflow, or task sequence (e.g., if it is a joke, a greeting, random characters, or code request), you must return a JSON array with a SINGLE step: { "id": "error", "title": "Invalid Request", "action": "INSPECT", "description": "I can only generate business workflows. Please describe a process." }. Do NOT attempt to interpret nonsense.`;
 
 function formatStaffList(staff: Array<{ displayName?: string; role?: string; email?: string }>): string {
   if (!staff.length) {
@@ -78,9 +80,11 @@ export async function POST(req: NextRequest) {
     const assignmentInstruction =
       'Instruction: When generating steps that require human intervention (like "Approval", "Review", "Manual Input"), you MUST populate the `assignee` field in the JSON step object. Choose the most appropriate person from the provided staff list based on their role. If no match is found, leave `assignee` empty.';
 
-    systemPrompt = `${systemPrompt}\n\nOrganization Staff Context:\n${
+    const staffContextSection = `Organization Staff Context:\n${
       staffListText || "- No staff context provided."
-    }\n\n${assignmentInstruction}`;
+    }`;
+
+    systemPrompt = [systemPrompt, GUARDRAIL_CLAUSE, staffContextSection, assignmentInstruction].join("\n\n");
 
     const result = await generateText({
       model: openai("gpt-4o"),
@@ -102,43 +106,82 @@ export async function POST(req: NextRequest) {
     }
     
     // Parse the JSON
-    let steps: AtomicStep[];
+    let steps: unknown;
     try {
       steps = JSON.parse(jsonString);
     } catch (parseError) {
       // If parsing fails, try to extract JSON from the text
       const jsonMatch = jsonString.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
-        steps = JSON.parse(jsonMatch[0]);
+        try {
+          steps = JSON.parse(jsonMatch[0]);
+        } catch (nestedError) {
+          console.error("Failed to parse extracted AI JSON:", nestedError);
+          return NextResponse.json(
+            { error: "Invalid AI response format. Please describe the process again." },
+            { status: 400 }
+          );
+        }
       } else {
-        throw new Error("Failed to parse AI response as JSON");
+        console.error("AI response missing JSON array:", parseError);
+        return NextResponse.json(
+          { error: "Could not find workflow steps in the AI response." },
+          { status: 400 }
+        );
       }
     }
 
-    // Validate steps
-    if (!Array.isArray(steps)) {
+    if (!Array.isArray(steps) || steps.length === 0) {
       return NextResponse.json(
-        { error: "AI response is not an array" },
-        { status: 500 }
+        { error: "AI response must be a non-empty array of steps." },
+        { status: 400 }
       );
     }
 
-    // Validate each step has required fields
-    const validatedSteps = steps.map((step, index) => {
-      if (!step.id) step.id = `step_${index + 1}`;
-      if (!step.title) step.title = `Step ${index + 1}`;
-      if (!step.action || !ATOMIC_ACTIONS.includes(step.action)) {
-        step.action = "INPUT" as AtomicAction;
-      }
-      if (!step.config) step.config = {};
-      if (!step.description) step.description = "";
-      if (step.assignee && typeof step.assignee !== "string") {
-        delete (step as Partial<AtomicStep>).assignee;
-      }
-      return step as AtomicStep;
-    });
+    const sanitizedSteps: AtomicStep[] = [];
 
-    return NextResponse.json({ steps: validatedSteps });
+    for (const [index, rawStep] of steps.entries()) {
+      if (!rawStep || typeof rawStep !== "object" || Array.isArray(rawStep)) {
+        return NextResponse.json(
+          { error: `Step ${index + 1} is malformed.` },
+          { status: 400 }
+        );
+      }
+
+      const stepRecord = rawStep as Record<string, unknown>;
+      const normalizedAction =
+        typeof stepRecord.action === "string"
+          ? stepRecord.action.trim().toUpperCase()
+          : "";
+
+      const actionValue: AtomicAction = ATOMIC_ACTIONS.includes(normalizedAction as AtomicAction)
+        ? (normalizedAction as AtomicAction)
+        : "INPUT";
+
+      const sanitizedConfig =
+        stepRecord.config && typeof stepRecord.config === "object" && !Array.isArray(stepRecord.config)
+          ? (stepRecord.config as AtomicStep["config"])
+          : ({} as AtomicStep["config"]);
+
+      const sanitizedStep: AtomicStep = {
+        id:
+          typeof stepRecord.id === "string" && stepRecord.id.trim()
+            ? stepRecord.id.trim()
+            : `step_${index + 1}`,
+        title:
+          typeof stepRecord.title === "string" && stepRecord.title.trim()
+            ? stepRecord.title.trim()
+            : `Step ${index + 1}`,
+        action: actionValue,
+        assignee: typeof stepRecord.assignee === "string" ? stepRecord.assignee : undefined,
+        config: sanitizedConfig,
+        description: typeof stepRecord.description === "string" ? stepRecord.description : "",
+      };
+
+      sanitizedSteps.push(sanitizedStep);
+    }
+
+    return NextResponse.json({ steps: sanitizedSteps });
   } catch (error) {
     console.error("Error generating procedure:", error);
     return NextResponse.json(
