@@ -1,5 +1,17 @@
-<svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="192" height="192" fill="#0F172A"/>
-<path d="M96 48L112 88H136L112 128L96 168L80 128L48 88H80L96 48Z" fill="white"/>
+<svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="WorkOS app icon">
+  <defs>
+    <linearGradient id="diamondFill192" x1="32" y1="160" x2="160" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0f172a" />
+      <stop offset="0.55" stop-color="#5c40f2" />
+      <stop offset="1" stop-color="#29d3c1" />
+    </linearGradient>
+    <linearGradient id="diamondStroke192" x1="32" y1="160" x2="160" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#241b52" />
+      <stop offset="1" stop-color="#dff9ff" />
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="32" fill="#ffffff"/>
+  <path d="M96 28 L168 100 L96 172 L24 100 Z" fill="url(#diamondFill192)" stroke="url(#diamondStroke192)" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M96 52 L144 100 L96 148 L48 100 Z" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.2)" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="96" cy="80" r="16" fill="rgba(255,255,255,0.4)" />
 </svg>
-

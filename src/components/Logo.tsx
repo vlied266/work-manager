@@ -9,8 +9,8 @@ interface LogoProps {
 
 const SIZE_MAP: Record<LogoSize, number> = {
   small: 32,
-  medium: 56,
-  large: 96,
+  medium: 54,
+  large: 92,
 };
 
 export default function Logo({ size = "medium", className = "" }: LogoProps) {
@@ -31,91 +31,52 @@ export default function Logo({ size = "medium", className = "" }: LogoProps) {
       >
         <defs>
           <linearGradient id="diamondFill" x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#0f1c3d" />
-            <stop offset="45%" stopColor="#6c4bff" />
-            <stop offset="100%" stopColor="#35d4c2" />
+            <stop offset="0%" stopColor="#0f172a" />
+            <stop offset="45%" stopColor="#5f3df0" />
+            <stop offset="100%" stopColor="#29d3c1" />
           </linearGradient>
-          <linearGradient id="diamondStroke" x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#a163f1" />
-            <stop offset="60%" stopColor="#6366f1" />
-            <stop offset="100%" stopColor="#3cc9eb" />
-          </linearGradient>
-          <linearGradient id="facetStroke" x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#0f172a" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.45" />
+          <linearGradient id="diamondEdge" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#221a52" stopOpacity="0.7" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.55" />
           </linearGradient>
         </defs>
 
-        {/* Shadow */}
+        {/* Drop shadow */}
         <rect
-          x="24"
-          y="24"
-          width="72"
-          height="72"
-          rx="6"
+          x="30"
+          y="30"
+          width="60"
+          height="60"
+          rx="4"
           transform="rotate(45 60 60)"
           fill="rgba(15,23,42,0.08)"
         />
 
-        {/* Diamond */}
+        {/* Solid diamond */}
         <rect
-          x="26"
-          y="26"
-          width="68"
-          height="68"
-          rx="5"
-          transform="rotate(45 60 60)"
-          fill="url(#diamondFill)"
-          stroke="url(#diamondStroke)"
-          strokeWidth="4.5"
-        />
-
-        {/* Inner facet */}
-        <rect
-          x="40"
-          y="40"
-          width="40"
-          height="40"
+          x="32"
+          y="32"
+          width="56"
+          height="56"
           rx="4"
           transform="rotate(45 60 60)"
-          fill="rgba(255,255,255,0.08)"
-          stroke="rgba(255,255,255,0.25)"
-          strokeWidth="1.25"
+          fill="url(#diamondFill)"
+          stroke="url(#diamondEdge)"
+          strokeWidth="3"
         />
 
-        {/* Facet diagonals */}
+        {/* Subtle beveled edge */}
         <path
-          d="M60 34 L60 86"
-          stroke="url(#facetStroke)"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        <path
-          d="M34 60 L86 60"
-          stroke="rgba(255,255,255,0.15)"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        <path
-          d="M42 42 L78 78"
-          stroke="rgba(15,23,42,0.35)"
-          strokeWidth="1.2"
-        />
-        <path
-          d="M78 42 L42 78"
-          stroke="rgba(15,23,42,0.35)"
-          strokeWidth="1.2"
-        />
-
-        {/* Highlight glints */}
-        <path
-          d="M48 50 C54 44, 66 44, 72 50"
-          stroke="rgba(255,255,255,0.4)"
-          strokeWidth="2.2"
-          strokeLinecap="round"
+          d="M60 26 L94 60 L60 94 L26 60 Z"
           fill="none"
+          stroke="rgba(255,255,255,0.25)"
+          strokeWidth="1.4"
+          strokeLinecap="round"
         />
-        <circle cx="60" cy="72" r="4" fill="rgba(255,255,255,0.25)" />
+
+        {/* Core glint */}
+        <circle cx="60" cy="52" r="6" fill="rgba(255,255,255,0.5)" />
+        <circle cx="60" cy="52" r="10" fill="rgba(255,255,255,0.08)" />
       </svg>
     </div>
   );
