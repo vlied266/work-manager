@@ -1,287 +1,356 @@
 "use client";
 
-import React, { useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Sphere } from '@react-three/drei';
-import * as THREE from 'three';
+import { useMemo, useRef } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { Line } from "@react-three/drei";
+import * as THREE from "three";
 
-// Central Core - Multiple interconnected spheres forming a nucleus
-function CentralCore() {
-  const groupRef = useRef<THREE.Group>(null);
+const HERO_GRADIENT = ["#a163f1", "#6363f1", "#3498ea", "#40dfa3"] as const;
 
-  useFrame((state, delta) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.x += delta * 0.1;
-      groupRef.current.rotation.y += delta * 0.15;
+function DataCore() {
+  const coreRef = useRef<THREE.Mesh>(null);
+  const shellRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
+    const t = state.clock.getElapsedTime();
+
+    if (coreRef.current) {
+      const pulse = 1 + Math.sin(t * 2) * 0.08;
+      coreRef.current.scale.setScalar(pulse);
+      coreRef.current.rotation.y += 0.01;
+    }
+
+    if (shellRef.current) {
+      shellRef.current.rotation.x = Math.sin(t * 0.4) * 0.2;
+      shellRef.current.rotation.y += 0.01;
     }
   });
 
-  // Create a cluster of spheres forming the core
-  const corePositions: Array<[number, number, number]> = [
-    [0, 0, 0],
-    [0.15, 0.1, 0.05],
-    [-0.1, 0.15, -0.05],
-    [0.05, -0.12, 0.1],
-    [-0.08, -0.08, -0.1],
-  ];
-
   return (
-    <group ref={groupRef}>
-      {corePositions.map((pos, i) => (
-        <mesh key={i} position={pos}>
-          <sphereGeometry args={[0.15 - i * 0.02, 16, 16]} />
-          <meshStandardMaterial
-            color="#0f172a"
-            metalness={0.7}
-            roughness={0.2}
-            emissive="#1e293b"
-            emissiveIntensity={0.3}
-          />
-        </mesh>
-      ))}
+    <group>
+      <mesh ref={coreRef}>
+        <sphereGeometry args={[0.42, 48, 48]} />
+        <meshPhysicalMaterial
+          color="#0f172a"
+          metalness={0.95}
+          roughness={0.1}
+          clearcoat={1}
+          clearcoatRoughness={0.2}
+          transmission={0.4}
+          ior={1.25}
+          emissive="#1d4ed8"
+          emissiveIntensity={0.45}
+        />
+      </mesh>
+
+      <mesh ref={shellRef}>
+        <sphereGeometry args={[0.55, 32, 32]} />
+        <meshBasicMaterial
+          color="#38bdf8"
+          opacity={0.15}
+          transparent
+          side={THREE.DoubleSide}
+        />
+      </mesh>
     </group>
   );
 }
 
-// Fluid Tube Component - Smooth curved connections
-function FluidTube({ 
-  points, 
-  radius = 0.06,
-  color = "#3b82f6",
-}: { 
-  points: Array<[number, number, number]>;
-  radius?: number;
-  color?: string;
+function EnergyRibbon({
+  color,
+  radius,
+  tube,
+  twist,
+  p = 2,
+  q = 3,
+  rotation = [0, 0, 0],
+  speed = 0.25,
+}: {
+  color: string;
+  radius: number;
+  tube: number;
+  twist: number;
+  p?: number;
+  q?: number;
+  rotation?: [number, number, number];
+  speed?: number;
 }) {
-  const curve = React.useMemo(() => {
-    const vectors = points.map(p => new THREE.Vector3(...p));
-    return new THREE.CatmullRomCurve3(vectors, false, 'centripetal');
-  }, [points]);
+  const ribbonRef = useRef<THREE.Mesh>(null);
+
+  useFrame((_, delta) => {
+    if (ribbonRef.current) {
+      ribbonRef.current.rotation.y += delta * speed;
+      ribbonRef.current.rotation.x += delta * speed * 0.25;
+    }
+  });
 
   return (
-    <mesh>
-      <tubeGeometry args={[curve, 64, radius, 16, false]} />
-      <meshStandardMaterial
+    <mesh ref={ribbonRef} rotation={rotation}>
+      <torusKnotGeometry args={[radius, tube, 240, 64, p, q]} />
+      <meshPhysicalMaterial
         color={color}
-        metalness={0.6}
-        roughness={0.25}
+        metalness={0.9}
+        roughness={0.15}
+        clearcoat={1}
+        clearcoatRoughness={0.15}
         emissive={color}
-        emissiveIntensity={0.15}
+        emissiveIntensity={0.4}
       />
     </mesh>
   );
 }
 
-// Glowing Node Component
-function GlowingNode({ 
-  position, 
-  color = "#60a5fa", 
-  size = 0.15,
-  delay = 0 
-}: { 
-  position: [number, number, number]; 
-  color?: string;
-  size?: number;
-  delay?: number;
+function Orbit({
+  radius,
+  color,
+  tilt,
+  speed,
+  squash = 0.45,
+}: {
+  radius: number;
+  color: string;
+  tilt: number;
+  speed: number;
+  squash?: number;
 }) {
-  const meshRef = useRef<THREE.Mesh>(null);
+  const orbitRef = useRef<THREE.Group>(null);
+  const points = useMemo(() => {
+    const pts: THREE.Vector3[] = [];
+    for (let i = 0; i <= 240; i += 1) {
+      const t = (i / 240) * Math.PI * 2;
+      pts.push(
+        new THREE.Vector3(Math.cos(t) * radius, Math.sin(t) * radius * squash, 0),
+      );
+    }
+    return pts;
+  }, [radius, squash]);
 
-  useFrame((state) => {
-    if (meshRef.current) {
-      const scale = 1 + Math.sin(state.clock.elapsedTime * 2 + delay) * 0.15;
-      meshRef.current.scale.setScalar(scale);
+  useFrame((_, delta) => {
+    if (orbitRef.current) {
+      orbitRef.current.rotation.y += delta * speed;
     }
   });
 
   return (
-    <group position={position}>
-      {/* Outer glow */}
-      <mesh>
-        <sphereGeometry args={[size * 1.5, 16, 16]} />
-        <meshStandardMaterial
-          color={color}
-          transparent
-          opacity={0.2}
-          emissive={color}
-          emissiveIntensity={0.5}
-        />
-      </mesh>
-      {/* Inner core */}
-      <mesh ref={meshRef}>
-        <sphereGeometry args={[size, 16, 16]} />
-        <meshStandardMaterial
-          color={color}
-          metalness={0.8}
-          roughness={0.1}
-          emissive={color}
-          emissiveIntensity={0.4}
-        />
-      </mesh>
+    <group ref={orbitRef} rotation={[tilt, 0, 0]}>
+      <Line
+        points={points}
+        color={color}
+        linewidth={1.75}
+        transparent
+        opacity={0.7}
+        toneMapped={false}
+      />
     </group>
   );
 }
 
-// Main Logo Component
-function Logo3D() {
-  const groupRef = useRef<THREE.Group>(null);
+function ParticleField() {
+  const pointsRef = useRef<THREE.Points>(null);
+  const positions = useMemo(() => {
+    const total = 360;
+    const data = new Float32Array(total * 3);
 
-  useFrame((state, delta) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.15;
+    for (let i = 0; i < total; i += 1) {
+      const radius = 0.4 + Math.random() * 1.4;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = (Math.random() - 0.5) * Math.PI * 0.9;
+
+      const x = Math.cos(theta) * Math.cos(phi) * radius;
+      const y = Math.sin(phi) * radius * 0.7;
+      const z = Math.sin(theta) * Math.cos(phi) * radius;
+
+      data[i * 3] = x;
+      data[i * 3 + 1] = y;
+      data[i * 3 + 2] = z;
+    }
+
+    return data;
+  }, []);
+
+  useFrame((_, delta) => {
+    if (pointsRef.current) {
+      pointsRef.current.rotation.y += delta * 0.08;
+      pointsRef.current.rotation.x += delta * 0.03;
     }
   });
 
-  // Define nodes in a more organic, interconnected pattern
-  const nodes: Array<{ position: [number, number, number]; color: string; size: number }> = [
-    { position: [1.1, 0.6, 0.3], color: "#3b82f6", size: 0.18 },
-    { position: [-1.1, 0.6, -0.3], color: "#8b5cf6", size: 0.18 },
-    { position: [0.4, 1.2, 0.4], color: "#06b6d4", size: 0.16 },
-    { position: [-0.4, 1.2, -0.4], color: "#6366f1", size: 0.16 },
-    { position: [0.9, -0.9, 0.5], color: "#3b82f6", size: 0.17 },
-    { position: [-0.9, -0.9, -0.5], color: "#8b5cf6", size: 0.17 },
-    { position: [0.6, -1.1, -0.2], color: "#06b6d4", size: 0.15 },
-    { position: [-0.6, -1.1, 0.2], color: "#6366f1", size: 0.15 },
-  ];
+  return (
+    <points ref={pointsRef}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          array={positions}
+          count={positions.length / 3}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.035}
+        color="#f0fdfa"
+        opacity={0.65}
+        transparent
+        depthWrite={false}
+        sizeAttenuation
+      />
+    </points>
+  );
+}
 
-  // Define fluid tube connections - more organic and flowing
-  const tubeConnections: Array<{ points: Array<[number, number, number]>; color: string }> = [
-    // Connections from center to outer nodes
-    { 
-      points: [[0.2, 0.1, 0], [0.5, 0.3, 0.15], [0.8, 0.5, 0.25], nodes[0].position], 
-      color: "#3b82f6" 
-    },
-    { 
-      points: [[-0.2, 0.1, 0], [-0.5, 0.3, -0.15], [-0.8, 0.5, -0.25], nodes[1].position], 
-      color: "#8b5cf6" 
-    },
-    { 
-      points: [[0.1, 0.2, 0.1], [0.2, 0.6, 0.25], [0.3, 0.9, 0.35], nodes[2].position], 
-      color: "#06b6d4" 
-    },
-    { 
-      points: [[-0.1, 0.2, -0.1], [-0.2, 0.6, -0.25], [-0.3, 0.9, -0.35], nodes[3].position], 
-      color: "#6366f1" 
-    },
-    { 
-      points: [[0.15, -0.15, 0.1], [0.4, -0.5, 0.3], [0.7, -0.8, 0.45], nodes[4].position], 
-      color: "#3b82f6" 
-    },
-    { 
-      points: [[-0.15, -0.15, -0.1], [-0.4, -0.5, -0.3], [-0.7, -0.8, -0.45], nodes[5].position], 
-      color: "#8b5cf6" 
-    },
-    // Inter-node connections for more complexity
-    { 
-      points: [nodes[0].position, [0.7, 0.1, 0.2], [0.5, -0.4, 0.15], nodes[4].position], 
-      color: "#60a5fa" 
-    },
-    { 
-      points: [nodes[1].position, [-0.7, 0.1, -0.2], [-0.5, -0.4, -0.15], nodes[5].position], 
-      color: "#a78bfa" 
-    },
-    { 
-      points: [nodes[2].position, [0.2, 0.9, 0.3], [0.1, 0.1, 0.2], [0.2, 0.1, 0]], 
-      color: "#22d3ee" 
-    },
-    { 
-      points: [nodes[3].position, [-0.2, 0.9, -0.3], [-0.1, 0.1, -0.2], [-0.2, 0.1, 0]], 
-      color: "#818cf8" 
-    },
-  ];
+function DataNodes() {
+  const nodes: Array<{ position: [number, number, number]; color: string; delay: number }> =
+    [
+      { position: [0.95, 0.5, 0.25], color: HERO_GRADIENT[0], delay: 0 },
+      { position: [-0.95, 0.5, -0.25], color: HERO_GRADIENT[1], delay: 0.4 },
+      { position: [0.35, 1, 0.35], color: HERO_GRADIENT[2], delay: 0.8 },
+      { position: [-0.35, -1, 0.25], color: HERO_GRADIENT[3], delay: 1.2 },
+    ];
 
   return (
-    <group ref={groupRef}>
-      {/* Central Core */}
-      <CentralCore />
-
-      {/* Fluid Tube Connections */}
-      {tubeConnections.map((tube, i) => (
-        <FluidTube
-          key={i}
-          points={tube.points}
-          color={tube.color}
-        />
-      ))}
-
-      {/* Glowing Nodes */}
-      {nodes.map((node, i) => (
-        <GlowingNode
-          key={i}
-          position={node.position}
-          color={node.color}
-          size={node.size}
-          delay={i * 0.25}
-        />
+    <group>
+      {nodes.map((node, index) => (
+        <GlowingNode key={index} {...node} />
       ))}
     </group>
+  );
+}
+
+function GlowingNode({
+  position,
+  color,
+  delay,
+}: {
+  position: [number, number, number];
+  color: string;
+  delay: number;
+}) {
+  const nodeRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
+    if (nodeRef.current) {
+      const pulse = 1 + Math.sin(state.clock.elapsedTime * 2 + delay) * 0.15;
+      nodeRef.current.scale.setScalar(pulse);
+    }
+  });
+
+  return (
+    <mesh position={position} ref={nodeRef}>
+      <sphereGeometry args={[0.18, 32, 32]} />
+      <meshStandardMaterial
+        color={color}
+        emissive={color}
+        emissiveIntensity={0.7}
+        metalness={0.9}
+        roughness={0.2}
+      />
+    </mesh>
+  );
+}
+
+function Halo() {
+  const haloRef = useRef<THREE.Mesh>(null);
+
+  useFrame((_, delta) => {
+    if (haloRef.current) {
+      haloRef.current.rotation.z += delta * 0.15;
+    }
+  });
+
+  return (
+    <mesh ref={haloRef} rotation={[Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[0.8, 1.2, 64]} />
+      <meshBasicMaterial
+        color="#bae6fd"
+        opacity={0.2}
+        transparent
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  );
+}
+
+function Sculpture() {
+  return (
+    <group rotation={[Math.PI / 9, -Math.PI / 7, 0]}>
+      <ParticleField />
+      <Halo />
+      <DataCore />
+      <DataNodes />
+
+      <EnergyRibbon
+        color={HERO_GRADIENT[0]}
+        radius={0.85}
+        tube={0.08}
+        twist={2}
+        q={4}
+        rotation={[Math.PI / 4, 0, 0]}
+        speed={0.35}
+      />
+      <EnergyRibbon
+        color={HERO_GRADIENT[2]}
+        radius={0.65}
+        tube={0.06}
+        twist={3}
+        q={6}
+        rotation={[-Math.PI / 6, Math.PI / 3, 0]}
+        speed={0.28}
+      />
+
+      <Orbit radius={1.05} color="#67e8f9" tilt={0.35} speed={0.18} />
+      <Orbit radius={0.95} color="#c084fc" tilt={-0.45} speed={0.12} />
+    </group>
+  );
+}
+
+function LightRig() {
+  return (
+    <>
+      <ambientLight intensity={0.55} />
+      <directionalLight position={[4, 6, 8]} intensity={1.6} />
+      <directionalLight position={[-4, -5, -6]} intensity={0.9} />
+      <pointLight position={[0, 0, 4]} intensity={1} color="#60a5fa" />
+      <pointLight position={[2, -1, -3]} intensity={0.6} color="#c084fc" />
+    </>
   );
 }
 
 interface LogoProps {
-  size?: 'small' | 'medium' | 'large';
+  size?: "small" | "medium" | "large";
   className?: string;
 }
 
-export default function Logo({ size = 'medium', className = '' }: LogoProps) {
+export default function Logo({ size = "medium", className = "" }: LogoProps) {
   const sizeMap = {
-    small: { canvas: 40, camera: 3.5 },
-    medium: { canvas: 64, camera: 4.5 },
-    large: { canvas: 120, camera: 6 },
-  };
+    small: { canvas: 44, camera: 3.6 },
+    medium: { canvas: 70, camera: 4.8 },
+    large: { canvas: 128, camera: 6.5 },
+  } as const;
 
   const { canvas, camera } = sizeMap[size];
 
   return (
-    <div 
+    <div
       className={`relative inline-block ${className}`}
-      style={{ 
-        width: `${canvas}px`, 
+      style={{
+        width: `${canvas}px`,
         height: `${canvas}px`,
-        background: 'transparent',
-        padding: 0,
-        margin: 0,
-        border: 'none',
-        outline: 'none',
-        lineHeight: 0
       }}
     >
       <Canvas
-        camera={{ position: [0, 0, camera], fov: 50 }}
+        camera={{ position: [0, 0, camera], fov: 45 }}
         dpr={[1, 2]}
-        style={{ 
-          background: 'transparent !important',
-          width: '100%',
-          height: '100%',
-          display: 'block',
-          padding: 0,
-          margin: 0,
-          border: 'none !important',
-          outline: 'none !important',
-          verticalAlign: 'top'
-        }}
-        gl={{ 
-          antialias: true, 
+        gl={{
+          antialias: true,
           alpha: true,
           powerPreference: "high-performance",
-          preserveDrawingBuffer: false,
-          premultipliedAlpha: false
         }}
         onCreated={({ gl, scene }) => {
           gl.setClearColor(0x000000, 0);
-          gl.clearColor(0, 0, 0, 0);
           scene.background = null;
         }}
       >
-        {/* Enhanced Lighting */}
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[5, 5, 5]} intensity={1.5} />
-        <directionalLight position={[-5, -5, -5]} intensity={1} />
-        <pointLight position={[0, 0, 5]} intensity={0.8} color="#3b82f6" />
-        <pointLight position={[0, 0, -5]} intensity={0.8} color="#8b5cf6" />
-        <pointLight position={[5, 0, 0]} intensity={0.6} color="#06b6d4" />
-        <pointLight position={[-5, 0, 0]} intensity={0.6} color="#6366f1" />
-
-        <Logo3D />
+        <LightRig />
+        <Sculpture />
       </Canvas>
     </div>
   );
