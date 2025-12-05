@@ -2,6 +2,7 @@
 
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
+import { getPlanLimits } from "@/lib/billing/limits";
 
 /**
  * Impersonate a user by creating a custom token
@@ -86,8 +87,7 @@ export async function updateOrgPlan(
     // Note: In production, verify super admin server-side
     const adminDb = getAdminDb();
     
-    // Import getPlanLimits to update limits
-    const { getPlanLimits } = await import("@/lib/billing/limits");
+    // Get plan limits
     const limits = getPlanLimits(plan);
     
     await adminDb.collection("organizations").doc(orgId).update({

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, where, doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { collection, onSnapshot, query, where, doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ProcessGroup, Procedure, Organization } from "@/types/schema";
 import { 
@@ -206,6 +206,35 @@ export default function LibraryPage() {
         assigneeId: defaultAssignee?.id || null,
         assigneeType: defaultAssignee?.type || null,
       });
+      
+      // Send Slack notification (fire and forget)
+      if (organizationId) {
+        try {
+          const { sendSlackNotification, createTaskNotificationMessage } = await import("@/lib/integrations/slack");
+          const orgDoc = await getDoc(doc(db, "organizations", organizationId));
+          if (orgDoc.exists()) {
+            const orgData = orgDoc.data();
+            const webhookUrl = orgData.slackWebhookUrl;
+            
+            if (webhookUrl) {
+              const message = createTaskNotificationMessage(
+                procedureTitle,
+                undefined, // priority
+                runRef.id,
+                procedureTitle
+              );
+              
+              // Fire and forget - don't await
+              sendSlackNotification(webhookUrl, message).catch((err) => {
+                console.error("Slack notification failed:", err);
+              });
+            }
+          }
+        } catch (slackError) {
+          // Silently fail - don't block the main flow
+          console.error("Error sending Slack notification:", slackError);
+        }
+      }
       
       window.location.href = `/run/${runRef.id}`;
     } catch (error) {

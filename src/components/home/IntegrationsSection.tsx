@@ -19,6 +19,7 @@ interface SatelliteIcon {
   color: string;
   position: { top?: string; right?: string; bottom?: string; left?: string };
   delay: number;
+  duration?: number;
 }
 
 const satellites: SatelliteIcon[] = [
@@ -78,7 +79,10 @@ const satellites: SatelliteIcon[] = [
     position: { bottom: "5%", left: "50%" },
     delay: 2.1,
   },
-];
+].map((sat, index) => ({
+  ...sat,
+  duration: 2 + (index % 3) * 0.3, // Use index-based duration instead of Math.random()
+}));
 
 export default function IntegrationsSection() {
   return (
@@ -150,7 +154,6 @@ export default function IntegrationsSection() {
                   initial={{ opacity: 0, scale: 0.5 }}
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
                   className="absolute"
                   style={{
                     ...satellite.position,
@@ -160,7 +163,7 @@ export default function IntegrationsSection() {
                     y: [0, -15, 0],
                   }}
                   transition={{
-                    duration: 2 + Math.random() * 1,
+                    duration: satellite.duration || 2,
                     repeat: Infinity,
                     ease: "easeInOut",
                     delay: satellite.delay,
@@ -253,12 +256,11 @@ export default function IntegrationsSection() {
                     initial={{ opacity: 0, scale: 0.5 }}
                     whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: index * 0.05 }}
                     animate={{
                       y: [0, -10, 0],
                     }}
                     transition={{
-                      duration: 2 + Math.random() * 1,
+                      duration: satellite.duration || 2,
                       repeat: Infinity,
                       ease: "easeInOut",
                       delay: satellite.delay * 0.5,

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -8,29 +8,19 @@ export const metadata: Metadata = {
   title: "Atomic Work - The Atomic Engine",
   description: "B2B Process Execution Engine",
   manifest: "/manifest.json",
-  themeColor: "#0f172a",
   icons: {
-    icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/icon-192x192.svg", sizes: "192x192", type: "image/svg+xml" },
-      { url: "/icon-512x512.svg", sizes: "512x512", type: "image/svg+xml" },
-    ],
-    apple: [
-      { url: "/icon-192x192.svg", sizes: "192x192", type: "image/svg+xml" },
-    ],
+    icon: "/icon.svg",
+    apple: "/icon-192x192.svg",
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: "cover",
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Atomic Work",
-  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#0f172a",
 };
 
 export default function RootLayout({

@@ -14,7 +14,6 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signInWithCustomToken } from "firebase/auth";
-import { impersonateUser, updateOrgStatus, updateOrgPlan } from "@/app/actions/admin";
 
 const OWNER_EMAIL = "atomicworkos@gmail.com";
 
@@ -247,6 +246,7 @@ export default function BackofficePage() {
   const handlePlanChange = async (orgId: string, newPlan: "FREE" | "PRO" | "ENTERPRISE") => {
     setUpdating({ ...updating, [`plan-${orgId}`]: true });
     try {
+      const { updateOrgPlan } = await import("@/app/actions/admin");
       const result = await updateOrgPlan(orgId, newPlan);
       
       if (result.success) {
@@ -278,6 +278,7 @@ export default function BackofficePage() {
     try {
       setUpdating({ ...updating, [`impersonate-${org.id}`]: true });
       
+      const { impersonateUser } = await import("@/app/actions/admin");
       const result = await impersonateUser(org.ownerId);
       
       if (result.success && result.token) {

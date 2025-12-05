@@ -10,6 +10,9 @@ import HeroAnimation from "@/components/HeroAnimation";
 import Logo from "@/components/Logo";
 import IntegrationsSection from "@/components/home/IntegrationsSection";
 
+// Prevent SSR/prerendering - this page requires client-side rendering
+export const dynamic = 'force-dynamic';
+
 export default function LandingPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);

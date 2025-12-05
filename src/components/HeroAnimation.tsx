@@ -108,7 +108,7 @@ export default function HeroAnimation() {
           <pointLight position={[0, 2, -2]} intensity={0.4} color="#FFD700" />
           
           {/* Environment for reflections - modern open office workspace with desks, chairs, computers and people */}
-          <Environment preset="city" />
+          <Environment preset="studio" />
           
           {/* Main Sapphire Sphere */}
           <SapphireSphere />

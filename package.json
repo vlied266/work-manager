@@ -20,6 +20,8 @@
     "@react-email/render": "^2.0.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.4.2",
+    "@splinetool/react-spline": "^4.1.0",
+    "@splinetool/runtime": "^1.12.6",
     "@types/papaparse": "^5.5.0",
     "@types/react-signature-canvas": "^1.0.7",
     "@types/three": "^0.181.0",

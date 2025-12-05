@@ -49,6 +49,8 @@ export interface Organization {
     maxActiveRuns: number;
     aiGenerations: number; // Monthly limit for AI features
   };
+  // Integrations
+  slackWebhookUrl?: string; // Optional Slack webhook URL for notifications
   createdAt: Date;
 }
 

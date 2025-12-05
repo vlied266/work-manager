@@ -16,7 +16,9 @@ import {
   Workflow,
   Sparkles,
   Calendar,
-  ArrowUpRight
+  ArrowUpRight,
+  MessageSquare,
+  Loader2
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -32,6 +34,9 @@ export function GeneralTab() {
   const [displayName, setDisplayName] = useState("");
   const [industry, setIndustry] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [slackWebhookUrl, setSlackWebhookUrl] = useState("");
+  const [savingSlack, setSavingSlack] = useState(false);
+  const [slackError, setSlackError] = useState<string | null>(null);
 
   // Fetch organization data
   useEffect(() => {
@@ -62,6 +67,7 @@ export function GeneralTab() {
           setDisplayName(org.name);
           setIndustry(data.industry || "");
           setLogoUrl(data.logoUrl || null);
+          setSlackWebhookUrl(data.slackWebhookUrl || "");
           setLoading(false);
         } else {
           setLoading(false);
@@ -114,6 +120,7 @@ export function GeneralTab() {
         name: displayName.trim(),
         industry: industry || null,
         logoUrl: logoUrl || null,
+        slackWebhookUrl: slackWebhookUrl.trim() || null,
         updatedAt: new Date(),
       });
       // Show success feedback
@@ -440,6 +447,93 @@ export function GeneralTab() {
                 }`}
                 style={{ width: `${Math.min(aiUsagePercent, 100)}%` }}
               />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Integrations Card */}
+      <div className="rounded-2xl bg-white/50 backdrop-blur-sm border border-white/60 p-8">
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-xl font-extrabold tracking-tight text-slate-900">
+            Integrations
+          </h2>
+        </div>
+
+        <div className="space-y-6">
+          {/* Slack Integration */}
+          <div>
+            <div className="mb-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                <MessageSquare className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Slack Notifications</h3>
+                <p className="text-sm text-slate-600">Get notified in Slack when new tasks are created</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Slack Webhook URL
+              </label>
+              <input
+                type="url"
+                value={slackWebhookUrl}
+                onChange={(e) => {
+                  setSlackWebhookUrl(e.target.value);
+                  setSlackError(null);
+                }}
+                placeholder="https://hooks.slack.com/services/..."
+                className="w-full rounded-xl border-0 bg-white/50 shadow-inner px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-purple-500/20 transition-all"
+              />
+              {slackError && (
+                <p className="text-xs text-rose-600 font-medium">{slackError}</p>
+              )}
+              <p className="text-xs text-slate-500">
+                Create a webhook in your Slack workspace to receive notifications
+              </p>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={async () => {
+                  // Validate URL
+                  if (slackWebhookUrl.trim() && !slackWebhookUrl.trim().startsWith("https://hooks.slack.com/")) {
+                    setSlackError("Invalid Slack webhook URL. Must start with https://hooks.slack.com/");
+                    return;
+                  }
+
+                  setSavingSlack(true);
+                  setSlackError(null);
+                  try {
+                    await updateDoc(doc(db, "organizations", organizationId), {
+                      slackWebhookUrl: slackWebhookUrl.trim() || null,
+                      updatedAt: new Date(),
+                    });
+                    alert("Slack integration saved successfully!");
+                  } catch (error) {
+                    console.error("Error saving Slack webhook:", error);
+                    setSlackError("Failed to save Slack webhook. Please try again.");
+                  } finally {
+                    setSavingSlack(false);
+                  }
+                }}
+                disabled={savingSlack}
+                className="inline-flex items-center gap-2 rounded-full bg-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-purple-700 hover:shadow-lg disabled:opacity-50"
+              >
+                {savingSlack ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-4 w-4" />
+                    Save
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
