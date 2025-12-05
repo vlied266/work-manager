@@ -61,12 +61,12 @@ export default function HeroAnimation() {
 
   return (
     <div
-      className="relative flex h-[420px] w-full items-center justify-center sm:h-[520px] lg:h-[640px]"
+      className="relative flex h-[520px] w-full items-center justify-center sm:h-[640px] lg:h-[780px] xl:h-[860px]"
       aria-hidden="true"
     >
       <div
         ref={containerRef}
-        className="h-full w-full overflow-hidden rounded-[36px] border border-slate-200/50 bg-gradient-to-br from-slate-50/40 to-white/20 shadow-[0_30px_70px_-20px_rgba(15,23,42,0.4)]"
+        className="h-full w-full overflow-hidden bg-transparent"
         style={{
           background: "transparent",
           backgroundColor: "transparent",
