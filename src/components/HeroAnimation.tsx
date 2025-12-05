@@ -5,7 +5,8 @@ import { Environment, Float, Sparkles } from "@react-three/drei";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 
-const ACCENT_COLORS = ["#8bdcff", "#f7b8ff", "#ffc98e", "#7cffc7"];
+const ACCENT_COLORS = ["#b3f0ff", "#dff6ff", "#a8e2ff", "#f2fbff"];
+const CORE_COLOR = "#f9fdff";
 
 type OrbitalParticle = {
   radius: number;
@@ -124,7 +125,7 @@ function CrystalCore() {
     <mesh ref={crystalRef}>
       <icosahedronGeometry args={[0.7, 1]} />
       <meshPhysicalMaterial
-        color="#b4f4ff"
+        color={CORE_COLOR}
         roughness={0.25}
         metalness={0.35}
         transmission={0.95}
@@ -139,35 +140,60 @@ function CrystalCore() {
 
 function AuroraBackdrop() {
   return (
-    <mesh rotation={[-Math.PI / 2.4, 0, 0]} position={[0, -1.4, -0.3]}>
-      <cylinderGeometry args={[2.8, 3.4, 0.12, 80, 1, true]} />
+    <mesh rotation={[-Math.PI / 2.2, 0, 0]} position={[0, -1.2, -0.2]}>
+      <cylinderGeometry args={[2.7, 3.5, 0.16, 96, 1, true]} />
       <meshStandardMaterial
-        color="#050617"
+        color={CORE_COLOR}
         transparent
-        opacity={0.6}
-        side={THREE.DoubleSide}
-        metalness={0.2}
-        roughness={0.8}
+        opacity={0.25}
+        side={THREE.BackSide}
+        metalness={0.1}
+        roughness={0.9}
+        emissive={CORE_COLOR}
+        emissiveIntensity={0.35}
       />
     </mesh>
+  );
+}
+
+function FloatingAssembly() {
+  const groupRef = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    const group = groupRef.current;
+    if (!group) {
+      return;
+    }
+
+    const t = state.clock.elapsedTime;
+    group.position.y = Math.sin(t * 0.45) * 0.25;
+    group.position.x = Math.sin(t * 0.2) * 0.05;
+    group.rotation.z = Math.sin(t * 0.18) * 0.06;
+    group.rotation.y = Math.cos(t * 0.12) * 0.05;
+  });
+
+  return (
+    <group ref={groupRef}>
+      <Float speed={1.05} rotationIntensity={0.3} floatIntensity={0.35}>
+        <CrystalCore />
+      </Float>
+      <AuroraBackdrop />
+      <RibbonRing radius={1} color="#e4f7ff" speed={0.55} tilt={0.08} />
+      <RibbonRing radius={1.35} color="#b9ecff" speed={0.35} tilt={-0.04} />
+      <RibbonRing radius={1.75} color="#dff6ff" speed={0.2} tilt={0.02} />
+      <OrbitingParticles />
+    </group>
   );
 }
 
 function HeroScene() {
   return (
     <>
-      <ambientLight intensity={0.35} />
-      <directionalLight position={[4, 5, 6]} intensity={1.3} color="#d5e7ff" />
-      <pointLight position={[-2, -1, -3]} intensity={0.6} color="#8bdcff" />
-      <Float speed={1.25} rotationIntensity={0.4} floatIntensity={0.6}>
-        <CrystalCore />
-      </Float>
-      <AuroraBackdrop />
-      <RibbonRing radius={1} color="#7cffc7" speed={0.5} tilt={0.1} />
-      <RibbonRing radius={1.4} color="#f7b8ff" speed={0.35} tilt={-0.08} />
-      <RibbonRing radius={1.9} color="#8bdcff" speed={0.2} tilt={0.04} />
-      <OrbitingParticles />
-      <Sparkles color="#9de0ff" count={120} size={3} speed={0.4} opacity={0.5} scale={4} />
+      <ambientLight intensity={0.4} />
+      <directionalLight position={[4, 5, 6]} intensity={1.2} color="#f0fbff" />
+      <pointLight position={[-2, -1, -3]} intensity={0.65} color="#c5f1ff" />
+      <FloatingAssembly />
+      <Sparkles color="#f6fbff" count={140} size={3.4} speed={0.35} opacity={0.5} scale={4.2} />
       <Environment preset="apartment" />
     </>
   );
@@ -176,10 +202,9 @@ function HeroScene() {
 export default function HeroAnimation() {
   return (
     <div
-      className="relative flex h-[420px] w-full items-center justify-center overflow-hidden rounded-[48px] border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 sm:h-[520px] lg:h-[640px]"
+      className="relative flex h-[420px] w-full items-center justify-center sm:h-[520px] lg:h-[640px]"
       aria-hidden="true"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,#5efce8_0%,rgba(14,23,38,0)_55%)] opacity-40" />
       <Canvas
         className="h-full w-full"
         camera={{ position: [0, 0, 4], fov: 45 }}
@@ -187,7 +212,6 @@ export default function HeroAnimation() {
       >
         <HeroScene />
       </Canvas>
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(94,252,232,0.18)_0%,rgba(12,16,32,0)_55%)] mix-blend-screen" />
     </div>
   );
 }
