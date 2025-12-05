@@ -20,6 +20,7 @@ import { TaskRenderer } from "@/components/run/task-renderer";
 import { TaskChat } from "@/components/run/task-chat";
 import { ContextPanel } from "@/components/run/context-panel";
 import { generateRunCertificate, exportRunToCSV } from "@/lib/exporter";
+import { AddToCalendarButton } from "@/components/run/add-to-calendar-button";
 
 export default function RunPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -614,6 +615,14 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
                 <h1 className="text-4xl md:text-5xl font-bold text-slate-900 tracking-tight leading-tight">
                   {currentStep.title}
                 </h1>
+                <div className="flex items-center justify-center">
+                  <AddToCalendarButton
+                    title={currentStep.title}
+                    description={currentStep.description || ATOMIC_ACTION_METADATA[currentStep.action].description}
+                    startTime={run.startedAt ? new Date(run.startedAt.getTime() + (run.currentStepIndex * 60 * 60 * 1000)) : new Date()}
+                    duration={60}
+                  />
+                </div>
                 <p className="text-lg text-slate-600 max-w-xl mx-auto font-medium leading-relaxed">
                   {currentStep.description || ATOMIC_ACTION_METADATA[currentStep.action].description}
                 </p>

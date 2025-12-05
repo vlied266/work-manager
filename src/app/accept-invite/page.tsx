@@ -190,6 +190,10 @@ function AcceptInviteContent() {
 
     try {
       const provider = new GoogleAuthProvider();
+      // Add Google Calendar scope
+      provider.addScope('https://www.googleapis.com/auth/calendar.events');
+      // Add Google Sheets scope
+      provider.addScope('https://www.googleapis.com/auth/spreadsheets.readonly');
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
