@@ -1,72 +1,136 @@
 "use client";
 
-import { Float, Sparkles } from "@react-three/drei";
+import { Sparkles } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import * as THREE from "three";
 
-type RibbonProps = {
-  color: string;
-  scale?: number;
-  offset?: number;
+type PulsingCircleProps = {
+  radius?: number;
+  color?: string;
+  accentColor?: string;
 };
 
-function Ribbon({ color, scale = 1, offset = 0 }: RibbonProps) {
-  const mesh = useRef<THREE.Mesh>(null);
-  const wobble = useMemo(() => 0.4 + Math.random() * 0.6, []);
-  const spin = useMemo(() => 0.2 + Math.random() * 0.3, []);
+function PulsingCircle({
+  radius = 1.9,
+  color = "#60a5fa",
+  accentColor = "#c084fc",
+}: PulsingCircleProps) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const materialRef = useRef<THREE.MeshStandardMaterial>(null);
 
   useFrame(({ clock }) => {
-    if (!mesh.current) return;
-    const t = clock.getElapsedTime() * wobble + offset;
-    mesh.current.position.set(
-      Math.sin(t * 0.9) * 1.8,
-      Math.cos(t * 0.6) * 0.9,
-      Math.cos(t) * 1.4
-    );
-    mesh.current.rotation.x = t * 0.4;
-    mesh.current.rotation.y = t * spin;
+    const t = clock.getElapsedTime();
+    const scale = 1 + Math.sin(t * 1.4) * 0.08;
+
+    if (meshRef.current) {
+      meshRef.current.scale.set(scale, scale, scale);
+    }
+
+    if (materialRef.current) {
+      materialRef.current.emissiveIntensity = 0.6 + Math.sin(t * 1.8) * 0.4;
+      materialRef.current.opacity = 0.9 + Math.sin(t * 0.7) * 0.04;
+    }
   });
 
   return (
-    <mesh ref={mesh} scale={scale}>
-      <torusKnotGeometry args={[0.45, 0.15, 180, 24]} />
+    <mesh ref={meshRef} rotation={[Math.PI / 2, 0, 0]}>
+      <circleGeometry args={[radius, 120]} />
       <meshStandardMaterial
+        ref={materialRef}
         color={color}
-        metalness={0.75}
-        roughness={0.25}
-        envMapIntensity={1.1}
+        emissive={accentColor}
+        transparent
+        metalness={0.45}
+        roughness={0.2}
       />
     </mesh>
   );
 }
 
-type OrbProps = {
-  color: string;
-  radius?: number;
+type OrbitRingProps = {
+  innerRadius?: number;
+  outerRadius?: number;
+  color?: string;
+  tilt?: number;
   speed?: number;
-  scale?: number;
+  offset?: number;
 };
 
-function Orb({ color, radius = 2, speed = 0.35, scale = 0.6 }: OrbProps) {
-  const mesh = useRef<THREE.Mesh>(null);
-  const offset = useMemo(() => Math.random() * Math.PI * 2, []);
+function OrbitRing({
+  innerRadius = 2.3,
+  outerRadius = 2.45,
+  color = "#38bdf8",
+  tilt = 0.5,
+  speed = 0.25,
+  offset = 0,
+}: OrbitRingProps) {
+  const meshRef = useRef<THREE.Mesh>(null);
 
   useFrame(({ clock }) => {
-    if (!mesh.current) return;
-    const t = clock.getElapsedTime() * speed + offset;
-    mesh.current.position.set(
-      Math.cos(t) * radius,
-      Math.sin(t * 0.7) * radius * 0.4,
-      Math.sin(t) * radius
-    );
-    mesh.current.rotation.y = t * 0.5;
+    if (!meshRef.current) return;
+    meshRef.current.rotation.z = clock.getElapsedTime() * speed + offset;
   });
 
   return (
-    <mesh ref={mesh} scale={scale}>
-      <icosahedronGeometry args={[0.7, 0]} />
-      <meshStandardMaterial color={color} wireframe />
+    <mesh ref={meshRef} rotation={[Math.PI / 2, 0, tilt]}>
+      <ringGeometry args={[innerRadius, outerRadius, 180]} />
+      <meshBasicMaterial
+        color={color}
+        transparent
+        opacity={0.6}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  );
+}
+
+type OrbitingDotProps = {
+  radius?: number;
+  speed?: number;
+  color?: string;
+  size?: number;
+  height?: number;
+  phase?: number;
+};
+
+function OrbitingDot({
+  radius = 2.8,
+  speed = 0.4,
+  color = "#fef3c7",
+  size = 0.12,
+  height = 0.2,
+  phase = 0,
+}: OrbitingDotProps) {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  useFrame(({ clock }) => {
+    if (!meshRef.current) return;
+    const t = clock.getElapsedTime() * speed + phase;
+    meshRef.current.position.set(
+      Math.cos(t) * radius,
+      Math.sin(t * 0.6) * height,
+      Math.sin(t) * radius
+    );
+  });
+
+  return (
+    <mesh ref={meshRef}>
+      <sphereGeometry args={[size, 32, 32]} />
+      <meshStandardMaterial
+        color={color}
+        emissive={color}
+        emissiveIntensity={0.9}
+      />
+    </mesh>
+  );
+}
+
+function GlowBase() {
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.6, 0]}>
+      <circleGeometry args={[4.5, 80]} />
+      <meshBasicMaterial color="#0f172a" transparent opacity={0.45} />
     </mesh>
   );
 }
@@ -85,25 +149,50 @@ export default function HeroAnimation() {
       >
         <color attach="background" args={["#030712"]} />
         <ambientLight intensity={0.4} />
-        <directionalLight position={[4, 5, 2]} intensity={1.5} />
-        <directionalLight position={[-4, -3, -2]} intensity={0.3} />
+        <directionalLight position={[5, 6, 3]} intensity={1.4} />
+        <directionalLight position={[-4, -3, -2]} intensity={0.4} />
 
-        <Float speed={1.2} rotationIntensity={0.4} floatIntensity={0.8}>
-          <Ribbon color="#818cf8" scale={1.1} />
-        </Float>
-        <Float speed={1} rotationIntensity={0.8} floatIntensity={1.2}>
-          <Ribbon color="#f472b6" scale={0.6} offset={1.2} />
-        </Float>
-        <Float speed={0.8} rotationIntensity={0.5} floatIntensity={1}>
-          <Ribbon color="#34d399" scale={0.75} offset={2.4} />
-        </Float>
-
-        <Orb color="#a5b4fc" radius={2.2} speed={0.25} scale={0.35} />
-        <Orb color="#fcd34d" radius={1.6} speed={0.5} scale={0.3} />
+        <group position={[0, -0.15, 0]}>
+          <GlowBase />
+          <PulsingCircle />
+          <OrbitRing />
+          <OrbitRing
+            innerRadius={1.65}
+            outerRadius={1.85}
+            color="#fef3c7"
+            tilt={-0.35}
+            speed={-0.18}
+            offset={Math.PI / 4}
+          />
+          <OrbitRing
+            innerRadius={2.85}
+            outerRadius={3}
+            color="#818cf8"
+            tilt={0.9}
+            speed={0.08}
+          />
+          <OrbitingDot radius={2.1} speed={0.55} color="#c4b5fd" height={0.4} />
+          <OrbitingDot
+            radius={2.8}
+            speed={0.38}
+            color="#fef08a"
+            size={0.18}
+            height={0.65}
+            phase={Math.PI / 2}
+          />
+          <OrbitingDot
+            radius={3.2}
+            speed={0.22}
+            color="#34d399"
+            size={0.16}
+            height={0.3}
+            phase={Math.PI}
+          />
+        </group>
 
         <Sparkles
-          count={160}
-          speed={0.2}
+          count={180}
+          speed={0.15}
           scale={[6, 4, 6]}
           size={3}
           color="#38bdf8"
