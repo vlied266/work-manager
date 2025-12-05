@@ -6,7 +6,7 @@ import { auth } from "@/lib/firebase";
 import Link from "next/link";
 import { Sparkles, Zap, Users, Layers, ArrowRight, Check, Circle, Move, Bot, BarChart3, TrendingUp, Activity, Github, Twitter, Linkedin, Mail, LayoutDashboard, Eye, Rocket } from "lucide-react";
 import { motion } from "framer-motion";
-import HeroAnimation from "@/components/HeroAnimation";
+import FinalSplineHero from "@/components/hero/FinalSplineHero";
 import Logo from "@/components/Logo";
 import IntegrationsSection from "@/components/home/IntegrationsSection";
 
@@ -214,7 +214,7 @@ export default function LandingPage() {
                 transition={{ duration: 0.8, delay: 0.2 }}
                 className="relative z-0 w-full lg:w-[520px]"
               >
-                <HeroAnimation />
+                <FinalSplineHero />
               </motion.div>
             </div>
           </div>
