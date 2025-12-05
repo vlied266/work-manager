@@ -16,8 +16,8 @@ const Spline = dynamic(
   }
 );
 
-// Spline scene extracted from https://my.spline.design/stackableglass-IEdJwnzWoNcSaf6VXjvnCl2g-AHg/
-const SCENE_PATH = 'https://prod.spline.design/stackableglass-IEdJwnzWoNcSaf6VXjvnCl2g-AHg/scene.splinecode';
+// Spline scene extracted from https://prod.spline.design/ac7X8wDOYaxrAOP3/scene.splinecode
+const SCENE_PATH = 'https://prod.spline.design/ac7X8wDOYaxrAOP3/scene.splinecode';
 
 export default function FinalSplineHero() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -68,7 +68,7 @@ export default function FinalSplineHero() {
   return (
     <div
       ref={containerRef}
-      className="relative flex w-full items-center justify-center h-[420px] sm:h-[520px] lg:h-[640px]"
+      className="relative flex w-full max-w-[620px] items-center justify-center h-[480px] sm:h-[580px] lg:h-[720px] mx-auto"
       style={{
         background: 'transparent',
         backgroundColor: 'transparent'
