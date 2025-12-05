@@ -1,91 +1,21 @@
 "use client";
 
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Environment, Float } from "@react-three/drei";
-import { Suspense } from "react";
+import dynamic from "next/dynamic";
 
-// Sapphire Sphere Component
-function SapphireSphere() {
-  return (
-    <Float
-      speed={1.5}
-      rotationIntensity={0.5}
-      floatIntensity={0.5}
-    >
-      <mesh>
-        <sphereGeometry args={[2, 64, 64]} />
-        <meshStandardMaterial
-          color="#0F52BA" // Sapphire blue color
-          metalness={0.95}
-          roughness={0.05}
-          transparent={true}
-          opacity={0.75}
-          emissive="#1E3A8A"
-          emissiveIntensity={0.15}
-          envMapIntensity={1.5}
-        />
-      </mesh>
-    </Float>
-  );
-}
+const SplineScene = dynamic(
+  () => import("@splinetool/react-spline").then((mod) => mod.default),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full w-full items-center justify-center rounded-[32px] border border-slate-200/50 bg-white/70 backdrop-blur-xl">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-slate-500" />
+      </div>
+    ),
+  }
+);
 
-// Orbiting Particles (Spheres)
-function FloatingParticles() {
-  const particleCount = 15;
-  const particles = Array.from({ length: particleCount }, (_, i) => {
-    const angle = (i / particleCount) * Math.PI * 2;
-    const radius = 3.5 + Math.random() * 0.5;
-    const height = (Math.random() - 0.5) * 2;
-    
-    return {
-      angle,
-      radius,
-      height,
-      speed: 0.5 + Math.random() * 0.5,
-    };
-  });
-
-  return (
-    <group>
-      {particles.map((particle, index) => (
-        <Float
-          key={index}
-          speed={particle.speed}
-          rotationIntensity={0.3}
-          floatIntensity={0.3}
-        >
-          <mesh
-            position={[
-              Math.cos(particle.angle) * particle.radius,
-              particle.height,
-              Math.sin(particle.angle) * particle.radius,
-            ]}
-          >
-            <sphereGeometry args={[0.08, 16, 16]} />
-            <meshStandardMaterial
-              color="#ffffff"
-              emissive="#007AFF"
-              emissiveIntensity={0.8}
-              roughness={0.2}
-              metalness={0.8}
-              transparent={true}
-              opacity={0.9}
-            />
-          </mesh>
-        </Float>
-      ))}
-    </group>
-  );
-}
-
-// Loading Fallback
-function LoadingFallback() {
-  return (
-    <div className="flex items-center justify-center h-full">
-      <div className="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-    </div>
-  );
-}
+const SPLINE_SCENE_URL =
+  "https://prod.spline.design/c7a3f8f5-9535-4aad-ade7-67d21df46f78/scene.splinecode";
 
 export default function HeroAnimation() {
   return (
@@ -93,40 +23,18 @@ export default function HeroAnimation() {
       className="relative flex h-[420px] w-full items-center justify-center sm:h-[520px] lg:h-[640px]"
       aria-hidden="true"
     >
-      <Canvas
-        camera={{ position: [0, 0, 8], fov: 50 }}
-        gl={{ antialias: true, alpha: true }}
-        className="w-full h-full"
-      >
-        <Suspense fallback={null}>
-          {/* Lighting - Enhanced for sapphire transparency and office scene */}
-          <ambientLight intensity={0.7} />
-          <directionalLight position={[5, 5, 5]} intensity={1.5} />
-          <directionalLight position={[-5, 5, -5]} intensity={1.0} />
-          <directionalLight position={[0, 10, 0]} intensity={0.8} />
-          <pointLight position={[0, 0, 5]} intensity={0.6} color="#007AFF" />
-          <pointLight position={[0, 2, -2]} intensity={0.4} color="#FFD700" />
-          
-          {/* Environment for reflections - modern open office workspace with desks, chairs, computers and people */}
-          <Environment preset="city" />
-          
-          {/* Main Sapphire Sphere */}
-          <SapphireSphere />
-          
-          {/* Orbiting Particles */}
-          <FloatingParticles />
-          
-          {/* Camera Controls (optional - can be removed for auto-rotation) */}
-          <OrbitControls
-            enableZoom={false}
-            enablePan={false}
-            autoRotate
-            autoRotateSpeed={0.5}
-            minPolarAngle={Math.PI / 3}
-            maxPolarAngle={Math.PI / 1.5}
-          />
-        </Suspense>
-      </Canvas>
+      <div className="pointer-events-none absolute inset-0 -z-10 blur-[120px]">
+        <div className="absolute left-8 top-12 h-48 w-48 rounded-full bg-[#a163f1]/40" />
+        <div className="absolute bottom-6 right-6 h-56 w-56 rounded-full bg-[#40dfa3]/40" />
+        <div className="absolute inset-x-0 top-1/2 h-72 w-full -translate-y-1/2 bg-gradient-to-r from-[#a163f1]/20 via-[#3498ea]/20 to-[#40dfa3]/20" />
+      </div>
+
+      <div className="relative isolate flex h-full w-full overflow-hidden rounded-[32px] border border-white/40 bg-white/30 shadow-[0_40px_140px_rgba(15,82,186,0.2)] backdrop-blur-2xl">
+        <SplineScene scene={SPLINE_SCENE_URL} className="h-full w-full" />
+
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/0 via-white/5 to-white/35" />
+        <div className="pointer-events-none absolute inset-x-20 top-10 h-16 rounded-full bg-white/40 blur-3xl" />
+      </div>
     </div>
   );
 }
