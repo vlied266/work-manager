@@ -128,7 +128,7 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="relative bg-white">
         <div className="px-6 sm:px-10 lg:px-16">
-          <div className="mx-auto max-w-7xl">
+          <div className="mx-auto w-full max-w-[2000px]">
             <div className="flex flex-col-reverse lg:flex-row lg:items-center lg:justify-between gap-12 lg:gap-16 py-16 lg:py-28">
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
@@ -212,7 +212,7 @@ export default function LandingPage() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
-                className="relative z-0 w-full lg:max-w-[760px] xl:max-w-[880px] 2xl:max-w-[1040px]"
+                className="relative z-0 w-full lg:flex-1 lg:max-w-none"
               >
                 <HeroAnimation />
               </motion.div>
