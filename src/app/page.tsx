@@ -129,7 +129,7 @@ export default function LandingPage() {
       <section className="relative bg-white">
         <div className="px-6 sm:px-10 lg:px-16">
           <div className="mx-auto w-full max-w-[2000px]">
-            <div className="flex flex-col-reverse lg:flex-row lg:items-center lg:justify-between gap-6 lg:gap-6 py-16 lg:py-28">
+            <div className="flex flex-col-reverse lg:flex-row lg:items-start gap-4 lg:gap-4 py-16 lg:py-24">
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
