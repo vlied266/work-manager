@@ -16,8 +16,8 @@ const Spline = dynamic(
   }
 );
 
-// *** Using Spline Cloud URL ***
-const SCENE_PATH = 'https://prod.spline.design/zKjuBb2cjZdP3Puh/scene.splinecode';
+// Spline scene extracted from https://my.spline.design/stackableglass-IEdJwnzWoNcSaf6VXjvnCl2g-AHg/
+const SCENE_PATH = 'https://prod.spline.design/IEdJwnzWoNcSaf6VXjvnCl2g/scene.splinecode';
 
 export default function FinalSplineHero() {
   const containerRef = useRef<HTMLDivElement>(null);
