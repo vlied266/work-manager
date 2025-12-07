@@ -25,3 +25,48 @@ canvas {
   margin: 0 !important;
 }
 
+/* Atomic Orbit Animations */
+@keyframes orbit-spin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes orbit-spin-reverse {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.orbit-inner {
+  animation: orbit-spin 20s linear infinite;
+}
+
+.orbit-outer {
+  animation: orbit-spin 30s linear infinite;
+}
+
+.orbit-counter-rotate {
+  animation: orbit-spin-reverse 20s linear infinite;
+}
+
+.orbit-counter-rotate-outer {
+  animation: orbit-spin-reverse 30s linear infinite;
+}
+
+/* Gradient animation for CTA section */
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+

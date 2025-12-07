@@ -1,92 +1,67 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { 
-  MessageSquare, 
-  Folder, 
-  FileText, 
-  Github, 
-  CreditCard, 
-  GitBranch,
-  Zap,
-  Cloud
-} from "lucide-react";
 import Logo from "@/components/Logo";
+import Image from "next/image";
 
-interface SatelliteIcon {
-  icon: React.ComponentType<{ className?: string }>;
+interface IntegrationLogo {
   name: string;
-  color: string;
-  position: { top?: string; right?: string; bottom?: string; left?: string };
-  delay: number;
-  duration?: number;
+  src: string;
+  alt: string;
 }
 
-const satellites: SatelliteIcon[] = [
-  {
-    icon: MessageSquare,
-    name: "Slack",
-    color: "text-purple-600",
-    position: { top: "10%", right: "15%" },
-    delay: 0,
-  },
-  {
-    icon: Folder,
-    name: "Drive",
-    color: "text-blue-600",
-    position: { top: "20%", left: "10%" },
-    delay: 0.3,
-  },
-  {
-    icon: FileText,
-    name: "Notion",
-    color: "text-slate-800",
-    position: { top: "50%", left: "5%" },
-    delay: 0.6,
-  },
-  {
-    icon: Github,
-    name: "GitHub",
-    color: "text-slate-900",
-    position: { bottom: "20%", left: "15%" },
-    delay: 0.9,
-  },
-  {
-    icon: CreditCard,
-    name: "Stripe",
-    color: "text-indigo-600",
-    position: { bottom: "10%", right: "20%" },
-    delay: 1.2,
-  },
-  {
-    icon: GitBranch,
-    name: "Linear",
-    color: "text-blue-500",
-    position: { top: "50%", right: "5%" },
-    delay: 1.5,
-  },
-  {
-    icon: Zap,
-    name: "Zapier",
-    color: "text-orange-500",
-    position: { top: "5%", left: "50%" },
-    delay: 1.8,
-  },
-  {
-    icon: Cloud,
-    name: "AWS",
-    color: "text-orange-600",
-    position: { bottom: "5%", left: "50%" },
-    delay: 2.1,
-  },
-].map((sat, index) => ({
-  ...sat,
-  duration: 2 + (index % 3) * 0.3, // Use index-based duration instead of Math.random()
-}));
+// Inner orbit: 3-4 icons
+const innerOrbitLogos: IntegrationLogo[] = [
+  { name: "Slack", src: "/integrations/slack.png", alt: "Slack" },
+  { name: "Linear", src: "/integrations/linear.png", alt: "Linear" },
+  { name: "Notion", src: "/integrations/notion.png", alt: "Notion" },
+];
+
+// Outer orbit: rest of the icons
+const outerOrbitLogos: IntegrationLogo[] = [
+  { name: "Drive", src: "/integrations/drive.png", alt: "Google Drive" },
+  { name: "GitHub", src: "/integrations/github.png", alt: "GitHub" },
+  { name: "Stripe", src: "/integrations/stripe.png", alt: "Stripe" },
+  { name: "Zapier", src: "/integrations/Zapier.png", alt: "Zapier" },
+  { name: "AWS", src: "/integrations/AWS.png", alt: "AWS" },
+];
 
 export default function IntegrationsSection() {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Calculate positions only on client to avoid hydration mismatch
+  const getInnerOrbitPositions = () => {
+    return innerOrbitLogos.map((logo, index) => {
+      const angle = (index * 360) / innerOrbitLogos.length;
+      const radian = (angle * Math.PI) / 180;
+      const radius = 140;
+      const x = Math.round(radius * Math.cos(radian) * 100) / 100;
+      const y = Math.round(radius * Math.sin(radian) * 100) / 100;
+      return { logo, x, y };
+    });
+  };
+
+  const getOuterOrbitPositions = () => {
+    return outerOrbitLogos.map((logo, index) => {
+      const angle = (index * 360) / outerOrbitLogos.length;
+      const radian = (angle * Math.PI) / 180;
+      const radius = 210;
+      const x = Math.round(radius * Math.cos(radian) * 100) / 100;
+      const y = Math.round(radius * Math.sin(radian) * 100) / 100;
+      return { logo, x, y };
+    });
+  };
+
+  const innerPositions = isMounted ? getInnerOrbitPositions() : [];
+  const outerPositions = isMounted ? getOuterOrbitPositions() : [];
+
   return (
-    <section className="relative overflow-hidden bg-white py-24">
+    <section className="relative overflow-hidden bg-white">
       <div className="mx-auto max-w-[1600px] px-6">
         {/* Header */}
         <motion.div
@@ -104,106 +79,168 @@ export default function IntegrationsSection() {
           </p>
         </motion.div>
 
-        {/* Gravity Orbit Container */}
+        {/* Atomic Orbit Container */}
         <div className="relative flex items-center justify-center min-h-[500px] md:min-h-[600px]">
-          {/* Desktop: Absolute positioned satellites */}
+          {/* Desktop: Orbital Animation */}
           <div className="hidden md:block relative w-full h-full">
-            {/* Central Hub - Atomic Work */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10"
-            >
-              {/* Pulsing Glow Background */}
-              <motion.div
-                className="absolute inset-0 rounded-2xl"
-                animate={{
-                  scale: [1, 1.2, 1],
-                  opacity: [0.3, 0.5, 0.3],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
+            {/* Container for all orbits - centered */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+              
+              {/* Inner Orbit Circle (dashed line) */}
+              <div
+                className="absolute border-2 border-dashed border-slate-300/50 rounded-full"
                 style={{
-                  background: "radial-gradient(circle, rgba(99, 99, 241, 0.4) 0%, rgba(139, 92, 246, 0.2) 50%, transparent 70%)",
-                  filter: "blur(20px)",
-                  width: "120px",
-                  height: "120px",
+                  width: "280px",
+                  height: "280px",
                   top: "50%",
                   left: "50%",
                   transform: "translate(-50%, -50%)",
                 }}
               />
-              
-              {/* Glass Card */}
-              <div className="relative w-24 h-24 rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-xl flex items-center justify-center p-2">
-                <Logo size="medium" />
-              </div>
-            </motion.div>
 
-            {/* Satellite Icons */}
-            {satellites.map((satellite, index) => {
-              const Icon = satellite.icon;
-              return (
+              {/* Outer Orbit Circle (dashed line) */}
+              <div
+                className="absolute border-2 border-dashed border-slate-300/50 rounded-full"
+                style={{
+                  width: "420px",
+                  height: "420px",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                }}
+              />
+
+              {/* Central Logo - Static */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20"
+              >
+                {/* Pulsing Glow Background */}
                 <motion.div
-                  key={satellite.name}
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  className="absolute"
-                  style={{
-                    ...satellite.position,
-                    transform: "translate(-50%, -50%)",
-                  }}
+                  className="absolute inset-0 rounded-2xl"
                   animate={{
-                    y: [0, -15, 0],
+                    scale: [1, 1.2, 1],
+                    opacity: [0.3, 0.5, 0.3],
                   }}
                   transition={{
-                    duration: satellite.duration || 2,
+                    duration: 3,
                     repeat: Infinity,
                     ease: "easeInOut",
-                    delay: satellite.delay,
                   }}
-                >
-                  <div className="relative group">
-                    {/* Icon Glow */}
-                    <motion.div
-                      className="absolute inset-0 rounded-xl"
-                      animate={{
-                        scale: [1, 1.3, 1],
-                        opacity: [0.2, 0.4, 0.2],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                        delay: satellite.delay,
-                      }}
-                      style={{
-                        background: `radial-gradient(circle, currentColor 0%, transparent 70%)`,
-                        filter: "blur(10px)",
-                      }}
-                    />
-                    
-                    {/* Icon Container */}
-                    <div className="relative w-16 h-16 rounded-xl bg-white border border-slate-200 shadow-lg flex items-center justify-center group-hover:shadow-xl transition-shadow">
-                      <Icon className={`h-8 w-8 ${satellite.color}`} />
-                    </div>
-                    
-                    {/* Tooltip on hover */}
-                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                      <span className="text-xs font-medium text-slate-700 bg-white px-2 py-1 rounded shadow-sm border border-slate-200">
-                        {satellite.name}
-                      </span>
+                  style={{
+                    background: "radial-gradient(circle, rgba(99, 99, 241, 0.4) 0%, rgba(139, 92, 246, 0.2) 50%, transparent 70%)",
+                    filter: "blur(20px)",
+                    width: "140px",
+                    height: "140px",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                  }}
+                />
+                
+                {/* Glass Card */}
+                <div className="relative w-28 h-28 rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-xl flex items-center justify-center p-3">
+                  <Logo size="medium" />
+                </div>
+              </motion.div>
+
+              {/* Inner Orbit Container */}
+              <div
+                className="absolute orbit-inner"
+                style={{
+                  width: "280px",
+                  height: "280px",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                }}
+              >
+                {innerPositions.map(({ logo, x, y }) => (
+                  <div
+                    key={logo.name}
+                    className="absolute"
+                    style={{
+                      left: "50%",
+                      top: "50%",
+                      transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
+                    }}
+                  >
+                    <div className="relative orbit-counter-rotate">
+                      <div className="relative group">
+                        {/* Glass Container */}
+                        <div className="relative w-12 h-12 rounded-xl bg-white/90 backdrop-blur-sm border border-slate-200/50 shadow-lg flex items-center justify-center p-2 group-hover:shadow-xl transition-shadow">
+                          <Image
+                            src={logo.src}
+                            alt={logo.alt}
+                            width={32}
+                            height={32}
+                            className="w-full h-full object-contain"
+                            unoptimized
+                          />
+                        </div>
+                        
+                        {/* Tooltip */}
+                        <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-30">
+                          <span className="text-xs font-medium text-slate-700 bg-white px-2 py-1 rounded shadow-sm border border-slate-200">
+                            {logo.name}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </motion.div>
-              );
-            })}
+                ))}
+              </div>
+
+              {/* Outer Orbit Container */}
+              <div
+                className="absolute orbit-outer"
+                style={{
+                  width: "420px",
+                  height: "420px",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                }}
+              >
+                {outerPositions.map(({ logo, x, y }) => (
+                  <div
+                    key={logo.name}
+                    className="absolute"
+                    style={{
+                      left: "50%",
+                      top: "50%",
+                      transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
+                    }}
+                  >
+                    <div className="relative orbit-counter-rotate-outer">
+                      <div className="relative group">
+                        {/* Glass Container */}
+                        <div className="relative w-12 h-12 rounded-xl bg-white/90 backdrop-blur-sm border border-slate-200/50 shadow-lg flex items-center justify-center p-2 group-hover:shadow-xl transition-shadow">
+                          <Image
+                            src={logo.src}
+                            alt={logo.alt}
+                            width={32}
+                            height={32}
+                            className="w-full h-full object-contain"
+                            unoptimized
+                          />
+                        </div>
+                        
+                        {/* Tooltip */}
+                        <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-30">
+                          <span className="text-xs font-medium text-slate-700 bg-white px-2 py-1 rounded shadow-sm border border-slate-200">
+                            {logo.name}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Mobile: Grid Layout */}
@@ -247,56 +284,31 @@ export default function IntegrationsSection() {
                 </div>
               </motion.div>
 
-              {/* Satellite Icons in Grid */}
-              {satellites.map((satellite, index) => {
-                const Icon = satellite.icon;
-                return (
-                  <motion.div
-                    key={satellite.name}
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    animate={{
-                      y: [0, -10, 0],
-                    }}
-                    transition={{
-                      duration: satellite.duration || 2,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: satellite.delay * 0.5,
-                    }}
-                    className="flex flex-col items-center"
-                  >
-                    <div className="relative group">
-                      {/* Icon Glow */}
-                      <motion.div
-                        className="absolute inset-0 rounded-xl"
-                        animate={{
-                          scale: [1, 1.2, 1],
-                          opacity: [0.2, 0.3, 0.2],
-                        }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: satellite.delay * 0.5,
-                        }}
-                        style={{
-                          background: `radial-gradient(circle, currentColor 0%, transparent 70%)`,
-                          filter: "blur(8px)",
-                        }}
-                      />
-                      
-                      <div className="relative w-14 h-14 rounded-xl bg-white border border-slate-200 shadow-lg flex items-center justify-center">
-                        <Icon className={`h-7 w-7 ${satellite.color}`} />
-                      </div>
-                    </div>
-                    <span className="mt-2 text-xs font-medium text-slate-600">
-                      {satellite.name}
-                    </span>
-                  </motion.div>
-                );
-              })}
+              {/* Integration Logos in Grid */}
+              {[...innerOrbitLogos, ...outerOrbitLogos].map((logo, index) => (
+                <motion.div
+                  key={logo.name}
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  className="flex flex-col items-center"
+                >
+                  <div className="relative w-14 h-14 rounded-xl bg-white/90 backdrop-blur-sm border border-slate-200/50 shadow-lg flex items-center justify-center p-2">
+                    <Image
+                      src={logo.src}
+                      alt={logo.alt}
+                      width={32}
+                      height={32}
+                      className="w-full h-full object-contain"
+                      unoptimized
+                    />
+                  </div>
+                  <span className="mt-2 text-xs font-medium text-slate-600 text-center">
+                    {logo.name}
+                  </span>
+                </motion.div>
+              ))}
             </div>
           </div>
         </div>

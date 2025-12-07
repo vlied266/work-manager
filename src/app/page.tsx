@@ -129,7 +129,7 @@ export default function LandingPage() {
       <section className="relative bg-white">
         <div className="px-6 sm:px-10 lg:px-16">
           <div className="mx-auto max-w-6xl">
-            <div className="flex flex-col-reverse lg:flex-row lg:items-center lg:justify-between gap-12 lg:gap-16 py-16 lg:py-28">
+            <div className="flex flex-col-reverse lg:flex-row lg:items-center lg:justify-between gap-12 lg:gap-16 py-20 sm:py-24 lg:py-28">
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -223,7 +223,7 @@ export default function LandingPage() {
 
       {/* Features Grid (Bento Box Style) */}
       <section className="relative overflow-visible bg-white">
-        <div className="mx-auto max-w-[1600px] px-6 py-16 sm:py-20 lg:py-24">
+        <div className="mx-auto max-w-[1600px] px-6 py-20 sm:py-24 lg:py-28">
           <div className="mx-auto max-w-2xl text-center mb-16">
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
@@ -447,14 +447,17 @@ export default function LandingPage() {
       </section>
 
       {/* Integrations Section */}
-      <div className="py-24 relative">
+      <div className="py-20 sm:py-24 lg:py-28 relative">
         <IntegrationsSection />
       </div>
 
       {/* CTA Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/50">
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
         {/* Premium Decorative Background Elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* Subtle gradient orbs */}
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-200/20 rounded-full blur-3xl" />
           {/* Premium Blue Orb - Top Left */}
           <motion.div
             className="absolute rounded-full blur-3xl"
@@ -630,39 +633,48 @@ export default function LandingPage() {
           ))}
         </div>
 
-        <div className="relative mx-auto max-w-[1600px] px-6 py-20 sm:py-24 lg:py-32">
+        <div className="relative mx-auto max-w-[1600px] px-6 py-20 sm:py-24 lg:py-28">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
-            className="mx-auto max-w-4xl text-center"
+            className="mx-auto max-w-5xl text-center"
           >
-            {/* Badge */}
+            {/* Badge with animation */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, scale: 0.8, y: -10 }}
+              whileInView={{ opacity: 1, scale: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 mb-8"
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100/50 px-5 py-2.5 mb-10 shadow-sm hover:shadow-md transition-shadow"
             >
-              <Sparkles className="h-4 w-4 text-slate-600" />
-              <span className="text-sm font-medium text-slate-700">Join 10,000+ teams</span>
+              <motion.div
+                animate={{ rotate: [0, 360] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              >
+                <Sparkles className="h-4 w-4 text-blue-600" />
+              </motion.div>
+              <span className="text-sm font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Join 10,000+ teams
+              </span>
             </motion.div>
 
-            {/* Main Heading */}
+            {/* Main Heading with enhanced styling */}
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight text-slate-900 leading-tight"
+              className="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-slate-900 leading-tight mb-6"
             >
-              Ready to transform{" "}
-              <span className="relative inline-block">
-                <span className="relative z-10">your workflows</span>
+              <span className="block">Ready to transform</span>
+              <span className="relative inline-block mt-2">
+                <span className="relative z-10 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 bg-clip-text text-transparent animate-gradient">
+                  your workflows
+                </span>
                 <motion.span
-                  className="absolute bottom-2 left-0 right-0 h-4 bg-blue-200/40 -z-0"
+                  className="absolute bottom-3 left-0 right-0 h-5 bg-gradient-to-r from-blue-200/50 via-purple-200/50 to-blue-200/50 -z-0 rounded-lg"
                   initial={{ scaleX: 0 }}
                   whileInView={{ scaleX: 1 }}
                   viewport={{ once: true }}
@@ -670,21 +682,21 @@ export default function LandingPage() {
                   style={{ originX: 0 }}
                 />
               </span>
-              ?
+              <span className="block mt-2">?</span>
             </motion.h2>
 
-            {/* Subheading */}
+            {/* Subheading with better styling */}
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.5 }}
-              className="mt-8 text-xl leading-8 text-slate-600 sm:text-2xl max-w-2xl mx-auto"
+              className="mt-8 text-xl leading-8 text-slate-600 sm:text-2xl max-w-3xl mx-auto font-medium"
             >
               Join teams that are already using Atomic Work to eliminate ambiguity and boost productivity.
             </motion.p>
 
-            {/* CTA Buttons */}
+            {/* CTA Buttons with enhanced design */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -725,11 +737,23 @@ export default function LandingPage() {
                         <motion.button
                           whileHover={{ scale: 1.05, y: -2 }}
                           whileTap={{ scale: 0.98 }}
-                          className="group relative inline-flex items-center gap-3 rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-slate-800 shadow-xl overflow-hidden"
+                          className="group relative inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 text-base font-semibold text-white transition-all hover:from-blue-700 hover:to-purple-700 shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 overflow-hidden"
                         >
+                          {/* Animated gradient background */}
+                          <motion.div
+                            className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 bg-[length:200%_100%]"
+                            animate={{
+                              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+                            }}
+                            transition={{
+                              duration: 3,
+                              repeat: Infinity,
+                              ease: "linear",
+                            }}
+                          />
                           {/* Shimmer Effect */}
                           <motion.div
-                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
                             animate={{
                               x: ['-100%', '100%'],
                             }}
@@ -740,6 +764,7 @@ export default function LandingPage() {
                               ease: "linear",
                             }}
                           />
+                          <Zap className="h-5 w-5 relative z-10" />
                           <span className="relative z-10">Start for Free</span>
                           <ArrowRight className="h-5 w-5 relative z-10 transition-transform group-hover:translate-x-1" />
                         </motion.button>
@@ -749,7 +774,7 @@ export default function LandingPage() {
                         <motion.button
                           whileHover={{ scale: 1.05, y: -2 }}
                           whileTap={{ scale: 0.98 }}
-                          className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-8 py-4 text-base font-semibold text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-400 shadow-sm"
+                          className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-300 bg-white/80 backdrop-blur-sm px-8 py-4 text-base font-semibold text-slate-700 transition-all hover:bg-white hover:border-slate-400 hover:shadow-lg shadow-sm"
                         >
                           Sign In
                         </motion.button>
