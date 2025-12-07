@@ -222,6 +222,7 @@ export default function BackofficePage() {
     setUpdating({ ...updating, [`status-${orgId}`]: true });
     try {
       const newStatus = currentStatus === "active" ? "canceled" : "active";
+      const { updateOrgStatus } = await import("@/app/actions/admin");
       const result = await updateOrgStatus(orgId, newStatus as "active" | "canceled" | "past_due");
       
       if (result.success) {

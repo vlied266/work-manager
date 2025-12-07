@@ -760,10 +760,30 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
                     <div className="flex items-start gap-4">
                       <AlertTriangle className="h-6 w-6 text-rose-600 flex-shrink-0 mt-0.5" strokeWidth={2} />
                       <div className="flex-1">
-                        <p className="text-base font-bold text-rose-900 mb-2">Task Flagged</p>
-                        <p className="text-sm text-rose-700 leading-relaxed font-medium">
-                          This task has been flagged and requires manager approval to continue.
+                        <p className="text-base font-bold text-rose-900 mb-2">
+                          {currentStep?.action === "GOOGLE_SHEET_APPEND" || 
+                           currentStep?.config?.isAiAutomated ||
+                           currentStep?.action === "TRANSMIT" ||
+                           currentStep?.action === "STORE"
+                            ? "Process Paused - System Error"
+                            : "Task Flagged"}
                         </p>
+                        <p className="text-sm text-rose-700 leading-relaxed font-medium mb-3">
+                          {currentStep?.action === "GOOGLE_SHEET_APPEND" || 
+                           currentStep?.config?.isAiAutomated ||
+                           currentStep?.action === "TRANSMIT" ||
+                           currentStep?.action === "STORE"
+                            ? "An issue occurred during automatic execution. The admin has been notified and will resolve this issue."
+                            : "This task has been flagged and requires manager approval to continue."}
+                        </p>
+                        {(run as any)?.errorDetail && (
+                          <div className="mt-3 rounded-lg bg-rose-100/50 border border-rose-200 p-3">
+                            <p className="text-xs font-semibold text-rose-800 mb-1">Error Details:</p>
+                            <p className="text-xs text-rose-700 font-mono break-all">
+                              {(run as any).errorDetail}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </motion.div>

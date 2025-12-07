@@ -260,6 +260,10 @@ export interface ActiveRun {
   assigneeType?: "USER" | "TEAM"; // Type of assignee
   assigneeId?: string; // Legacy: User ID or Team ID assigned to this run
   startedBy?: string; // User ID who started this run
+  errorDetail?: string; // Error message when status is FLAGGED due to system task failure
+  currentAssignee?: string; // Email of current assignee (for easier filtering)
+  title?: string; // Alias for procedureTitle
+  lastActivity?: Date; // Last update timestamp for sorting in Monitor
 }
 
 export interface RunLog {

@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useOrgQuery } from "@/hooks/useOrgData";
+import { ReassignModal } from "@/components/monitor/ReassignModal";
 
 // Prevent SSR/prerendering - this page requires client-side auth
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,8 @@ export default function MonitorPage() {
   const [loading, setLoading] = useState(true);
   const [showStalledOnly, setShowStalledOnly] = useState(false);
   const [reassigningRunId, setReassigningRunId] = useState<string | null>(null);
+  const [reassignModalOpen, setReassignModalOpen] = useState(false);
+  const [selectedRunForReassign, setSelectedRunForReassign] = useState<ActiveRun | null>(null);
   
   // Query: Only IN_PROGRESS or FLAGGED runs
   // Note: We'll sort client-side by last activity (oldest first)
@@ -192,10 +195,14 @@ export default function MonitorPage() {
   };
 
   const handleReassign = (run: ActiveRun) => {
-    setReassigningRunId(run.id);
-    // TODO: Open reassign modal
-    alert("Reassign functionality coming soon!");
-    setReassigningRunId(null);
+    setSelectedRunForReassign(run);
+    setReassignModalOpen(true);
+  };
+
+  const handleReassignSuccess = () => {
+    // The modal will close automatically, but we can refresh data if needed
+    // The onSnapshot listener will automatically update the runs list
+    setSelectedRunForReassign(null);
   };
 
   if (loading) {
@@ -458,6 +465,18 @@ export default function MonitorPage() {
           </div>
         </div>
       </div>
+
+      {/* Reassign Modal */}
+      <ReassignModal
+        isOpen={reassignModalOpen}
+        onClose={() => {
+          setReassignModalOpen(false);
+          setSelectedRunForReassign(null);
+        }}
+        runId={selectedRunForReassign?.id || ""}
+        currentAssignee={selectedRunForReassign?.currentAssignee}
+        onReassigned={handleReassignSuccess}
+      />
     </div>
   );
 }

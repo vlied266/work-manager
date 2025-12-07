@@ -103,6 +103,13 @@ export function GoogleSheetRenderer({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Stop if run is already FLAGGED
+    if (run.status === "FLAGGED") {
+      setProcessing(false);
+      setError((run as any)?.errorDetail || "Process has been flagged due to an error");
+      return;
+    }
+
     const executeGoogleSheetTask = async () => {
       try {
         setProcessing(true);
@@ -200,8 +207,32 @@ export function GoogleSheetRenderer({
         }, 1500);
       } catch (err) {
         console.error("Error executing Google Sheet task:", err);
-        setError(err instanceof Error ? err.message : "Failed to write to Google Sheet");
+        const errorMessage = err instanceof Error ? err.message : "Failed to write to Google Sheet";
+        setError(errorMessage);
         setProcessing(false);
+
+        // Flag the run in the database
+        try {
+          const flagResponse = await fetch("/api/runs/flag", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              runId: run.id,
+              errorDetail: `Google Sheet API Error: ${errorMessage}`,
+              stepId: step.id,
+              stepTitle: step.title,
+            }),
+          });
+
+          if (!flagResponse.ok) {
+            console.error("Failed to flag run:", await flagResponse.text());
+          } else {
+            console.log("✅ Run flagged successfully due to Google Sheet error");
+          }
+        } catch (flagError) {
+          console.error("Error flagging run:", flagError);
+          // Don't throw - we've already shown the error to the user
+        }
       }
     };
 

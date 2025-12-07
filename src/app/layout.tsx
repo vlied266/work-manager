@@ -9,16 +9,14 @@ export const metadata: Metadata = {
   title: "Atomic Work - The Atomic Engine",
   description: "B2B Process Execution Engine",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Atomic Work",
+  },
   icons: {
-    icon: [
-      { url: "/icon.png", sizes: "any" },
-      { url: "/icon.png", type: "image/png", sizes: "192x192" },
-      { url: "/icon.png", type: "image/png", sizes: "512x512" },
-    ],
-    shortcut: "/icon.png",
-    apple: [
-      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
-    ],
+    icon: "/apple-icon.png", // Fallback for standard favicon
+    apple: "/apple-icon.png", // Specific for iOS
   },
 };
 

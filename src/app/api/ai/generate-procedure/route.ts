@@ -87,6 +87,23 @@ Examples:
   → Find person with Role: "Manager" → Set assignee to their email/name
 `;
 
+const METADATA_INSTRUCTION = `
+STRUCTURE INSTRUCTION:
+
+You must return a JSON Object (NOT just an array) with this exact structure:
+
+{
+  "title": "A short, professional title derived from the request (e.g., 'Employee Onboarding')",
+  "description": "A professional summary of what this workflow does (e.g., 'Standard process for new hires, including IT setup and welcome email.')",
+  "steps": [ ... array of steps ... ]
+}
+
+- Do NOT copy the user's prompt verbatim. Summarize the intent professionally.
+- The "title" should be concise (3-8 words), clear, and professional.
+- The "description" should be a brief summary (1-2 sentences) explaining what the workflow accomplishes.
+- The "steps" array must follow the atomic step schema as defined before.
+`;
+
 function formatStaffList(staff: Array<{ displayName?: string; role?: string; email?: string }>): string {
   if (!staff.length) {
     return "- No staff records available for this organization.";
@@ -158,13 +175,14 @@ export async function POST(req: NextRequest) {
       GUARDRAIL_CLAUSE,
       staffContextSection, // The list of users
       ASSIGNMENT_INSTRUCTION, // Smart Mentions logic
-      GOOGLE_SHEET_INSTRUCTION // Smart Sheet Mapping logic
+      GOOGLE_SHEET_INSTRUCTION, // Smart Sheet Mapping logic
+      METADATA_INSTRUCTION // Professional Title & Description generation
     ].join("\n\n");
 
     const result = await generateText({
       model: openai("gpt-4o"),
       system: systemPrompt,
-      prompt: `Convert this process description into a workflow:\n\n"${description}"\n\nReturn only the JSON array of steps.`,
+      prompt: `Convert this process description into a workflow:\n\n"${description}"\n\nReturn a JSON object with "title", "description", and "steps" fields.`,
       temperature: 0.7,
       maxTokens: 2000,
     });
@@ -181,15 +199,15 @@ export async function POST(req: NextRequest) {
     }
     
     // Parse the JSON
-    let steps: unknown;
+    let parsed: unknown;
     try {
-      steps = JSON.parse(jsonString);
+      parsed = JSON.parse(jsonString);
     } catch (parseError) {
-      // If parsing fails, try to extract JSON from the text
-      const jsonMatch = jsonString.match(/\[[\s\S]*\]/);
+      // If parsing fails, try to extract JSON from the text (support both array and object)
+      const jsonMatch = jsonString.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
       if (jsonMatch) {
         try {
-          steps = JSON.parse(jsonMatch[0]);
+          parsed = JSON.parse(jsonMatch[0]);
         } catch (nestedError) {
           console.error("Failed to parse extracted AI JSON:", nestedError);
           return NextResponse.json(
@@ -198,17 +216,44 @@ export async function POST(req: NextRequest) {
           );
         }
       } else {
-        console.error("AI response missing JSON array:", parseError);
+        console.error("AI response missing JSON:", parseError);
         return NextResponse.json(
-          { error: "Could not find workflow steps in the AI response." },
+          { error: "Could not find workflow data in the AI response." },
           { status: 400 }
         );
       }
     }
 
+    // Handle both old format (array) and new format (object with title, description, steps)
+    let steps: unknown[];
+    let title: string;
+    let procedureDescription: string;
+
+    if (Array.isArray(parsed)) {
+      // Old format: just an array of steps
+      steps = parsed;
+      title = "Generated Process";
+      procedureDescription = description; // Use the original user description as fallback
+    } else if (parsed && typeof parsed === "object" && "steps" in parsed) {
+      // New format: object with title, description, and steps
+      const parsedObj = parsed as { title?: string; description?: string; steps?: unknown[] };
+      steps = Array.isArray(parsedObj.steps) ? parsedObj.steps : [];
+      title = typeof parsedObj.title === "string" && parsedObj.title.trim()
+        ? parsedObj.title.trim()
+        : "Generated Process";
+      procedureDescription = typeof parsedObj.description === "string" && parsedObj.description.trim()
+        ? parsedObj.description.trim()
+        : description; // Fallback to user's original description
+    } else {
+      return NextResponse.json(
+        { error: "AI response must be either an array of steps or an object with 'title', 'description', and 'steps' fields." },
+        { status: 400 }
+      );
+    }
+
     if (!Array.isArray(steps) || steps.length === 0) {
       return NextResponse.json(
-        { error: "AI response must be a non-empty array of steps." },
+        { error: "AI response must contain a non-empty array of steps." },
         { status: 400 }
       );
     }
@@ -256,7 +301,11 @@ export async function POST(req: NextRequest) {
       sanitizedSteps.push(sanitizedStep);
     }
 
-    return NextResponse.json({ steps: sanitizedSteps });
+    return NextResponse.json({ 
+      title,
+      description: procedureDescription,
+      steps: sanitizedSteps 
+    });
   } catch (error) {
     console.error("Error generating procedure:", error);
     return NextResponse.json(
