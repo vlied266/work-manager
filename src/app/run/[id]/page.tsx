@@ -195,6 +195,9 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
     : currentStep;
 
   // Build Run Context
+  // Supports both flat and nested access patterns:
+  // - Flat: step_1_output, step_1_output.email
+  // - Nested: step_1.output.email, step_1.output
   useEffect(() => {
     if (!run || !procedure) return;
     
@@ -202,10 +205,27 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
     run.logs?.forEach((log, index) => {
       const step = procedure.steps[index];
       if (step) {
-        const varName = step.config.outputVariableName || `step_${index + 1}_output`;
-        context[varName] = log.output;
-        context[`step_${index + 1}_output`] = log.output;
+        const stepIndex = index + 1;
+        const varName = step.config.outputVariableName || `step_${stepIndex}_output`;
         
+        // Flat access pattern: step_1_output
+        context[varName] = log.output;
+        context[`step_${stepIndex}_output`] = log.output;
+        
+        // Nested access pattern: step_1.output (for dot notation like {{step_1.output.email}})
+        context[`step_${stepIndex}`] = {
+          output: log.output,
+        };
+        
+        // Also support custom variable names in nested format
+        if (varName !== `step_${stepIndex}_output`) {
+          const baseName = varName.replace(/_output$/, '');
+          context[baseName] = {
+            output: log.output,
+          };
+        }
+        
+        // Flat access for nested properties: step_1_output.email
         if (log.output && typeof log.output === "object" && !Array.isArray(log.output)) {
           Object.keys(log.output).forEach((key) => {
             context[`${varName}.${key}`] = log.output[key];
@@ -321,6 +341,17 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
         newStatus = "COMPLETED";
       }
 
+      // Helper function to remove undefined values from object
+      const removeUndefined = (obj: any): any => {
+        const cleaned: any = {};
+        for (const key in obj) {
+          if (obj[key] !== undefined) {
+            cleaned[key] = obj[key];
+          }
+        }
+        return cleaned;
+      };
+
       const updateData: any = {
         currentStepIndex: newStatus === "COMPLETED" ? run.currentStepIndex : nextStepIndex,
         status: newStatus,
@@ -345,9 +376,12 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
         if (assignment) {
           if (assignment.type === "STARTER") {
             // Assign to the person who started the run
-            updateData.currentAssigneeId = run.startedBy || userId;
-            updateData.assigneeType = "USER";
-            updateData.status = "IN_PROGRESS";
+            const starterId = run.startedBy || userId;
+            if (starterId) {
+              updateData.currentAssigneeId = starterId;
+              updateData.assigneeType = "USER";
+              updateData.status = "IN_PROGRESS";
+            }
           } else if (assignment.type === "SPECIFIC_USER" && assignment.assigneeId) {
             // Assign to specific user
             updateData.currentAssigneeId = assignment.assigneeId;
@@ -361,12 +395,17 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
           }
         } else {
           // No assignment - default to starter
-          updateData.currentAssigneeId = run.startedBy || userId;
-          updateData.assigneeType = "USER";
+          const starterId = run.startedBy || userId;
+          if (starterId) {
+            updateData.currentAssigneeId = starterId;
+            updateData.assigneeType = "USER";
+          }
         }
       }
 
-      await updateDoc(doc(db, "active_runs", run.id), updateData);
+      // Remove any undefined values before updating
+      const cleanedUpdateData = removeUndefined(updateData);
+      await updateDoc(doc(db, "active_runs", run.id), cleanedUpdateData);
 
       // Create notifications for assignment
       if ((newStatus === "IN_PROGRESS" || newStatus === "OPEN_FOR_CLAIM") && nextStepIndex < procedure.steps.length) {

@@ -22,6 +22,7 @@ import { NegotiateRenderer } from "./negotiate-renderer";
 import { TableInputRenderer } from "./table-input-renderer";
 import { GatewayRenderer } from "./gateway-renderer";
 import { AITaskRenderer } from "./ai-task-renderer";
+import { GoogleSheetRenderer } from "./google-sheet-renderer";
 import { EvidenceUpload } from "./evidence-upload";
 import { DataSourceBadge } from "./data-source-badge";
 
@@ -317,6 +318,21 @@ export function TaskRenderer({
           runContext={runContext}
           handleCompleteStep={handleCompleteWithEvidence}
           submitting={submitting || (requiresEvidence && !evidenceUrl)}
+        />
+      );
+      break;
+
+    case "GOOGLE_SHEET_APPEND":
+      // System task - executes automatically
+      taskContent = (
+        <GoogleSheetRenderer
+          step={step}
+          run={run}
+          runContext={runContext}
+          onComplete={(sheetOutput) => {
+            setOutput(sheetOutput);
+            handleCompleteWithEvidence("SUCCESS");
+          }}
         />
       );
       break;

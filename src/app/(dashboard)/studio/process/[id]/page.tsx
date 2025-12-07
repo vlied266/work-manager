@@ -29,12 +29,11 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Fetch Published Procedures (ONLY Procedures, no Atomic Tasks)
+  // Fetch All Procedures for this organization (both published and unpublished)
   useEffect(() => {
     const q = query(
       collection(db, "procedures"),
-      where("organizationId", "==", organizationId),
-      where("isPublished", "==", true)
+      where("organizationId", "==", organizationId)
     );
 
     const unsubscribe = onSnapshot(
@@ -538,8 +537,8 @@ function ProcedureLibrary({
         {procedures.length === 0 ? (
           <div className="text-center py-12">
             <FileText className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-sm text-slate-600 font-medium">No published procedures</p>
-            <p className="text-xs text-slate-500 mt-1">Publish procedures first</p>
+            <p className="text-sm text-slate-600 font-medium">No procedures found</p>
+            <p className="text-xs text-slate-500 mt-1">Create procedures in Studio first</p>
           </div>
         ) : (
           procedures.map((procedure) => (
@@ -584,7 +583,18 @@ function DraggableProcedureCard({ procedure }: { procedure: Procedure }) {
           <FileText className="h-5 w-5 text-blue-600" />
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-semibold text-slate-800 tracking-tight mb-1 leading-tight">{procedure.title}</h4>
+          <div className="flex items-center gap-2 mb-1">
+            <h4 className="text-sm font-semibold text-slate-800 tracking-tight leading-tight">{procedure.title}</h4>
+            {procedure.isPublished ? (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700">
+                Published
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">
+                Draft
+              </span>
+            )}
+          </div>
           {procedure.description && (
             <p className="text-xs text-slate-600 line-clamp-2 mb-2">{procedure.description}</p>
           )}

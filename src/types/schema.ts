@@ -18,6 +18,7 @@ export type AtomicAction =
   | "FETCH"
   | "TRANSMIT"
   | "STORE"
+  | "GOOGLE_SHEET_APPEND"
   // Logic Group
   | "TRANSFORM"
   | "ORGANISE"
@@ -155,8 +156,17 @@ export interface AtomicStep {
     recipientEmail?: string; // For email transmission, can be a variable reference
 
     // For STORE
-    storageType?: "database" | "file" | "cache";
+    storageType?: "database" | "file" | "cache" | "google_sheet";
     storagePath?: string;
+
+    // For Google Integration (used in INPUT, STORE, TRANSMIT)
+    sheetId?: string; // Google Sheet ID
+    fileName?: string; // Google Sheet/Drive file name
+    saveToGoogleDrive?: boolean; // For file uploads: save to Google Drive
+    googleDriveFolderId?: string; // Optional: specific folder in Google Drive
+
+    // For GOOGLE_SHEET_APPEND
+    mapping?: Record<string, string>; // Map workflow variables to sheet columns
 
     // For TRANSFORM/ORGANISE
     transformationRule?: string;
@@ -341,6 +351,13 @@ export const ATOMIC_ACTION_METADATA: Record<AtomicAction, AtomicActionMetadata> 
     group: "Information",
     color: "blue",
   },
+  GOOGLE_SHEET_APPEND: {
+    label: "Save to Google Sheet",
+    description: "Append data to a Google Sheet automatically",
+    icon: "FileSpreadsheet",
+    group: "Information",
+    color: "green",
+  },
   // Logic Group
   TRANSFORM: {
     label: "Transform",
@@ -438,6 +455,7 @@ export const ATOMIC_ACTIONS: AtomicAction[] = [
   "FETCH",
   "TRANSMIT",
   "STORE",
+  "GOOGLE_SHEET_APPEND",
   "TRANSFORM",
   "ORGANISE",
   "CALCULATE",
@@ -456,7 +474,7 @@ export const ATOMIC_ACTIONS: AtomicAction[] = [
  * Group actions by category for UI organization
  */
 export const ATOMIC_ACTIONS_BY_GROUP = {
-  Information: ["INPUT", "FETCH", "TRANSMIT", "STORE"] as AtomicAction[],
+  Information: ["INPUT", "FETCH", "TRANSMIT", "STORE", "GOOGLE_SHEET_APPEND"] as AtomicAction[],
   Logic: ["TRANSFORM", "ORGANISE", "CALCULATE", "COMPARE", "VALIDATE", "GATEWAY"] as AtomicAction[],
   Physical: ["MOVE_OBJECT", "TRANSFORM_OBJECT", "INSPECT"] as AtomicAction[],
   Human: ["GENERATE", "NEGOTIATE", "AUTHORIZE"] as AtomicAction[],

@@ -73,6 +73,25 @@ export function useProcedureValidation(steps: AtomicStep[]): ValidationResult {
           }
           break;
 
+        case "GOOGLE_SHEET_APPEND":
+          // GOOGLE_SHEET_APPEND requires sheetId
+          if (!stepConfig.sheetId || stepConfig.sheetId.trim() === "") {
+            errors.push({
+              stepId: step.id,
+              message: "Missing Google Sheet. Please select a Google Sheet in the configuration panel.",
+            });
+          }
+          // Also check if at least one column mapping is provided
+          const mapping = stepConfig.mapping || {};
+          const hasMapping = mapping.A || mapping.B || mapping.C;
+          if (!hasMapping) {
+            errors.push({
+              stepId: step.id,
+              message: "Missing column mapping. Please configure at least one column (A, B, or C) in the mapping section.",
+            });
+          }
+          break;
+
         // Add more validation rules as needed
         default:
           // Other actions might not require specific validation

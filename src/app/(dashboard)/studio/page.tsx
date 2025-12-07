@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, FileText, Workflow, ArrowLeft, LayoutTemplate, Sparkles, Loader2 } from "lucide-react";
+import { ArrowRight, FileText, Workflow, ArrowLeft, LayoutTemplate, Sparkles, Loader2, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -84,6 +84,13 @@ export default function StudioHubPage() {
                 <span>Back</span>
               </Link>
             </div>
+            <Link
+              href="/processes"
+              className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg shadow-black/5 px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-xl"
+            >
+              <BarChart3 className="h-4 w-4" />
+              View Library
+            </Link>
           </div>
         </div>
       </header>

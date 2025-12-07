@@ -398,29 +398,68 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                   )}
                 </motion.button>
               ) : (
-                <motion.button
-                  onClick={handleCreateProcedure}
-                  disabled={
-                    !procedureTitle.trim() ||
+                <div className="relative group">
+                  <motion.button
+                    onClick={handleCreateProcedure}
+                    disabled={
+                      !procedureTitle.trim() ||
+                      !procedureDescription.trim() ||
+                      !procedure ||
+                      procedure.steps.length === 0 ||
+                      !validation.isValid ||
+                      saving
+                    }
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="rounded-full bg-[#007AFF] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#0071E3] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                    title={
+                      !procedureTitle.trim()
+                        ? "Please enter a procedure title"
+                        : !procedureDescription.trim()
+                        ? "Please enter a procedure description"
+                        : !procedure
+                        ? "Please wait for procedure to load"
+                        : procedure.steps.length === 0
+                        ? "Please add at least one step to the procedure"
+                        : !validation.isValid
+                        ? `Please fix ${validation.errorCount} validation error${validation.errorCount !== 1 ? "s" : ""}`
+                        : saving
+                        ? "Creating procedure..."
+                        : "Create Procedure"
+                    }
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>Creating...</span>
+                      </>
+                    ) : (
+                      <span>Create Procedure</span>
+                    )}
+                  </motion.button>
+                  {/* Tooltip showing why button is disabled */}
+                  {(!procedureTitle.trim() ||
                     !procedureDescription.trim() ||
                     !procedure ||
                     procedure.steps.length === 0 ||
-                    !validation.isValid ||
-                    saving
-                  }
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="rounded-full bg-[#007AFF] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#0071E3] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>Creating...</span>
-                    </>
-                  ) : (
-                    <span>Create Procedure</span>
-                  )}
-                </motion.button>
+                    !validation.isValid) &&
+                    !saving && (
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-2 bg-slate-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] shadow-lg">
+                        {!procedureTitle.trim()
+                          ? "Enter a procedure title"
+                          : !procedureDescription.trim()
+                          ? "Enter a procedure description"
+                          : !procedure
+                          ? "Loading..."
+                          : procedure.steps.length === 0
+                          ? "Add at least one step"
+                          : !validation.isValid
+                          ? `${validation.errorCount} validation error${validation.errorCount !== 1 ? "s" : ""} to fix`
+                          : ""}
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-0 border-4 border-transparent border-b-slate-900"></div>
+                      </div>
+                    )}
+                </div>
               )}
             </div>
           </div>
@@ -430,88 +469,165 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
       {/* Remove the old Procedure Info Card section since it's now in the header */}
       
       {/* Main Content - Floating Glass Islands */}
-      <main className="mx-auto max-w-[1800px] px-8 pb-8 pt-8 h-[calc(100vh-100px)]">
-        <DesignerDndContext
-          selectedProcedure={procedure}
-          onStepsChange={handleStepsChange}
-          onDropAction={handleAddStep}
-          key={procedure?.id || "new"}
-        >
-          <div className="grid grid-cols-[300px_1fr_420px] gap-10 h-full">
+      <main className="w-full h-[calc(100vh-100px)] overflow-x-auto">
+        <div className="mx-auto min-w-[1400px] max-w-[1800px] px-8 pb-8 pt-8 h-full">
+          <DesignerDndContext
+            selectedProcedure={procedure}
+            onStepsChange={handleStepsChange}
+            onDropAction={handleAddStep}
+            key={procedure?.id || "new"}
+          >
+            <div className="grid grid-cols-[300px_1fr_420px] gap-10 h-full min-w-0">
             {/* Left Pane: Toolbox - Floating Glass Island */}
             <div 
               data-tour="toolbox" 
-              className="h-full overflow-hidden rounded-[2.5rem] bg-white/70 backdrop-blur-2xl border border-white/60 shadow-2xl shadow-black/5"
+              className="h-full min-w-[300px] overflow-hidden rounded-[2.5rem] bg-white/70 backdrop-blur-2xl border border-white/60 shadow-2xl shadow-black/5"
             >
               <DraggableSidebar />
             </div>
 
             {/* Center Pane: Canvas - Floating Glass Island */}
             <div data-tour="canvas" className="h-full min-h-0 flex flex-col relative">
-              {/* Editable H1 Title */}
-              <div className="mb-6">
-                <input
-                  type="text"
-                  value={procedureTitle}
-                  onChange={(e) => setProcedureTitle(e.target.value)}
-                  placeholder="Untitled Procedure"
-                  className="bg-transparent text-4xl font-extrabold text-slate-800 tracking-tight placeholder:text-slate-400 focus:outline-none focus:ring-0 p-0 border-none w-full"
-                />
+              {/* Procedure Info Section */}
+              <div className="mb-6 rounded-2xl bg-white/60 backdrop-blur-xl border border-white/60 p-6 shadow-lg">
+                <div className="space-y-4">
+                  {/* Title Field */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Procedure Title <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={procedureTitle}
+                      onChange={(e) => setProcedureTitle(e.target.value)}
+                      placeholder="e.g., Invoice Processing, Customer Onboarding..."
+                      className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-lg font-semibold text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all"
+                    />
+                    {!procedureTitle.trim() && (
+                      <p className="mt-1.5 text-xs text-rose-600 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Title is required to create the procedure
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Description Field */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Procedure Description <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      value={procedureDescription}
+                      onChange={(e) => setProcedureDescription(e.target.value)}
+                      placeholder="Describe what this procedure does... (e.g., This procedure handles invoice processing from receipt to payment approval)"
+                      rows={3}
+                      className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all resize-none"
+                    />
+                    {!procedureDescription.trim() && (
+                      <p className="mt-1.5 text-xs text-rose-600 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Description is required to create the procedure
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="h-full min-h-0 flex flex-col rounded-[2.5rem] overflow-hidden bg-white/70 backdrop-blur-2xl border border-white/60 shadow-2xl shadow-black/5 relative">
                 {/* Mode Toggle Pills - Fixed Header */}
-                <div className="flex-shrink-0 flex items-center justify-between py-4 px-6 border-b border-slate-100 bg-white/50 backdrop-blur-sm">
-                  {/* View Mode Toggle (List/Canvas) */}
-                  <div className="bg-white/80 backdrop-blur-xl rounded-full p-1 shadow-lg shadow-black/10 flex items-center gap-1">
+                <div className="flex-shrink-0 flex items-center justify-center gap-4 py-5 px-6 border-b border-slate-100 bg-white/50 backdrop-blur-sm">
+                  {/* View Mode Toggle - All 4 buttons in one group */}
+                  <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-1.5 shadow-lg shadow-black/10 flex items-center gap-2 border border-slate-200/50">
+                    {/* List View */}
                     <button
-                      onClick={() => setViewMode("list")}
-                      className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-tight transition-all flex items-center gap-1.5 ${
-                        viewMode === "list" ? "bg-white text-slate-800 shadow-md" : "text-slate-600 hover:text-slate-800"
+                      onClick={() => {
+                        setViewMode("list");
+                        setPreviewMode(false);
+                      }}
+                      className={`px-5 py-2.5 rounded-xl text-xs font-semibold tracking-tight transition-all flex items-center gap-2 min-w-[100px] justify-center ${
+                        viewMode === "list" && !previewMode
+                          ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/30"
+                          : "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
                       }`}
                     >
-                      <List className="h-3.5 w-3.5" />
+                      <List className="h-4 w-4" />
                       List View
                     </button>
+
+                    {/* Flow View */}
                     <button
                       onClick={() => setViewMode("canvas")}
-                      className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-tight transition-all flex items-center gap-1.5 ${
-                        viewMode === "canvas" ? "bg-white text-slate-800 shadow-md" : "text-slate-600 hover:text-slate-800"
+                      className={`px-5 py-2.5 rounded-xl text-xs font-semibold tracking-tight transition-all flex items-center gap-2 min-w-[100px] justify-center ${
+                        viewMode === "canvas"
+                          ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-md shadow-purple-500/30"
+                          : "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
                       }`}
                     >
-                      <Network className="h-3.5 w-3.5" />
+                      <Network className="h-4 w-4" />
                       Flow View
                     </button>
-                  </div>
 
-                  {/* Preview Mode Toggle (only show in List View) */}
-                  {viewMode === "list" && (
-                    <div className="bg-white/80 backdrop-blur-xl rounded-full p-1 shadow-lg shadow-black/10 flex items-center gap-1">
+                    {/* Divider - only show when in List View */}
+                    {viewMode === "list" && (
+                      <div className="h-8 w-px bg-slate-200" />
+                    )}
+
+                    {/* Editor - only show when in List View */}
+                    {viewMode === "list" && (
                       <button
                         onClick={() => setPreviewMode(false)}
-                        className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-tight transition-all ${
-                          !previewMode ? "bg-white text-slate-800 shadow-md" : "text-slate-600 hover:text-slate-800"
+                        className={`px-5 py-2.5 rounded-xl text-xs font-semibold tracking-tight transition-all flex items-center gap-2 min-w-[100px] justify-center ${
+                          !previewMode
+                            ? "bg-gradient-to-br from-green-500 to-green-600 text-white shadow-md shadow-green-500/30"
+                            : "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
                         }`}
                       >
+                        <Edit3 className="h-4 w-4" />
                         Editor
                       </button>
+                    )}
+
+                    {/* Preview - only show when in List View */}
+                    {viewMode === "list" && (
                       <button
                         onClick={() => setPreviewMode(true)}
-                        className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-tight transition-all ${
-                          previewMode ? "bg-white text-slate-800 shadow-md" : "text-slate-600 hover:text-slate-800"
+                        className={`px-5 py-2.5 rounded-xl text-xs font-semibold tracking-tight transition-all flex items-center gap-2 min-w-[100px] justify-center ${
+                          previewMode
+                            ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-md shadow-orange-500/30"
+                            : "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
                         }`}
                       >
+                        <Smartphone className="h-4 w-4" />
                         Preview
                       </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
                 
                 {/* Scrollable Content */}
                 <div className="flex-1 min-h-0 overflow-hidden">
                   {viewMode === "canvas" ? (
                     <div className="h-full w-full">
-                      <VisualEditor tasks={procedure?.steps || []} />
+                      <VisualEditor 
+                        tasks={procedure?.steps || []}
+                        onNodeUpdate={(nodeId, data) => {
+                          // Update the corresponding step in the procedure
+                          if (procedure) {
+                            const stepIndex = procedure.steps.findIndex(s => s.id === nodeId);
+                            if (stepIndex !== -1) {
+                              const updatedSteps = [...procedure.steps];
+                              updatedSteps[stepIndex] = {
+                                ...updatedSteps[stepIndex],
+                                config: {
+                                  ...updatedSteps[stepIndex].config,
+                                  ...data,
+                                },
+                              };
+                              handleStepsChange(updatedSteps);
+                            }
+                          }
+                        }}
+                      />
                     </div>
                   ) : previewMode ? (
                     <div className="flex justify-center min-h-full overflow-y-auto p-8">
@@ -540,7 +656,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
             {/* Right Pane: Inspector - Floating Glass Island */}
             <div 
               data-tour="config-panel" 
-              className="h-full overflow-hidden rounded-[2.5rem] bg-white/70 backdrop-blur-2xl border border-white/60 shadow-2xl shadow-black/5"
+              className="h-full min-w-[420px] overflow-hidden rounded-[2.5rem] bg-white/70 backdrop-blur-2xl border border-white/60 shadow-2xl shadow-black/5"
             >
               <ConfigPanel
                 step={procedure && selectedStepId ? procedure.steps.find(s => s.id === selectedStepId) || null : null}
@@ -550,7 +666,8 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
               />
             </div>
           </div>
-        </DesignerDndContext>
+          </DesignerDndContext>
+        </div>
       </main>
     </div>
   );

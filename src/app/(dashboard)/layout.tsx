@@ -230,6 +230,7 @@ export default function DashboardLayout({
                       <Link
                         key={item.name}
                         href={item.href}
+                        onClick={() => setSidebarOpen(false)}
                         className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                           isActive
                             ? "bg-slate-900 text-white shadow-sm"
@@ -256,7 +257,7 @@ export default function DashboardLayout({
                   </div>
                 ) : userProfile ? (
                   <>
-                    <Link href="/profile" className="flex items-center gap-3 hover:bg-slate-50 rounded-lg p-1 -m-1 transition-colors">
+                    <Link href="/profile" onClick={() => setSidebarOpen(false)} className="flex items-center gap-3 hover:bg-slate-50 rounded-lg p-1 -m-1 transition-colors">
                       {/* Avatar */}
                       <div className="flex-shrink-0 relative">
                         {userProfile.photoURL && userProfile.photoURL.trim() !== "" ? (

@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`🟡 [STEP 2] Found integration for: ${email}. Writing to sheet: ${sheetId}...`);
 
-    // Prepare test data
+    // Prepare test data (for GET requests)
     const testValues = [
       [
         'Atomic Work',
@@ -186,6 +186,129 @@ export async function GET(request: NextRequest) {
 
   } catch (error: any) {
     console.error("❌ [ERROR] Server error:", error);
+    return NextResponse.json(
+      { error: 'Internal server error', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST handler - Accepts values from request body
+ * Used by the workflow engine to write actual data
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const sheetId = searchParams.get('sheetId');
+    const body = await request.json();
+    const { values } = body;
+
+    if (!sheetId) {
+      return NextResponse.json(
+        { error: 'Missing sheetId parameter. Usage: POST /api/integrations/google/test-write?sheetId=YOUR_SHEET_ID' },
+        { status: 400 }
+      );
+    }
+
+    if (!values || !Array.isArray(values) || values.length === 0) {
+      return NextResponse.json(
+        { error: 'Missing or invalid values array in request body' },
+        { status: 400 }
+      );
+    }
+
+    console.log("🟡 [POST] Writing to Google Sheet:", { sheetId, rowCount: values.length });
+
+    // Get the first Google integration from Firestore
+    const db = getAdminDb();
+    const integrationsRef = db.collection('integrations');
+    const snapshot = await integrationsRef.where('email', '!=', null).limit(1).get();
+
+    if (snapshot.empty) {
+      return NextResponse.json(
+        { error: 'No Google integration found. Please connect your Google account first.' },
+        { status: 404 }
+      );
+    }
+
+    const integrationDoc = snapshot.docs[0];
+    const integrationData = integrationDoc.data();
+    const { access_token, refresh_token, email } = integrationData;
+
+    if (!access_token) {
+      return NextResponse.json(
+        { error: 'No access token found in integration' },
+        { status: 400 }
+      );
+    }
+
+    let accessToken = access_token;
+
+    try {
+      // Try to write to sheet with current access token
+      const result = await appendToSheet(accessToken, sheetId, values);
+      console.log(`✅ [SUCCESS] Row(s) appended to sheet. Range: ${result.updatedRange}`);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Row(s) successfully appended to Google Sheet',
+        updatedRange: result.updatedRange,
+        updatedRows: result.updatedRows,
+        updatedColumns: result.updatedColumns,
+        sheetId: sheetId,
+      });
+    } catch (error: any) {
+      // If token expired, refresh it
+      if (error.message === 'TOKEN_EXPIRED' && refresh_token) {
+        console.log("🟡 [POST] Access token expired. Refreshing...");
+
+        try {
+          const newTokenData = await refreshAccessToken(refresh_token);
+          accessToken = newTokenData.access_token;
+
+          console.log("✅ [POST] Token refreshed. Retrying write operation...");
+
+          // Retry the write with new token
+          const result = await appendToSheet(accessToken, sheetId, values);
+          console.log(`✅ [SUCCESS] Row(s) appended to sheet. Range: ${result.updatedRange}`);
+
+          // Update the access token in Firestore
+          await integrationDoc.ref.update({
+            access_token: accessToken,
+            updated_at: Timestamp.now(),
+          });
+
+          return NextResponse.json({
+            success: true,
+            message: 'Row(s) successfully appended to Google Sheet (token was refreshed)',
+            updatedRange: result.updatedRange,
+            updatedRows: result.updatedRows,
+            updatedColumns: result.updatedColumns,
+            sheetId: sheetId,
+          });
+        } catch (refreshError: any) {
+          console.error("❌ [POST] Failed to refresh token:", refreshError);
+          return NextResponse.json(
+            { error: 'Failed to refresh access token. Please reconnect your Google account.' },
+            { status: 401 }
+          );
+        }
+      } else {
+        // Other errors
+        console.error("❌ [POST] Failed to write to sheet:", error);
+        return NextResponse.json(
+          { 
+            error: error.message || 'Failed to write to Google Sheet',
+            details: error.message,
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+  } catch (error: any) {
+    console.error("❌ [POST] Server error:", error);
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }

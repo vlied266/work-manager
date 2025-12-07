@@ -8,6 +8,7 @@ import * as LucideIcons from "lucide-react";
 import { motion } from "framer-motion";
 import { Users, User, ShieldCheck, Upload, CheckCircle2, Calculator, Sparkles, AlertTriangle, Info, HelpCircle } from "lucide-react";
 import { MagicInput } from "@/components/studio/magic-input";
+import { GoogleSheetConfig } from "@/components/studio/GoogleSheetConfig";
 
 interface ConfigPanelProps {
   step: AtomicStep | null;
@@ -705,6 +706,41 @@ function renderActionConfig(
                   </div>
                 )}
               </div>
+
+              {/* Google Drive Integration for File Upload */}
+              <div className="pt-4 border-t border-blue-200">
+                <label className="block text-xs font-semibold text-slate-900 mb-2">
+                  Save to Google Drive (Optional)
+                </label>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={config.saveToGoogleDrive || false}
+                      onChange={(e) =>
+                        onUpdate({
+                          config: {
+                            ...config,
+                            saveToGoogleDrive: e.target.checked,
+                            googleDriveFolderId: e.target.checked ? config.googleDriveFolderId : undefined,
+                          },
+                        })
+                      }
+                      className="h-4 w-4 rounded border-slate-300 text-green-600 focus:ring-2 focus:ring-green-500/20 cursor-pointer"
+                    />
+                    <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900">
+                      Upload file to Google Drive automatically
+                    </span>
+                  </label>
+                  {config.saveToGoogleDrive && (
+                    <div className="pl-6">
+                      <p className="text-xs text-slate-600">
+                        The uploaded file will be automatically saved to your Google Drive
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1300,6 +1336,142 @@ function renderActionConfig(
             label="Recipient Email (Optional)"
             helpText="Email address or variable from previous step (e.g., {{step_1_customer_email}})"
           />
+
+          {/* Google Sheet Integration */}
+          <div className="pt-4 border-t border-blue-200">
+            <div className="rounded-xl border-2 border-green-200 bg-gradient-to-br from-green-50 to-white p-4 space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <LucideIcons.FileSpreadsheet className="h-4 w-4 text-green-600" />
+                <p className="text-sm font-semibold text-green-900">Save to Google Sheet (Optional)</p>
+              </div>
+              <p className="text-xs text-green-700 leading-relaxed">
+                Optionally save the transmitted data to a Google Sheet
+              </p>
+              <GoogleSheetConfig
+                sheetId={config.sheetId}
+                fileName={config.fileName}
+                onUpdate={(data) =>
+                  onUpdate({
+                    config: {
+                      ...config,
+                      sheetId: data.sheetId,
+                      fileName: data.fileName,
+                    },
+                  })
+                }
+              />
+            </div>
+          </div>
+        </div>
+      );
+
+    case "STORE":
+      return (
+        <div className="space-y-4">
+          <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <LucideIcons.Database className="h-4 w-4 text-blue-600" />
+              <p className="text-sm font-semibold text-blue-900">Storage Configuration</p>
+            </div>
+            <p className="text-xs text-blue-700 leading-relaxed">
+              Configure where and how data should be stored
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-900 mb-2">
+              Storage Type
+            </label>
+            <select
+              value={config.storageType || "database"}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, storageType: e.target.value as any } })
+              }
+              className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+            >
+              <option value="database">Database</option>
+              <option value="file">File System</option>
+              <option value="cache">Cache</option>
+              <option value="google_sheet">Google Sheet</option>
+            </select>
+          </div>
+
+          {config.storageType !== "google_sheet" && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-900 mb-2">
+                Storage Path
+              </label>
+              <input
+                type="text"
+                value={config.storagePath || ""}
+                onChange={(e) =>
+                  onUpdate({ config: { ...config, storagePath: e.target.value || undefined } })
+                }
+                className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                placeholder="e.g., /data/invoices, /cache/temp"
+              />
+            </div>
+          )}
+
+          {config.storageType === "google_sheet" && (
+            <div className="rounded-xl border-2 border-green-200 bg-gradient-to-br from-green-50 to-white p-4">
+              <GoogleSheetConfig
+                sheetId={config.sheetId}
+                fileName={config.fileName}
+                onUpdate={(data) =>
+                  onUpdate({
+                    config: {
+                      ...config,
+                      sheetId: data.sheetId,
+                      fileName: data.fileName,
+                    },
+                  })
+                }
+              />
+            </div>
+          )}
+        </div>
+      );
+
+    case "GOOGLE_SHEET_APPEND":
+      return (
+        <div className="space-y-4">
+          <div className="rounded-xl border-2 border-green-200 bg-gradient-to-br from-green-50 to-white p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100">
+                <LucideIcons.FileSpreadsheet className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Google Sheet Configuration</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Configure which Google Sheet to append data to
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <GoogleSheetConfig
+            sheetId={config.sheetId}
+            fileName={config.fileName}
+            mapping={config.mapping}
+            onUpdate={(data) =>
+              onUpdate({
+                config: {
+                  ...config,
+                  sheetId: data.sheetId,
+                  fileName: data.fileName,
+                  mapping: data.mapping || config.mapping,
+                },
+              })
+            }
+          />
+
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <p className="text-xs text-blue-700">
+              <strong>Note:</strong> This is a system task that runs automatically. 
+              Data from previous steps will be appended to the selected sheet when this step executes.
+            </p>
+          </div>
         </div>
       );
 
