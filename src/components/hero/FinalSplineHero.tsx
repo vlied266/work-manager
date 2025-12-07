@@ -17,7 +17,7 @@ const Spline = dynamic(
 );
 
 // *** Using Spline Cloud URL ***
-const SCENE_PATH = 'https://prod.spline.design/sGBHgusL1FfZlZbk/scene.splinecode';
+const SCENE_PATH = 'https://prod.spline.design/r4sAp3rRePwLuDfq/scene.splinecode';
 
 export default function FinalSplineHero() {
   const containerRef = useRef<HTMLDivElement>(null);
