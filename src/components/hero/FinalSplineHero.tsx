@@ -70,28 +70,26 @@ export default function FinalSplineHero() {
   }, []);
 
   return (
-    <div 
+    <div
       ref={containerRef}
-      className="w-full h-[600px] flex items-center justify-center"
-      style={{ 
+      className="w-full flex items-center justify-center"
+      style={{
         background: 'transparent',
         backgroundColor: 'transparent'
       }}
     >
-      <div 
-        className="relative overflow-hidden aspect-square w-full h-full max-w-[600px] max-h-[600px] mx-auto"
+      <div
+        className="relative overflow-hidden aspect-square w-full"
         style={{
           background: 'transparent',
           backgroundColor: 'transparent',
-          borderRadius: '50%',
-          width: 'min(100%, 600px)',
-          height: 'min(100%, 600px)'
+          borderRadius: '50%'
         }}
       >
-        <Spline 
+        <Spline
           scene={SCENE_PATH}
-          style={{ 
-            width: '100%', 
+          style={{
+            width: '100%',
             height: '100%',
             background: 'transparent',
             backgroundColor: 'transparent',
