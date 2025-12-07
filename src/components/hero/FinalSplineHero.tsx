@@ -28,10 +28,9 @@ export default function FinalSplineHero() {
       
       const canvas = containerRef.current.querySelector('canvas');
       if (canvas) {
-        // Set transparent background and ensure circular shape
+        // Ensure transparent background so the scene blends with layout
         canvas.style.background = 'transparent';
         canvas.style.backgroundColor = 'transparent';
-        canvas.style.borderRadius = '50%';
         canvas.style.overflow = 'hidden';
         
         // Fix any parent containers
@@ -39,7 +38,6 @@ export default function FinalSplineHero() {
         while (element && element !== containerRef.current) {
           element.style.background = 'transparent';
           element.style.backgroundColor = 'transparent';
-          element.style.borderRadius = '50%';
           element.style.overflow = 'hidden';
           element = element.parentElement;
         }
@@ -82,8 +80,7 @@ export default function FinalSplineHero() {
         className="relative overflow-hidden aspect-square w-full"
         style={{
           background: 'transparent',
-          backgroundColor: 'transparent',
-          borderRadius: '50%'
+          backgroundColor: 'transparent'
         }}
       >
         <Spline
@@ -93,8 +90,7 @@ export default function FinalSplineHero() {
             height: '100%',
             background: 'transparent',
             backgroundColor: 'transparent',
-            display: 'block',
-            borderRadius: '50%'
+            display: 'block'
           }}
         />
       </div>
