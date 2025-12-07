@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot, query, where, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { ActiveRun, AtomicStep } from "@/types/schema";
+import { ActiveRun, AtomicStep, Procedure } from "@/types/schema";
 import { 
   Target, Clock, CheckCircle2, AlertCircle, 
   Play, Pause, RotateCcw, ArrowRight, X
@@ -15,6 +15,7 @@ export default function FocusPage() {
   const [activeRuns, setActiveRuns] = useState<ActiveRun[]>([]);
   const [selectedRun, setSelectedRun] = useState<ActiveRun | null>(null);
   const [currentStep, setCurrentStep] = useState<AtomicStep | null>(null);
+  const [procedures, setProcedures] = useState<Record<string, Procedure>>({});
   const [loading, setLoading] = useState(true);
   const [organizationId] = useState("default-org"); // TODO: Get from auth context
   const [timer, setTimer] = useState(0);
@@ -29,7 +30,7 @@ export default function FocusPage() {
       where("status", "in", ["IN_PROGRESS", "OPEN_FOR_CLAIM"])
     );
 
-    const unsubscribe = onSnapshot(runsQuery, (snapshot) => {
+    const unsubscribe = onSnapshot(runsQuery, async (snapshot) => {
       const runs = snapshot.docs.map((doc) => {
         const data = doc.data();
         return {
@@ -53,9 +54,43 @@ export default function FocusPage() {
 
       setActiveRuns(sortedRuns);
       
+      // Fetch procedures for context (async operation)
+      const procIds = [...new Set(sortedRuns.map((r) => r.procedureId))];
+      const procMap: Record<string, Procedure> = {};
+      
+      // Use Promise.all to fetch all procedures in parallel
+      const procedurePromises = procIds.map(async (procId) => {
+        try {
+          const procDoc = await getDoc(doc(db, "procedures", procId));
+          if (procDoc.exists()) {
+            const data = procDoc.data();
+            return {
+              id: procDoc.id,
+              ...data,
+              createdAt: data.createdAt?.toDate() || new Date(),
+              updatedAt: data.updatedAt?.toDate() || new Date(),
+              steps: data.steps || [],
+            } as Procedure;
+          }
+          return null;
+        } catch (error) {
+          console.error(`Error fetching procedure ${procId}:`, error);
+          return null;
+        }
+      });
+
+      const fetchedProcedures = await Promise.all(procedurePromises);
+      fetchedProcedures.forEach((proc) => {
+        if (proc) {
+          procMap[proc.id] = proc;
+        }
+      });
+      
+      setProcedures(procMap);
+      
       // Auto-select first run if none selected
-      if (!selectedRun && runs.length > 0) {
-        setSelectedRun(runs[0]);
+      if (!selectedRun && sortedRuns.length > 0) {
+        setSelectedRun(sortedRuns[0]);
       }
       
       setLoading(false);
@@ -66,10 +101,14 @@ export default function FocusPage() {
 
   useEffect(() => {
     if (selectedRun && selectedRun.currentStepIndex !== undefined) {
-      const step = selectedRun.procedureSteps[selectedRun.currentStepIndex];
+      // Try to get steps from run.steps (new API) or from procedure
+      const steps = (selectedRun as any).steps || procedures[selectedRun.procedureId]?.steps || [];
+      const step = steps[selectedRun.currentStepIndex];
       setCurrentStep(step || null);
+    } else {
+      setCurrentStep(null);
     }
-  }, [selectedRun]);
+  }, [selectedRun, procedures]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -117,10 +156,10 @@ export default function FocusPage() {
                 </p>
               </div>
               <Link
-                href="/dashboard"
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg hover:bg-white/90 transition-all"
+                href="/inbox"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/70 backdrop-blur-xl border border-slate-200 shadow-lg hover:bg-white/90 transition-all text-slate-700 hover:text-slate-900 font-medium"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4 text-slate-700" />
                 Exit Focus
               </Link>
             </div>
@@ -155,10 +194,15 @@ export default function FocusPage() {
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <h3 className="font-semibold text-sm mb-1">
-                                {run.procedureName || "Untitled Procedure"}
+                                {run.procedureTitle || "Untitled Procedure"}
                               </h3>
                               <p className="text-xs opacity-70">
-                                Step {run.currentStepIndex !== undefined ? run.currentStepIndex + 1 : 0} of {run.procedureSteps?.length || 0}
+                                {(() => {
+                                  const steps = (run as any).steps || procedures[run.procedureId]?.steps || [];
+                                  const totalSteps = steps.length;
+                                  const currentStep = run.currentStepIndex !== undefined ? run.currentStepIndex + 1 : 0;
+                                  return `Step ${currentStep} of ${totalSteps}`;
+                                })()}
                               </p>
                             </div>
                             {run.status === "IN_PROGRESS" && (

@@ -6,21 +6,25 @@ import { db } from "@/lib/firebase";
 import { ProcessGroup, Procedure, Organization } from "@/types/schema";
 import { 
   FolderOpen, Edit, Play, Users, User, Search, 
-  BookOpen, FileText, CheckCircle2, Clock, X
+  BookOpen, FileText, CheckCircle2, Clock, X, Loader2
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import * as LucideIcons from "lucide-react";
 import { checkUsageLimit, getPlanLimits } from "@/lib/billing/limits";
 import { UpgradeModal } from "@/components/billing/upgrade-modal";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 export default function LibraryPage() {
+  const router = useRouter();
+  const { organizationId, userProfile } = useOrganization();
   const [activeTab, setActiveTab] = useState<"procedures" | "processes">("procedures");
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [processGroups, setProcessGroups] = useState<ProcessGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [organizationId] = useState("default-org"); // TODO: Get from auth context
+  const [startingRun, setStartingRun] = useState<string | null>(null);
   const [assignModal, setAssignModal] = useState<{ type: "procedure" | "process"; id: string; title: string } | null>(null);
   const [assigneeType, setAssigneeType] = useState<"USER" | "TEAM">("USER");
   const [assigneeId, setAssigneeId] = useState("");
@@ -167,7 +171,14 @@ export default function LibraryPage() {
   };
 
   const handleStartProcedure = async (procedureId: string, procedureTitle: string) => {
+    if (!organizationId || !userProfile?.uid) {
+      alert("Please log in to start a procedure.");
+      return;
+    }
+
     try {
+      setStartingRun(procedureId);
+
       // Check usage limit for active runs
       const { getDoc } = await import("firebase/firestore");
       const orgDoc = await getDoc(doc(db, "organizations", organizationId));
@@ -185,61 +196,45 @@ export default function LibraryPage() {
         const limitCheck = await checkUsageLimit(organization, "activeRuns");
         if (!limitCheck.allowed) {
           setUpgradeModal({ isOpen: true, resource: "activeRuns" });
+          setStartingRun(null);
           return;
         }
       }
-      
-      const { addDoc, collection, serverTimestamp } = await import("firebase/firestore");
-      const procedure = procedures.find(p => p.id === procedureId);
-      
-      // Check for default assignee
-      const defaultAssignee = (procedure as any)?.defaultAssignee;
-      
-      const runRef = await addDoc(collection(db, "active_runs"), {
-        procedureId,
-        procedureTitle,
-        organizationId,
-        status: "IN_PROGRESS",
-        currentStepIndex: 0,
-        startedAt: serverTimestamp(),
-        logs: [],
-        assigneeId: defaultAssignee?.id || null,
-        assigneeType: defaultAssignee?.type || null,
+
+      // Call the new API
+      const response = await fetch("/api/runs/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          procedureId,
+          orgId: organizationId,
+          starterUserId: userProfile.uid,
+        }),
       });
-      
-      // Send Slack notification (fire and forget)
-      if (organizationId) {
-        try {
-          const { sendSlackNotification, createTaskNotificationMessage } = await import("@/lib/integrations/slack");
-          const orgDoc = await getDoc(doc(db, "organizations", organizationId));
-          if (orgDoc.exists()) {
-            const orgData = orgDoc.data();
-            const webhookUrl = orgData.slackWebhookUrl;
-            
-            if (webhookUrl) {
-              const message = createTaskNotificationMessage(
-                procedureTitle,
-                undefined, // priority
-                runRef.id,
-                procedureTitle
-              );
-              
-              // Fire and forget - don't await
-              sendSlackNotification(webhookUrl, message).catch((err) => {
-                console.error("Slack notification failed:", err);
-              });
-            }
-          }
-        } catch (slackError) {
-          // Silently fail - don't block the main flow
-          console.error("Error sending Slack notification:", slackError);
-        }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to start procedure");
       }
-      
-      window.location.href = `/run/${runRef.id}`;
-    } catch (error) {
+
+      const result = await response.json();
+
+      // Handle redirect based on action
+      if (result.action === "REDIRECT_TO_RUN") {
+        router.push(`/run/${result.runId}`);
+      } else if (result.action === "REDIRECT_TO_MONITOR") {
+        // Show notification
+        alert(result.message || "Process started! Task assigned to another user.");
+        router.push("/monitor");
+      } else {
+        // Fallback
+        router.push(`/run/${result.runId}`);
+      }
+    } catch (error: any) {
       console.error("Error starting procedure:", error);
-      alert("Failed to start procedure. Please try again.");
+      alert(error.message || "Failed to start procedure. Please try again.");
+    } finally {
+      setStartingRun(null);
     }
   };
 

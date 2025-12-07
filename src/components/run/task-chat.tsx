@@ -102,12 +102,11 @@ export function TaskChat({
           const notificationUserId = runData.startedBy || userId; // TODO: Get actual assignee
           
           if (notificationUserId !== userId) {
-            await addDoc(collection(db, "notifications"), {
+            const notificationData: any = {
               recipientId: notificationUserId,
               triggerBy: {
                 userId: userId,
                 name: userName,
-                avatar: userAvatar || undefined,
               },
               type: "COMMENT",
               title: `New Comment on: ${runData.procedureTitle || "Task"}`,
@@ -117,7 +116,14 @@ export function TaskChat({
               createdAt: serverTimestamp(),
               runId: runId,
               stepId: currentStepId,
-            });
+            };
+
+            // Only add avatar if it exists
+            if (userAvatar) {
+              notificationData.triggerBy.avatar = userAvatar;
+            }
+
+            await addDoc(collection(db, "notifications"), notificationData);
           }
         }
       } catch (notifError) {

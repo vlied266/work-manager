@@ -15,9 +15,11 @@ import { ConfigPanel } from "@/components/design/config-panel";
 import { useRouter } from "next/navigation";
 import { useProcedureValidation } from "@/hooks/use-procedure-validation";
 import { useStudioTour } from "@/components/studio/StudioTour";
-import { HelpCircle, Edit3, Smartphone, List, Network } from "lucide-react";
+import { HelpCircle, Edit3, Smartphone, List, Network, Play } from "lucide-react";
 import { MobilePreview } from "@/components/studio/mobile-preview";
 import { VisualEditor } from "@/components/studio/VisualEditor";
+import { useOrgId } from "@/hooks/useOrgData";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 interface ProcedureBuilderPageProps {
   params: Promise<{ id: string }>;
@@ -26,7 +28,9 @@ interface ProcedureBuilderPageProps {
 export default function ProcedureBuilderPage({ params: paramsPromise }: ProcedureBuilderPageProps) {
   const { id } = use(paramsPromise);
   const router = useRouter();
-  const [organizationId] = useState("default-org"); // TODO: Get from auth context
+  const organizationId = useOrgId() || "default-org";
+  const { userProfile } = useOrganization();
+  const userId = userProfile?.uid || null;
   const [procedure, setProcedure] = useState<Procedure | null>(null);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [procedureTitle, setProcedureTitle] = useState("");
@@ -171,6 +175,61 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
       console.error("Error saving procedure:", error);
       alert("Failed to save procedure");
     } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStartProcedure = async () => {
+    if (!procedure || !procedure.id || procedure.id.startsWith("temp-")) {
+      alert("Please save the procedure first before starting it.");
+      return;
+    }
+
+    if (!procedure.steps || procedure.steps.length === 0) {
+      alert("Please add at least one step to the procedure.");
+      return;
+    }
+
+    if (!organizationId || !userId) {
+      alert("Please log in to start a procedure.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      // Call the new API
+      const response = await fetch("/api/runs/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          procedureId: procedure.id,
+          orgId: organizationId,
+          starterUserId: userId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to start procedure");
+      }
+
+      const result = await response.json();
+
+      // Handle redirect based on action
+      if (result.action === "REDIRECT_TO_RUN") {
+        router.push(`/run/${result.runId}`);
+      } else if (result.action === "REDIRECT_TO_MONITOR") {
+        // Show notification
+        alert(result.message || "Process started! Task assigned to another user.");
+        router.push("/monitor");
+      } else {
+        // Fallback
+        router.push(`/run/${result.runId}`);
+      }
+    } catch (error: any) {
+      console.error("Error starting procedure:", error);
+      alert(error.message || "Failed to start procedure. Please try again.");
       setSaving(false);
     }
   };
@@ -381,22 +440,35 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
               <div className="h-6 w-[1px] bg-gray-300 mx-1" />
 
               {procedure && procedure.id && !procedure.id.startsWith("temp-") ? (
-                <motion.button
-                  onClick={handleSaveProcedure}
-                  disabled={!procedureTitle.trim() || !validation.isValid || saving}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="rounded-full bg-[#007AFF] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#0071E3] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    <span>Save Changes</span>
-                  )}
-                </motion.button>
+                <>
+                  <motion.button
+                    onClick={handleSaveProcedure}
+                    disabled={!procedureTitle.trim() || !validation.isValid || saving}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="rounded-full bg-[#007AFF] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#0071E3] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <span>Save Changes</span>
+                    )}
+                  </motion.button>
+                  <motion.button
+                    onClick={handleStartProcedure}
+                    disabled={!procedure || !procedure.steps || procedure.steps.length === 0 || saving}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="rounded-full bg-green-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                    title={!procedure || !procedure.steps || procedure.steps.length === 0 ? "Add at least one step to start" : "Start Procedure"}
+                  >
+                    <Play className="h-3.5 w-3.5" />
+                    <span>Start Procedure</span>
+                  </motion.button>
+                </>
               ) : (
                 <div className="relative group">
                   <motion.button

@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { Users, User, ShieldCheck, Upload, CheckCircle2, Calculator, Sparkles, AlertTriangle, Info, HelpCircle } from "lucide-react";
 import { MagicInput } from "@/components/studio/magic-input";
 import { GoogleSheetConfig } from "@/components/studio/GoogleSheetConfig";
+import { useOrgId, useOrgQuery } from "@/hooks/useOrgData";
 
 interface ConfigPanelProps {
   step: AtomicStep | null;
@@ -20,14 +21,15 @@ interface ConfigPanelProps {
 export function ConfigPanel({ step, allSteps, onUpdate, validationError }: ConfigPanelProps) {
   const [teams, setTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
-  const [organizationId] = useState("default-org"); // TODO: Get from auth context
+  
+  // Get organization ID from context
+  const organizationId = useOrgId();
+  const teamsQuery = useOrgQuery("teams");
+  const usersQuery = useOrgQuery("users");
 
   // Fetch teams and users for assignment
   useEffect(() => {
-    const teamsQuery = query(
-      collection(db, "teams"),
-      where("organizationId", "==", organizationId)
-    );
+    if (!teamsQuery) return;
 
     const unsubscribeTeams = onSnapshot(
       teamsQuery,
@@ -48,10 +50,13 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
       }
     );
 
-    const usersQuery = query(
-      collection(db, "users"),
-      where("organizationId", "==", organizationId)
-    );
+    return () => {
+      unsubscribeTeams();
+    };
+  }, [teamsQuery]);
+
+  useEffect(() => {
+    if (!usersQuery) return;
 
     const unsubscribeUsers = onSnapshot(
       usersQuery,
@@ -67,7 +72,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
             jobTitle: data.jobTitle,
             role: data.role || "OPERATOR",
             teamIds: data.teamIds || [],
-            organizationId: data.organizationId || organizationId,
+            organizationId: data.organizationId || organizationId || "",
             createdAt: data.createdAt?.toDate() || new Date(),
             updatedAt: data.updatedAt?.toDate() || new Date(),
           };
@@ -80,10 +85,66 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
     );
 
     return () => {
-      unsubscribeTeams();
       unsubscribeUsers();
     };
-  }, [organizationId]);
+  }, [usersQuery, organizationId]);
+
+  // Auto-detect assignment from assignee field (from AI @mentions)
+  useEffect(() => {
+    if (!step || !users.length) return;
+
+    // Check if assignee field is set but assignment type is not configured
+    const hasAssignee = step.assignee && step.assignee.trim() !== "";
+    const hasAssignmentType = step.assignment?.type || step.assigneeType;
+    const hasAssigneeId = step.assignment?.assigneeId || step.assigneeId;
+    
+    // Only auto-configure if assignee exists but assignment is not fully configured
+    if (hasAssignee && (!hasAssignmentType || !hasAssigneeId)) {
+      // Try to find the user by email or name
+      const assigneeValue = step.assignee.trim();
+      
+      // Try to match by email first
+      let matchedUser = users.find(
+        (u) => u.email?.toLowerCase() === assigneeValue.toLowerCase()
+      );
+      
+      // If not found by email, try to match by displayName
+      if (!matchedUser) {
+        matchedUser = users.find(
+          (u) => u.displayName?.toLowerCase().includes(assigneeValue.toLowerCase()) ||
+                 assigneeValue.toLowerCase().includes(u.displayName?.toLowerCase() || "")
+        );
+      }
+      
+      // If still not found, try partial name matching (e.g., "@Jack" matches "Jack Smith")
+      if (!matchedUser) {
+        const namePart = assigneeValue.replace(/^@/, "").toLowerCase();
+        matchedUser = users.find(
+          (u) => u.displayName?.toLowerCase().split(" ").some(part => part.startsWith(namePart)) ||
+                 u.email?.toLowerCase().split("@")[0] === namePart
+        );
+      }
+
+      if (matchedUser) {
+        const matchedUserId = matchedUser.uid || matchedUser.id;
+        
+        // Only update if the assigneeId doesn't match or assignment type is not set
+        if (!hasAssigneeId || hasAssigneeId !== matchedUserId || !hasAssignmentType) {
+          // Auto-configure assignment
+          onUpdate({
+            assignment: {
+              type: "SPECIFIC_USER",
+              assigneeId: matchedUserId,
+            },
+            assigneeType: "SPECIFIC_USER",
+            assigneeId: matchedUserId,
+            // Keep the original assignee field for reference
+            assignee: step.assignee,
+          });
+        }
+      }
+    }
+  }, [step?.id, step?.assignee, step?.assignment?.type, step?.assignment?.assigneeId, step?.assigneeType, step?.assigneeId, users.length]);
 
   if (!step) {
     return (
@@ -209,7 +270,9 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
               <select
                 value={
                   step.assignment?.type || 
-                  (step.assigneeType === "TEAM" ? "TEAM_QUEUE" : step.assigneeType === "SPECIFIC_USER" ? "SPECIFIC_USER" : "STARTER")
+                  (step.assigneeType === "TEAM" ? "TEAM_QUEUE" : 
+                   step.assigneeType === "SPECIFIC_USER" ? "SPECIFIC_USER" : 
+                   (step.assignee && step.assignee.trim() !== "" && !step.assignment?.type && !step.assigneeType) ? "SPECIFIC_USER" : "STARTER")
                 }
                 onChange={(e) => {
                   const assignmentType = e.target.value as "STARTER" | "SPECIFIC_USER" | "TEAM_QUEUE";
@@ -265,13 +328,45 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
               </div>
             )}
 
-            {(step.assignment?.type === "SPECIFIC_USER" || step.assigneeType === "SPECIFIC_USER") && (
+            {(step.assignment?.type === "SPECIFIC_USER" || step.assigneeType === "SPECIFIC_USER" || (step.assignee && step.assignee.trim() !== "")) && (
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
                   Select User
                 </label>
                 <select
-                  value={step.assignment?.assigneeId || step.assigneeId || ""}
+                  value={(() => {
+                    // First try assignment.assigneeId or assigneeId
+                    const currentId = step.assignment?.assigneeId || step.assigneeId;
+                    if (currentId) return currentId;
+                    
+                    // If assignee field exists but no ID, try to find user by email/name
+                    if (step.assignee && step.assignee.trim() !== "") {
+                      const assigneeValue = step.assignee.trim();
+                      
+                      // Try to match by email
+                      const byEmail = users.find(
+                        (u) => u.email?.toLowerCase() === assigneeValue.toLowerCase()
+                      );
+                      if (byEmail) return byEmail.uid || byEmail.id;
+                      
+                      // Try to match by displayName
+                      const byName = users.find(
+                        (u) => u.displayName?.toLowerCase().includes(assigneeValue.toLowerCase()) ||
+                               assigneeValue.toLowerCase().includes(u.displayName?.toLowerCase() || "")
+                      );
+                      if (byName) return byName.uid || byName.id;
+                      
+                      // Try partial name matching (e.g., "@Jack" matches "Jack Smith")
+                      const namePart = assigneeValue.replace(/^@/, "").toLowerCase();
+                      const byPartial = users.find(
+                        (u) => u.displayName?.toLowerCase().split(" ").some(part => part.startsWith(namePart)) ||
+                               u.email?.toLowerCase().split("@")[0] === namePart
+                      );
+                      if (byPartial) return byPartial.uid || byPartial.id;
+                    }
+                    
+                    return "";
+                  })()}
                   onChange={(e) =>
                     onUpdate({
                       assignment: {

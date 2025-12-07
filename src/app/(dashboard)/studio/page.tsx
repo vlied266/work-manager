@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowRight, FileText, Workflow, ArrowLeft, LayoutTemplate, Sparkles, Loader2, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { AtomicStep } from "@/types/schema";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { onSnapshot } from "firebase/firestore";
+import { useOrgQuery, useOrgId } from "@/hooks/useOrgData";
+import { MentionInput } from "@/components/ui/MentionInput";
 
 export default function StudioHubPage() {
   const router = useRouter();
@@ -14,6 +17,35 @@ export default function StudioHubPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganization();
+  const [staff, setStaff] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  
+  // Fetch organization users
+  const orgId = useOrgId();
+  const usersQuery = useOrgQuery("users");
+
+  useEffect(() => {
+    if (!usersQuery) return;
+
+    const unsubscribe = onSnapshot(
+      usersQuery,
+      (snapshot) => {
+        const users = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.displayName || data.email?.split("@")[0] || "Unknown",
+            email: data.email || "",
+          };
+        });
+        setStaff(users);
+      },
+      (error) => {
+        console.error("Error fetching users:", error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [usersQuery]);
 
   const handleMagicBuild = async () => {
     if (!magicDescription.trim()) {
@@ -120,32 +152,33 @@ export default function StudioHubPage() {
           className="w-full max-w-3xl mx-auto mb-16 relative"
         >
           <div className="relative">
-            <div className="absolute left-5 top-1/2 -translate-y-1/2 z-10">
-              <motion.div
-                animate={{ rotate: [0, 10, -10, 0] }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-                className="flex h-8 w-8 items-center justify-center"
-              >
-                <Sparkles className="h-6 w-6 text-blue-500" strokeWidth={2} />
-              </motion.div>
+            {/* MentionInput with custom styling to match the rounded-full design */}
+            <div className="relative">
+              <div className="absolute left-5 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                <motion.div
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                  className="flex h-8 w-8 items-center justify-center"
+                >
+                  <Sparkles className="h-6 w-6 text-blue-500" strokeWidth={2} />
+                </motion.div>
+              </div>
+              <div className="[&_textarea]:!h-16 [&_textarea]:!min-h-16 [&_textarea]:!rounded-full [&_textarea]:!bg-white/70 [&_textarea]:!backdrop-blur-xl [&_textarea]:!border [&_textarea]:!border-white/50 [&_textarea]:!shadow-2xl [&_textarea]:!shadow-blue-500/20 [&_textarea]:!pl-14 [&_textarea]:!pr-6 [&_textarea]:!text-base [&_textarea]:!font-medium [&_textarea]:!text-slate-800 [&_textarea]:!placeholder:text-slate-400 [&_textarea]:!focus:outline-none [&_textarea]:!focus:ring-2 [&_textarea]:!focus:ring-blue-500/30 [&_textarea]:!transition-all [&_textarea]:!resize-none [&_textarea]:!py-4">
+                <MentionInput
+                  value={magicDescription}
+                  onChange={(val) => {
+                    setMagicDescription(val);
+                    setError(null);
+                  }}
+                  onSend={handleMagicBuild}
+                  users={staff}
+                  placeholder="Describe a process to build instantly... Type @ to mention team members"
+                  disabled={isGenerating}
+                  className="w-full"
+                />
+              </div>
             </div>
-            <input
-              type="text"
-              value={magicDescription}
-              onChange={(e) => {
-                setMagicDescription(e.target.value);
-                setError(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                  e.preventDefault();
-                  handleMagicBuild();
-                }
-              }}
-              placeholder="Describe a process to build instantly..."
-              className="w-full h-16 rounded-full bg-white/70 backdrop-blur-xl border border-white/50 shadow-2xl shadow-blue-500/20 pl-14 pr-6 text-base font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all"
-              disabled={isGenerating}
-            />
+            
             {isGenerating && (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -174,7 +207,7 @@ export default function StudioHubPage() {
           </AnimatePresence>
 
           <p className="mt-4 text-xs text-center text-slate-500 font-medium">
-            Press <kbd className="px-2 py-1 rounded bg-white/50 text-slate-700 font-mono text-xs font-semibold border border-white/50 shadow-sm">⌘ + Enter</kbd> to generate
+            Press <kbd className="px-2 py-1 rounded bg-white/50 text-slate-700 font-mono text-xs font-semibold border border-white/50 shadow-sm">Enter</kbd> to generate, or <kbd className="px-2 py-1 rounded bg-white/50 text-slate-700 font-mono text-xs font-semibold border border-white/50 shadow-sm">↑/↓</kbd> to navigate mentions
           </p>
         </motion.div>
 

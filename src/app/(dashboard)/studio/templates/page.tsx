@@ -6,8 +6,9 @@ import { db } from "@/lib/firebase";
 import { Procedure, AtomicStep } from "@/types/schema";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Sparkles, Users, DollarSign, Wrench, CheckCircle2, Loader2, FileText, TrendingUp, ShoppingCart, Shield, Code, Scale, Megaphone, ClipboardCheck, Calendar, CreditCard, Building2, Package, Truck, AlertTriangle, UserPlus, GraduationCap, BarChart, Receipt, FileCheck, Key, Bug, BookOpen, Target, Image } from "lucide-react";
+import { ArrowLeft, ArrowRight, Sparkles, Users, DollarSign, Wrench, CheckCircle2, Loader2, FileText, TrendingUp, ShoppingCart, Shield, Code, Scale, Megaphone, ClipboardCheck, Calendar, CreditCard, Building2, Package, Truck, AlertTriangle, UserPlus, GraduationCap, BarChart, Receipt, FileCheck, Key, Bug, BookOpen, Target, Image, Stethoscope, Briefcase, GraduationCap as GraduationCapIcon, UtensilsCrossed, Home, Car, Plane, Heart, Music, Paintbrush, Camera, Gamepad2, Hammer, Zap, Factory, Microscope, Beaker, Globe, Mail, Phone, Printer, Scissors, Search, X } from "lucide-react";
 import { motion } from "framer-motion";
+import { TemplateCustomizerModal } from "@/components/templates/TemplateCustomizerModal";
 
 // Template definitions
 const TEMPLATES = [
@@ -1761,6 +1762,1379 @@ const TEMPLATES = [
       },
     ] as AtomicStep[],
   },
+  // Healthcare Templates
+  {
+    id: "patient-admission",
+    category: "Healthcare",
+    title: "Patient Admission",
+    description: "Hospital patient admission and registration workflow",
+    icon: Stethoscope,
+    color: "red",
+    steps: [
+      {
+        id: "step-1",
+        title: "Patient Information",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Name", "Date of Birth", "ID Number", "Emergency Contact", "Insurance"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Medical History",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Allergies", "Current Medications", "Previous Conditions"],
+          required: true,
+        },
+      },
+      {
+        id: "step-3",
+        title: "Verify Insurance",
+        action: "VALIDATE" as const,
+        config: {
+          rule: "contains",
+          target: "step_1_insurance",
+          value: "valid",
+          errorMessage: "Insurance verification required.",
+        },
+        routes: {
+          defaultNextStepId: "COMPLETED",
+          onSuccessStepId: "step-4",
+          onFailureStepId: "step-5",
+        },
+      },
+      {
+        id: "step-4",
+        title: "Assign Room",
+        action: "STORE" as const,
+        config: {
+          storageType: "database",
+          collection: "admissions",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Financial Counselor Review",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Review uninsured patient admission.",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  {
+    id: "prescription-dispensing",
+    category: "Healthcare",
+    title: "Prescription Dispensing",
+    description: "Pharmacy prescription verification and dispensing process",
+    icon: Stethoscope,
+    color: "red",
+    steps: [
+      {
+        id: "step-1",
+        title: "Prescription Details",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Patient Name", "Medication", "Dosage", "Quantity", "Doctor Name"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Verify Prescription",
+        action: "VALIDATE" as const,
+        config: {
+          rule: "contains",
+          target: "step_1_doctorName",
+          value: "licensed",
+          errorMessage: "Prescription must be from licensed physician.",
+        },
+        routes: {
+          defaultNextStepId: "COMPLETED",
+          onSuccessStepId: "step-3",
+          onFailureStepId: "COMPLETED",
+        },
+      },
+      {
+        id: "step-3",
+        title: "Check Drug Interactions",
+        action: "COMPARE" as const,
+        config: {
+          targetA: "step_1_medication",
+          targetB: "patientCurrentMedications",
+          autoEvaluate: true,
+        },
+      },
+      {
+        id: "step-4",
+        title: "Pharmacist Approval",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Verify prescription and approve dispensing.",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Dispense Medication",
+        action: "STORE" as const,
+        config: {
+          storageType: "database",
+          collection: "dispensations",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  // Education Templates
+  {
+    id: "student-enrollment",
+    category: "Education",
+    title: "Student Enrollment",
+    description: "New student registration and enrollment process",
+    icon: GraduationCapIcon,
+    color: "blue",
+    steps: [
+      {
+        id: "step-1",
+        title: "Student Information",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Full Name", "Date of Birth", "Parent/Guardian", "Contact", "Address"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Upload Documents",
+        action: "FETCH" as const,
+        config: {
+          allowedTypes: [".pdf", ".jpg", ".png"],
+          maxSize: "10MB",
+        },
+      },
+      {
+        id: "step-3",
+        title: "Academic Records",
+        action: "INPUT" as const,
+        config: {
+          inputType: "table",
+          tableConfig: {
+            rows: 5,
+            columns: 4,
+            headers: ["Subject", "Grade", "Year", "School"],
+          },
+        },
+      },
+      {
+        id: "step-4",
+        title: "Admissions Officer Review",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Review enrollment application and approve admission.",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Create Student Record",
+        action: "STORE" as const,
+        config: {
+          storageType: "database",
+          collection: "students",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  {
+    id: "exam-grading",
+    category: "Education",
+    title: "Exam Grading",
+    description: "Student exam evaluation and grade recording",
+    icon: GraduationCapIcon,
+    color: "blue",
+    steps: [
+      {
+        id: "step-1",
+        title: "Exam Details",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Course", "Exam Date", "Total Marks", "Student Count"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Upload Answer Sheets",
+        action: "FETCH" as const,
+        config: {
+          allowedTypes: [".pdf", ".jpg", ".png"],
+          maxSize: "50MB",
+        },
+      },
+      {
+        id: "step-3",
+        title: "Grade Entry",
+        action: "INPUT" as const,
+        config: {
+          inputType: "table",
+          tableConfig: {
+            rows: 50,
+            columns: 3,
+            headers: ["Student ID", "Marks Obtained", "Grade"],
+          },
+        },
+      },
+      {
+        id: "step-4",
+        title: "Calculate Statistics",
+        action: "CALCULATE" as const,
+        config: {
+          formula: "AVERAGE(marks) + STDDEV(marks)",
+          variables: ["marks"],
+        },
+      },
+      {
+        id: "step-5",
+        title: "Department Head Approval",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Review grading and approve publication.",
+        },
+      },
+      {
+        id: "step-6",
+        title: "Publish Grades",
+        action: "STORE" as const,
+        config: {
+          storageType: "database",
+          collection: "grades",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  // Hospitality Templates
+  {
+    id: "hotel-checkin",
+    category: "Hospitality",
+    title: "Hotel Check-in",
+    description: "Guest check-in and room assignment process",
+    icon: Home,
+    color: "amber",
+    steps: [
+      {
+        id: "step-1",
+        title: "Guest Information",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Name", "ID/Passport", "Phone", "Email", "Check-in Date", "Check-out Date"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Verify Reservation",
+        action: "COMPARE" as const,
+        config: {
+          targetA: "step_1_name",
+          targetB: "reservationName",
+          autoEvaluate: true,
+        },
+        routes: {
+          defaultNextStepId: "COMPLETED",
+          onSuccessStepId: "step-3",
+          onFailureStepId: "step-4",
+        },
+      },
+      {
+        id: "step-3",
+        title: "Assign Room",
+        action: "STORE" as const,
+        config: {
+          storageType: "database",
+          collection: "checkins",
+        },
+      },
+      {
+        id: "step-4",
+        title: "Manager Approval",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Approve walk-in guest check-in.",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Process Payment",
+        action: "TRANSMIT" as const,
+        config: {
+          method: "POST",
+          endpoint: "payment_processor",
+          data: "step_1_output",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  {
+    id: "restaurant-order",
+    category: "Hospitality",
+    title: "Restaurant Order Processing",
+    description: "Food order taking and kitchen workflow",
+    icon: UtensilsCrossed,
+    color: "amber",
+    steps: [
+      {
+        id: "step-1",
+        title: "Order Details",
+        action: "INPUT" as const,
+        config: {
+          inputType: "table",
+          tableConfig: {
+            rows: 20,
+            columns: 4,
+            headers: ["Item", "Quantity", "Special Instructions", "Price"],
+          },
+        },
+      },
+      {
+        id: "step-2",
+        title: "Calculate Total",
+        action: "CALCULATE" as const,
+        config: {
+          formula: "SUM(itemPrice * quantity) + tax + tip",
+          variables: ["itemPrice", "quantity", "tax", "tip"],
+        },
+      },
+      {
+        id: "step-3",
+        title: "Send to Kitchen",
+        action: "TRANSMIT" as const,
+        config: {
+          method: "POST",
+          endpoint: "kitchen_display",
+          data: "step_1_output",
+        },
+      },
+      {
+        id: "step-4",
+        title: "Verify Order Ready",
+        action: "INSPECT" as const,
+        config: {
+          instruction: "Verify all items are prepared correctly before serving.",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Process Payment",
+        action: "TRANSMIT" as const,
+        config: {
+          method: "POST",
+          endpoint: "pos_system",
+          data: "step_2_output",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  // Transportation Templates
+  {
+    id: "vehicle-maintenance",
+    category: "Transportation",
+    title: "Vehicle Maintenance",
+    description: "Fleet vehicle service and maintenance tracking",
+    icon: Car,
+    color: "orange",
+    steps: [
+      {
+        id: "step-1",
+        title: "Vehicle Information",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["License Plate", "Make/Model", "Mileage", "Service Type"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Maintenance Checklist",
+        action: "INPUT" as const,
+        config: {
+          inputType: "table",
+          tableConfig: {
+            rows: 10,
+            columns: 3,
+            headers: ["Item", "Status", "Notes"],
+          },
+        },
+      },
+      {
+        id: "step-3",
+        title: "Upload Service Photos",
+        action: "FETCH" as const,
+        config: {
+          allowedTypes: [".jpg", ".png"],
+          maxSize: "10MB",
+        },
+      },
+      {
+        id: "step-4",
+        title: "Mechanic Sign-off",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Complete maintenance and approve vehicle for use.",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Update Service Record",
+        action: "STORE" as const,
+        config: {
+          storageType: "database",
+          collection: "vehicle_maintenance",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  {
+    id: "flight-booking",
+    category: "Transportation",
+    title: "Flight Booking",
+    description: "Airline ticket reservation and confirmation process",
+    icon: Plane,
+    color: "blue",
+    steps: [
+      {
+        id: "step-1",
+        title: "Passenger Details",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Name", "Passport Number", "Date of Birth", "Contact"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Flight Selection",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Origin", "Destination", "Departure Date", "Return Date", "Class"],
+          required: true,
+        },
+      },
+      {
+        id: "step-3",
+        title: "Check Seat Availability",
+        action: "FETCH" as const,
+        config: {
+          source: "flight_system",
+          fields: ["availableSeats", "pricing"],
+        },
+      },
+      {
+        id: "step-4",
+        title: "Calculate Total Price",
+        action: "CALCULATE" as const,
+        config: {
+          formula: "basePrice + taxes + fees + seatSelection",
+          variables: ["basePrice", "taxes", "fees", "seatSelection"],
+        },
+      },
+      {
+        id: "step-5",
+        title: "Process Payment",
+        action: "TRANSMIT" as const,
+        config: {
+          method: "POST",
+          endpoint: "payment_gateway",
+          data: "step_4_output",
+        },
+      },
+      {
+        id: "step-6",
+        title: "Issue Ticket",
+        action: "GENERATE" as const,
+        config: {
+          template: "Flight Ticket: {{passengerName}} - {{origin}} to {{destination}}",
+          outputFormat: "document",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  // Real Estate Templates
+  {
+    id: "property-listing",
+    category: "Real Estate",
+    title: "Property Listing",
+    description: "Real estate property listing and approval workflow",
+    icon: Home,
+    color: "green",
+    steps: [
+      {
+        id: "step-1",
+        title: "Property Details",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Address", "Property Type", "Size", "Bedrooms", "Bathrooms", "Price"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Upload Property Photos",
+        action: "FETCH" as const,
+        config: {
+          allowedTypes: [".jpg", ".png"],
+          maxSize: "50MB",
+        },
+      },
+      {
+        id: "step-3",
+        title: "Property Inspection",
+        action: "INSPECT" as const,
+        config: {
+          instruction: "Verify property condition and document any issues.",
+        },
+      },
+      {
+        id: "step-4",
+        title: "Validate Pricing",
+        action: "VALIDATE" as const,
+        config: {
+          rule: "GREATER_THAN",
+          target: "step_1_price",
+          value: 0,
+          errorMessage: "Property price must be greater than zero.",
+        },
+        routes: {
+          defaultNextStepId: "COMPLETED",
+          onSuccessStepId: "step-5",
+          onFailureStepId: "COMPLETED",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Broker Approval",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Approve property listing for publication.",
+        },
+      },
+      {
+        id: "step-6",
+        title: "Publish Listing",
+        action: "STORE" as const,
+        config: {
+          storageType: "database",
+          collection: "property_listings",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  {
+    id: "rental-application",
+    category: "Real Estate",
+    title: "Rental Application",
+    description: "Tenant rental application review and approval",
+    icon: Home,
+    color: "green",
+    steps: [
+      {
+        id: "step-1",
+        title: "Applicant Information",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Name", "Email", "Phone", "Current Address", "Employment", "Income"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Upload Documents",
+        action: "FETCH" as const,
+        config: {
+          allowedTypes: [".pdf", ".jpg", ".png"],
+          maxSize: "10MB",
+        },
+      },
+      {
+        id: "step-3",
+        title: "Credit Check",
+        action: "FETCH" as const,
+        config: {
+          source: "credit_bureau",
+          fields: ["creditScore", "paymentHistory"],
+        },
+      },
+      {
+        id: "step-4",
+        title: "Validate Credit Score",
+        action: "VALIDATE" as const,
+        config: {
+          rule: "GREATER_THAN_OR_EQUAL",
+          target: "step_3_creditScore",
+          value: 600,
+          errorMessage: "Credit score below minimum requirement.",
+        },
+        routes: {
+          defaultNextStepId: "COMPLETED",
+          onSuccessStepId: "step-5",
+          onFailureStepId: "step-6",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Landlord Approval",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Approve rental application.",
+        },
+      },
+      {
+        id: "step-6",
+        title: "Require Co-signer",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Application requires co-signer due to credit score.",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  // Construction Templates
+  {
+    id: "construction-permit",
+    category: "Construction",
+    title: "Construction Permit",
+    description: "Building permit application and approval process",
+    icon: Hammer,
+    color: "orange",
+    steps: [
+      {
+        id: "step-1",
+        title: "Project Details",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Project Type", "Location", "Estimated Cost", "Contractor", "Timeline"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Upload Plans",
+        action: "FETCH" as const,
+        config: {
+          allowedTypes: [".pdf", ".dwg", ".jpg"],
+          maxSize: "50MB",
+        },
+      },
+      {
+        id: "step-3",
+        title: "Building Code Compliance",
+        action: "VALIDATE" as const,
+        config: {
+          rule: "contains",
+          target: "step_2_plans",
+          value: "codeCompliant",
+          errorMessage: "Plans must comply with building codes.",
+        },
+        routes: {
+          defaultNextStepId: "COMPLETED",
+          onSuccessStepId: "step-4",
+          onFailureStepId: "COMPLETED",
+        },
+      },
+      {
+        id: "step-4",
+        title: "Building Inspector Review",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Review plans and approve permit issuance.",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Issue Permit",
+        action: "GENERATE" as const,
+        config: {
+          template: "Building Permit #{{permitNumber}} - {{projectType}} at {{location}}",
+          outputFormat: "document",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  {
+    id: "site-inspection",
+    category: "Construction",
+    title: "Site Inspection",
+    description: "Construction site safety and progress inspection",
+    icon: Hammer,
+    color: "orange",
+    steps: [
+      {
+        id: "step-1",
+        title: "Inspection Details",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Site Location", "Inspection Type", "Date", "Inspector Name"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Safety Checklist",
+        action: "INPUT" as const,
+        config: {
+          inputType: "table",
+          tableConfig: {
+            rows: 15,
+            columns: 3,
+            headers: ["Item", "Status", "Notes"],
+          },
+        },
+      },
+      {
+        id: "step-3",
+        title: "Upload Inspection Photos",
+        action: "FETCH" as const,
+        config: {
+          allowedTypes: [".jpg", ".png"],
+          maxSize: "20MB",
+        },
+      },
+      {
+        id: "step-4",
+        title: "Progress Assessment",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Completion Percentage", "Issues Found", "Recommendations"],
+          required: true,
+        },
+      },
+      {
+        id: "step-5",
+        title: "Site Manager Approval",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Review inspection report and approve continuation.",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  // Manufacturing Templates
+  {
+    id: "production-order",
+    category: "Manufacturing",
+    title: "Production Order",
+    description: "Manufacturing production order creation and execution",
+    icon: Factory,
+    color: "slate",
+    steps: [
+      {
+        id: "step-1",
+        title: "Order Details",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Product Code", "Quantity", "Due Date", "Priority"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Check Raw Materials",
+        action: "FETCH" as const,
+        config: {
+          source: "inventory_system",
+          fields: ["materialAvailability", "stockLevels"],
+        },
+      },
+      {
+        id: "step-3",
+        title: "Validate Material Availability",
+        action: "COMPARE" as const,
+        config: {
+          targetA: "step_1_quantity",
+          targetB: "step_2_materialAvailability",
+          autoEvaluate: true,
+        },
+        routes: {
+          defaultNextStepId: "COMPLETED",
+          onSuccessStepId: "step-4",
+          onFailureStepId: "step-5",
+        },
+      },
+      {
+        id: "step-4",
+        title: "Schedule Production",
+        action: "STORE" as const,
+        config: {
+          storageType: "database",
+          collection: "production_orders",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Purchase Materials",
+        action: "GENERATE" as const,
+        config: {
+          template: "Purchase order for materials: {{materialList}}",
+          outputFormat: "document",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  {
+    id: "quality-assurance",
+    category: "Manufacturing",
+    title: "Quality Assurance",
+    description: "Product quality testing and certification",
+    icon: Microscope,
+    color: "slate",
+    steps: [
+      {
+        id: "step-1",
+        title: "Product Information",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Batch Number", "Product Code", "Production Date", "Quantity"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Quality Tests",
+        action: "INPUT" as const,
+        config: {
+          inputType: "table",
+          tableConfig: {
+            rows: 10,
+            columns: 4,
+            headers: ["Test", "Standard", "Result", "Status"],
+          },
+        },
+      },
+      {
+        id: "step-3",
+        title: "Compare with Standards",
+        action: "COMPARE" as const,
+        config: {
+          targetA: "step_2_result",
+          targetB: "step_2_standard",
+          autoEvaluate: true,
+        },
+        routes: {
+          defaultNextStepId: "COMPLETED",
+          onSuccessStepId: "step-4",
+          onFailureStepId: "step-5",
+        },
+      },
+      {
+        id: "step-4",
+        title: "QA Manager Approval",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Approve product for release.",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Flag for Rework",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Product fails quality standards - requires rework.",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  // Energy Templates
+  {
+    id: "energy-audit",
+    category: "Energy",
+    title: "Energy Audit",
+    description: "Building energy consumption audit and recommendations",
+    icon: Zap,
+    color: "yellow",
+    steps: [
+      {
+        id: "step-1",
+        title: "Building Information",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Address", "Building Type", "Size", "Age", "Occupancy"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Energy Consumption Data",
+        action: "FETCH" as const,
+        config: {
+          source: "utility_system",
+          fields: ["monthlyUsage", "cost", "peakDemand"],
+        },
+      },
+      {
+        id: "step-3",
+        title: "Calculate Efficiency",
+        action: "CALCULATE" as const,
+        config: {
+          formula: "usage / size / occupancy",
+          variables: ["usage", "size", "occupancy"],
+        },
+      },
+      {
+        id: "step-4",
+        title: "Identify Improvements",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Recommendations", "Estimated Savings", "Implementation Cost"],
+          required: true,
+        },
+      },
+      {
+        id: "step-5",
+        title: "Energy Consultant Approval",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Review audit report and approve recommendations.",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  // Research Templates
+  {
+    id: "research-proposal",
+    category: "Research",
+    title: "Research Proposal",
+    description: "Research project proposal submission and review",
+    icon: Beaker,
+    color: "purple",
+    steps: [
+      {
+        id: "step-1",
+        title: "Proposal Details",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Title", "Principal Investigator", "Duration", "Budget", "Objectives"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Upload Proposal Document",
+        action: "FETCH" as const,
+        config: {
+          allowedTypes: [".pdf", ".doc", ".docx"],
+          maxSize: "20MB",
+        },
+      },
+      {
+        id: "step-3",
+        title: "Validate Budget",
+        action: "VALIDATE" as const,
+        config: {
+          rule: "LESS_THAN_OR_EQUAL",
+          target: "step_1_budget",
+          value: "researchBudget",
+          errorMessage: "Proposal budget exceeds available funds.",
+        },
+        routes: {
+          defaultNextStepId: "COMPLETED",
+          onSuccessStepId: "step-4",
+          onFailureStepId: "step-5",
+        },
+      },
+      {
+        id: "step-4",
+        title: "Research Committee Review",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Review proposal and approve funding.",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Require Budget Revision",
+        action: "GENERATE" as const,
+        config: {
+          template: "Budget revision required for proposal: {{title}}",
+          outputFormat: "document",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  // Creative Industry Templates
+  {
+    id: "design-approval",
+    category: "Creative",
+    title: "Design Approval",
+    description: "Creative design review and client approval workflow",
+    icon: Paintbrush,
+    color: "pink",
+    steps: [
+      {
+        id: "step-1",
+        title: "Design Brief",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Project Name", "Client", "Requirements", "Deadline", "Budget"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Upload Design Files",
+        action: "FETCH" as const,
+        config: {
+          allowedTypes: [".jpg", ".png", ".psd", ".ai", ".pdf"],
+          maxSize: "100MB",
+        },
+      },
+      {
+        id: "step-3",
+        title: "Brand Compliance Check",
+        action: "VALIDATE" as const,
+        config: {
+          rule: "contains",
+          target: "step_2_design",
+          value: "brandGuidelines",
+          errorMessage: "Design must comply with brand guidelines.",
+        },
+        routes: {
+          defaultNextStepId: "COMPLETED",
+          onSuccessStepId: "step-4",
+          onFailureStepId: "COMPLETED",
+        },
+      },
+      {
+        id: "step-4",
+        title: "Creative Director Review",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Review design and approve for client presentation.",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Client Approval",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Client review and approval of final design.",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  {
+    id: "photo-shoot",
+    category: "Creative",
+    title: "Photo Shoot",
+    description: "Photography project planning and execution",
+    icon: Camera,
+    color: "pink",
+    steps: [
+      {
+        id: "step-1",
+        title: "Shoot Details",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Client", "Location", "Date", "Time", "Photographer", "Equipment Needed"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Shot List",
+        action: "INPUT" as const,
+        config: {
+          inputType: "table",
+          tableConfig: {
+            rows: 20,
+            columns: 4,
+            headers: ["Shot", "Description", "Priority", "Notes"],
+          },
+        },
+      },
+      {
+        id: "step-3",
+        title: "Equipment Check",
+        action: "INSPECT" as const,
+        config: {
+          instruction: "Verify all equipment is available and functional.",
+        },
+      },
+      {
+        id: "step-4",
+        title: "Execute Shoot",
+        action: "STORE" as const,
+        config: {
+          storageType: "database",
+          collection: "photo_shoots",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Upload Photos",
+        action: "FETCH" as const,
+        config: {
+          allowedTypes: [".jpg", ".raw", ".png"],
+          maxSize: "500MB",
+        },
+      },
+      {
+        id: "step-6",
+        title: "Client Review",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Review photos and approve for editing.",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  // Entertainment Templates
+  {
+    id: "event-planning",
+    category: "Entertainment",
+    title: "Event Planning",
+    description: "Event organization and execution workflow",
+    icon: Music,
+    color: "purple",
+    steps: [
+      {
+        id: "step-1",
+        title: "Event Details",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Event Name", "Type", "Date", "Location", "Expected Attendees", "Budget"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Vendor Coordination",
+        action: "INPUT" as const,
+        config: {
+          inputType: "table",
+          tableConfig: {
+            rows: 10,
+            columns: 4,
+            headers: ["Vendor", "Service", "Cost", "Status"],
+          },
+        },
+      },
+      {
+        id: "step-3",
+        title: "Calculate Total Cost",
+        action: "CALCULATE" as const,
+        config: {
+          formula: "SUM(vendorCost) + venue + catering + entertainment",
+          variables: ["vendorCost", "venue", "catering", "entertainment"],
+        },
+      },
+      {
+        id: "step-4",
+        title: "Compare with Budget",
+        action: "VALIDATE" as const,
+        config: {
+          rule: "LESS_THAN_OR_EQUAL",
+          target: "step_3_output",
+          value: "step_1_budget",
+          errorMessage: "Event cost exceeds budget.",
+        },
+        routes: {
+          defaultNextStepId: "COMPLETED",
+          onSuccessStepId: "step-5",
+          onFailureStepId: "step-6",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Event Manager Approval",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Approve event plan and proceed with execution.",
+        },
+      },
+      {
+        id: "step-6",
+        title: "Budget Revision Required",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Review budget overrun and approve additional funding.",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  {
+    id: "content-production",
+    category: "Entertainment",
+    title: "Content Production",
+    description: "Video/audio content creation and publishing workflow",
+    icon: Camera,
+    color: "purple",
+    steps: [
+      {
+        id: "step-1",
+        title: "Content Brief",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Title", "Format", "Duration", "Target Audience", "Key Messages"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "Script Review",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Review and approve script before production.",
+        },
+      },
+      {
+        id: "step-3",
+        title: "Production",
+        action: "STORE" as const,
+        config: {
+          storageType: "database",
+          collection: "productions",
+        },
+      },
+      {
+        id: "step-4",
+        title: "Upload Raw Footage",
+        action: "FETCH" as const,
+        config: {
+          allowedTypes: [".mp4", ".mov", ".avi"],
+          maxSize: "1GB",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Post-Production",
+        action: "GENERATE" as const,
+        config: {
+          template: "Post-production tasks for: {{title}}",
+          outputFormat: "text",
+        },
+      },
+      {
+        id: "step-6",
+        title: "Final Approval",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Review final cut and approve for publication.",
+        },
+      },
+    ] as AtomicStep[],
+  },
+  // Gaming Templates
+  {
+    id: "game-release",
+    category: "Gaming",
+    title: "Game Release",
+    description: "Video game release and quality assurance process",
+    icon: Gamepad2,
+    color: "indigo",
+    steps: [
+      {
+        id: "step-1",
+        title: "Game Information",
+        action: "INPUT" as const,
+        config: {
+          inputType: "text",
+          fields: ["Title", "Platform", "Genre", "Release Date", "Target Audience"],
+          required: true,
+        },
+      },
+      {
+        id: "step-2",
+        title: "QA Testing",
+        action: "INPUT" as const,
+        config: {
+          inputType: "table",
+          tableConfig: {
+            rows: 20,
+            columns: 4,
+            headers: ["Test Case", "Status", "Bug Count", "Severity"],
+          },
+        },
+      },
+      {
+        id: "step-3",
+        title: "Validate Bug Count",
+        action: "VALIDATE" as const,
+        config: {
+          rule: "LESS_THAN_OR_EQUAL",
+          target: "step_2_bugCount",
+          value: 10,
+          errorMessage: "Too many bugs - release blocked.",
+        },
+        routes: {
+          defaultNextStepId: "COMPLETED",
+          onSuccessStepId: "step-4",
+          onFailureStepId: "step-5",
+        },
+      },
+      {
+        id: "step-4",
+        title: "Production Manager Approval",
+        action: "AUTHORIZE" as const,
+        config: {
+          requireSignature: true,
+          instruction: "Approve game for release.",
+        },
+      },
+      {
+        id: "step-5",
+        title: "Bug Fix Required",
+        action: "GENERATE" as const,
+        config: {
+          template: "Bug fix required before release: {{bugList}}",
+          outputFormat: "document",
+        },
+      },
+    ] as AtomicStep[],
+  },
 ];
 
 export default function TemplatesPage() {
@@ -1768,14 +3142,49 @@ export default function TemplatesPage() {
   const [organizationId] = useState("default-org"); // TODO: Get from auth context
   const [loadingTemplateId, setLoadingTemplateId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [customizingTemplate, setCustomizingTemplate] = useState<typeof TEMPLATES[0] | null>(null);
 
   const categories = Array.from(new Set(TEMPLATES.map((t) => t.category)));
-  const filteredTemplates = selectedCategory
-    ? TEMPLATES.filter((t) => t.category === selectedCategory)
-    : TEMPLATES;
+  
+  // Group templates by category
+  const templatesByCategory = categories.reduce((acc, category) => {
+    acc[category] = TEMPLATES.filter((t) => t.category === category);
+    return acc;
+  }, {} as Record<string, typeof TEMPLATES>);
 
-  const handleUseTemplate = async (template: typeof TEMPLATES[0]) => {
-    setLoadingTemplateId(template.id);
+  // Filter templates based on search and category
+  const filteredTemplates = TEMPLATES.filter((template) => {
+    const matchesCategory = !selectedCategory || template.category === selectedCategory;
+    const matchesSearch = !searchQuery || 
+      template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.category.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  // Filter categories based on search
+  const filteredCategories = categories.filter((category) => {
+    if (!searchQuery) return true;
+    const categoryTemplates = templatesByCategory[category];
+    return categoryTemplates.some((t) => 
+      t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      category.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
+
+  const handleUseTemplate = (template: typeof TEMPLATES[0]) => {
+    // Open the customization modal instead of directly creating
+    setCustomizingTemplate(template);
+  };
+
+  const handleConfirmCustomization = async (finalSteps: AtomicStep[]) => {
+    if (!customizingTemplate) return;
+
+    setLoadingTemplateId(customizingTemplate.id);
+    setCustomizingTemplate(null); // Close modal
+
     try {
       // Find or create "Uncategorized" process group
       let defaultGroupId: string;
@@ -1804,7 +3213,7 @@ export default function TemplatesPage() {
 
       // Generate new IDs for steps to avoid conflicts
       const stepIdMap = new Map<string, string>();
-      const newSteps = template.steps.map((step) => {
+      const newSteps = finalSteps.map((step) => {
         const newId = `step-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         stepIdMap.set(step.id, newId);
         return {
@@ -1861,8 +3270,8 @@ export default function TemplatesPage() {
       const docRef = await addDoc(collection(db, "procedures"), {
         organizationId,
         processGroupId: defaultGroupId,
-        title: template.title,
-        description: template.description,
+        title: customizingTemplate.title,
+        description: customizingTemplate.description,
         isPublished: false, // Start as draft so user can edit
         steps: updatedSteps,
         createdAt: serverTimestamp(),
@@ -1902,135 +3311,295 @@ export default function TemplatesPage() {
       {/* Main Content */}
       <main className="mx-auto max-w-[1800px] px-6 py-12">
         {/* Hero Title */}
-        <div className="mb-12 text-center">
+        <div className="mb-8 text-center">
           <h1 className="text-5xl font-extrabold text-slate-800 tracking-tight mb-3">
-            Jumpstart your workflow.
+            Template Gallery
           </h1>
           <p className="text-lg text-slate-600 font-medium">
-            Start with pre-built workflows. Customize them to fit your needs.
+            Browse workflows by business type. Start with pre-built templates and customize them.
           </p>
         </div>
 
-        {/* Category Filter - iOS Segmented Control Style */}
-        <div className="mb-12 flex justify-center">
-          <div className="inline-flex rounded-full bg-white/60 backdrop-blur-xl border border-white/40 shadow-lg p-1.5">
-            <button
-              onClick={() => setSelectedCategory(null)}
-              className={`rounded-full px-6 py-2.5 text-sm font-semibold tracking-tight transition-all ${
-                selectedCategory === null
-                  ? "bg-white text-slate-800 shadow-md"
-                  : "text-slate-600 hover:text-slate-800"
-              }`}
-            >
-              All
-            </button>
-            {categories.map((category) => (
+        {/* Search Bar */}
+        <div className="mb-8 max-w-2xl mx-auto">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search templates by name, description, or business type..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-12 py-4 rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-xl text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all shadow-lg"
+            />
+            {searchQuery && (
               <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`rounded-full px-6 py-2.5 text-sm font-semibold tracking-tight transition-all ${
-                  selectedCategory === category
-                    ? "bg-white text-slate-800 shadow-md"
-                    : "text-slate-600 hover:text-slate-800"
-                }`}
+                onClick={() => setSearchQuery("")}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-slate-100 transition-colors"
               >
-                {category}
+                <X className="h-4 w-4 text-slate-400" />
               </button>
-            ))}
+            )}
           </div>
         </div>
 
-        {/* Templates Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {filteredTemplates.map((template) => {
-            const IconComponent = template.icon;
-            const isLoading = loadingTemplateId === template.id;
-
-            return (
-              <motion.div
-                key={template.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className="group relative rounded-[2rem] bg-white shadow-xl p-8 transition-all hover:-translate-y-2 hover:shadow-2xl"
-              >
-                {/* Large Colorful Icon */}
-                <div className="mb-6 flex items-center justify-center">
-                  <div
-                    className={`flex h-20 w-20 items-center justify-center rounded-2xl shadow-lg ${
-                      template.color === "blue"
-                        ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
-                        : template.color === "green"
-                        ? "bg-gradient-to-br from-green-500 to-green-600 text-white"
-                        : template.color === "orange"
-                        ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white"
-                        : template.color === "purple"
-                        ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white"
-                        : template.color === "indigo"
-                        ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white"
-                        : template.color === "amber"
-                        ? "bg-gradient-to-br from-amber-500 to-amber-600 text-white"
-                        : "bg-gradient-to-br from-pink-500 to-pink-600 text-white"
-                    }`}
+        {/* Business Categories Grid - Show when no category selected or search is active */}
+        {(!selectedCategory || searchQuery) && (
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold text-slate-800 mb-6 text-center">
+              Browse by Business Type
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {filteredCategories.map((category) => {
+                const categoryTemplates = templatesByCategory[category];
+                const categoryCount = categoryTemplates.length;
+                const firstTemplate = categoryTemplates[0];
+                const IconComponent = firstTemplate?.icon || Building2;
+                
+                // Get color for category
+                const getCategoryColor = (cat: string) => {
+                  const colorMap: Record<string, string> = {
+                    "HR": "blue",
+                    "Finance": "green",
+                    "Operations": "orange",
+                    "Sales": "purple",
+                    "IT": "indigo",
+                    "Legal": "amber",
+                    "Marketing": "pink",
+                    "Healthcare": "red",
+                    "Education": "blue",
+                    "Hospitality": "amber",
+                    "Transportation": "blue",
+                    "Real Estate": "green",
+                    "Construction": "orange",
+                    "Manufacturing": "slate",
+                    "Energy": "yellow",
+                    "Research": "purple",
+                    "Creative": "pink",
+                    "Entertainment": "purple",
+                    "Gaming": "indigo",
+                  };
+                  return colorMap[cat] || "blue";
+                };
+                
+                // Get gradient classes for category color
+                const getCategoryGradient = (color: string) => {
+                  const gradients: Record<string, string> = {
+                    "blue": "bg-gradient-to-br from-blue-500 to-blue-600 text-white",
+                    "green": "bg-gradient-to-br from-green-500 to-green-600 text-white",
+                    "orange": "bg-gradient-to-br from-orange-500 to-orange-600 text-white",
+                    "purple": "bg-gradient-to-br from-purple-500 to-purple-600 text-white",
+                    "indigo": "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white",
+                    "amber": "bg-gradient-to-br from-amber-500 to-amber-600 text-white",
+                    "pink": "bg-gradient-to-br from-pink-500 to-pink-600 text-white",
+                    "red": "bg-gradient-to-br from-red-500 to-red-600 text-white",
+                    "yellow": "bg-gradient-to-br from-yellow-500 to-yellow-600 text-white",
+                    "slate": "bg-gradient-to-br from-slate-500 to-slate-600 text-white",
+                  };
+                  return gradients[color] || gradients["blue"];
+                };
+                
+                const categoryColor = getCategoryColor(category);
+                
+                return (
+                  <motion.button
+                    key={category}
+                    onClick={() => {
+                      setSelectedCategory(category);
+                      setSearchQuery(""); // Clear search when selecting category
+                    }}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="group relative rounded-2xl bg-white/80 backdrop-blur-xl border-2 border-slate-200 p-6 text-left transition-all hover:border-blue-400 hover:shadow-xl"
                   >
-                    <IconComponent className="h-10 w-10" strokeWidth={2} />
-                  </div>
-                </div>
+                    {/* Category Icon */}
+                    <div className="mb-4 flex items-center justify-center">
+                      <div
+                        className={`flex h-16 w-16 items-center justify-center rounded-xl shadow-lg transition-transform group-hover:scale-110 ${getCategoryGradient(categoryColor)}`}
+                      >
+                        <IconComponent className="h-8 w-8" strokeWidth={2} />
+                      </div>
+                    </div>
+                    
+                    {/* Category Name */}
+                    <h3 className="text-lg font-bold text-slate-900 mb-2 text-center">
+                      {category}
+                    </h3>
+                    
+                    {/* Template Count */}
+                    <div className="flex items-center justify-center gap-2 text-sm text-slate-600">
+                      <FileText className="h-4 w-4" />
+                      <span className="font-semibold">{categoryCount} {categoryCount === 1 ? 'template' : 'templates'}</span>
+                    </div>
+                    
+                    {/* Hover Arrow */}
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ArrowRight className="h-5 w-5 text-blue-500" />
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
-                {/* Category Badge */}
-                <div className="mb-4 flex justify-center">
-                  <span className="rounded-full bg-slate-100 px-4 py-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    {template.category}
-                  </span>
-                </div>
+        {/* Selected Category Header */}
+        {selectedCategory && !searchQuery && (
+          <div className="mb-8 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="text-sm font-medium">Back to Categories</span>
+              </button>
+              <div>
+                <h2 className="text-3xl font-bold text-slate-800">
+                  {selectedCategory} Templates
+                </h2>
+                <p className="text-sm text-slate-600 mt-1">
+                  {templatesByCategory[selectedCategory]?.length || 0} templates available
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
-                {/* Template Info */}
-                <h3 className="mb-3 text-xl font-extrabold text-slate-800 tracking-tight text-center">{template.title}</h3>
-                <p className="mb-6 text-sm text-slate-600 text-center leading-relaxed line-clamp-3">{template.description}</p>
+        {/* Search Results Header */}
+        {searchQuery && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-slate-800 mb-2">
+              Search Results
+            </h2>
+            <p className="text-sm text-slate-600">
+              Found {filteredTemplates.length} {filteredTemplates.length === 1 ? 'template' : 'templates'} matching "{searchQuery}"
+            </p>
+          </div>
+        )}
 
-                {/* Steps Count */}
-                <div className="mb-6 flex items-center justify-center gap-2 text-xs text-slate-500 font-medium">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>{template.steps.length} steps</span>
-                </div>
 
-                {/* Use Template Button */}
-                <button
-                  onClick={() => handleUseTemplate(template)}
-                  disabled={isLoading}
-                  className="w-full rounded-full bg-[#007AFF] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0071E3] hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        {/* Templates Grid - Only show when category is selected or search is active */}
+        {(selectedCategory || searchQuery) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredTemplates.map((template) => {
+              const IconComponent = template.icon;
+              const isLoading = loadingTemplateId === template.id;
+
+              return (
+                <motion.div
+                  key={template.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="group relative rounded-[2rem] bg-white shadow-xl p-8 transition-all hover:-translate-y-2 hover:shadow-2xl"
                 >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4" />
-                      Use Template
-                    </>
-                  )}
-                </button>
-              </motion.div>
-            );
-          })}
-        </div>
+                  {/* Large Colorful Icon */}
+                  <div className="mb-6 flex items-center justify-center">
+                    <div
+                      className={`flex h-20 w-20 items-center justify-center rounded-2xl shadow-lg ${
+                        template.color === "blue"
+                          ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+                          : template.color === "green"
+                          ? "bg-gradient-to-br from-green-500 to-green-600 text-white"
+                          : template.color === "orange"
+                          ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white"
+                          : template.color === "purple"
+                          ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white"
+                          : template.color === "indigo"
+                          ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white"
+                          : template.color === "amber"
+                          ? "bg-gradient-to-br from-amber-500 to-amber-600 text-white"
+                          : template.color === "red"
+                          ? "bg-gradient-to-br from-red-500 to-red-600 text-white"
+                          : template.color === "yellow"
+                          ? "bg-gradient-to-br from-yellow-500 to-yellow-600 text-white"
+                          : template.color === "slate"
+                          ? "bg-gradient-to-br from-slate-500 to-slate-600 text-white"
+                          : "bg-gradient-to-br from-pink-500 to-pink-600 text-white"
+                      }`}
+                    >
+                      <IconComponent className="h-10 w-10" strokeWidth={2} />
+                    </div>
+                  </div>
+
+                  {/* Category Badge */}
+                  <div className="mb-4 flex justify-center">
+                    <span className="rounded-full bg-slate-100 px-4 py-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      {template.category}
+                    </span>
+                  </div>
+
+                  {/* Template Info */}
+                  <h3 className="mb-3 text-xl font-extrabold text-slate-800 tracking-tight text-center">{template.title}</h3>
+                  <p className="mb-6 text-sm text-slate-600 text-center leading-relaxed line-clamp-3">{template.description}</p>
+
+                  {/* Steps Count */}
+                  <div className="mb-6 flex items-center justify-center gap-2 text-xs text-slate-500 font-medium">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>{template.steps.length} steps</span>
+                  </div>
+
+                  {/* Use Template Button */}
+                  <button
+                    onClick={() => handleUseTemplate(template)}
+                    disabled={isLoading}
+                    className="w-full rounded-full bg-[#007AFF] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0071E3] hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4" />
+                        Use Template
+                      </>
+                    )}
+                  </button>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Empty State */}
-        {filteredTemplates.length === 0 && (
+        {filteredTemplates.length === 0 && (selectedCategory || searchQuery) && (
           <div className="py-20 text-center">
             <div className="relative mb-6 inline-block">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-indigo-100/50 rounded-3xl blur-2xl" />
               <div className="relative bg-white/70 backdrop-blur-sm rounded-3xl p-8 shadow-lg">
-                <Sparkles className="h-16 w-16 text-slate-400 mx-auto" strokeWidth={1.5} />
+                <Search className="h-16 w-16 text-slate-400 mx-auto" strokeWidth={1.5} />
               </div>
             </div>
             <p className="text-base font-extrabold text-slate-800 tracking-tight mb-1">No templates found</p>
-            <p className="text-sm text-slate-600">Try selecting a different category</p>
+            <p className="text-sm text-slate-600">
+              {searchQuery 
+                ? `No templates match "${searchQuery}". Try a different search term.`
+                : "Try selecting a different category or clearing your search."}
+            </p>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="mt-4 px-4 py-2 rounded-lg bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 transition-colors"
+              >
+                Clear Search
+              </button>
+            )}
           </div>
         )}
       </main>
+
+      {/* Template Customizer Modal */}
+      {customizingTemplate && (
+        <TemplateCustomizerModal
+          template={customizingTemplate}
+          onClose={() => setCustomizingTemplate(null)}
+          onConfirm={handleConfirmCustomization}
+        />
+      )}
     </div>
   );
 }

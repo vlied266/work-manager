@@ -33,18 +33,37 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       (snapshot) => {
         const notifs = snapshot.docs.map((doc) => {
           const data = doc.data();
+          let createdAt: Date;
+          
+          // Handle different timestamp formats
+          if (data.createdAt) {
+            if (data.createdAt.toDate && typeof data.createdAt.toDate === 'function') {
+              createdAt = data.createdAt.toDate();
+            } else if (data.createdAt instanceof Date) {
+              createdAt = data.createdAt;
+            } else if (typeof data.createdAt === 'number') {
+              createdAt = new Date(data.createdAt);
+            } else if (data.createdAt.seconds) {
+              createdAt = new Date(data.createdAt.seconds * 1000);
+            } else {
+              createdAt = new Date();
+            }
+          } else {
+            createdAt = new Date();
+          }
+          
           return {
             id: doc.id,
             ...data,
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-          };
-        }) as Notification[];
+            createdAt,
+          } as Notification;
+        });
         
         // Sort by createdAt descending (newest first) and limit to 20
         const sorted = notifs
           .sort((a, b) => {
-            const aTime = a.createdAt?.getTime ? a.createdAt.getTime() : 0;
-            const bTime = b.createdAt?.getTime ? b.createdAt.getTime() : 0;
+            const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+            const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
             return bTime - aTime; // Descending
           })
           .slice(0, 20);
@@ -74,7 +93,21 @@ export function NotificationBell({ userId }: NotificationBellProps) {
 
   const formatTime = (timestamp: any) => {
     if (!timestamp) return "Just now";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    
+    let date: Date;
+    // Handle different timestamp formats
+    if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+      date = timestamp.toDate();
+    } else if (timestamp instanceof Date) {
+      date = timestamp;
+    } else if (typeof timestamp === 'number') {
+      date = new Date(timestamp);
+    } else if (timestamp.seconds) {
+      date = new Date(timestamp.seconds * 1000);
+    } else {
+      date = new Date(timestamp);
+    }
+    
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const minutes = Math.floor(diff / 60000);
@@ -105,17 +138,17 @@ export function NotificationBell({ userId }: NotificationBellProps) {
   };
 
   return (
-    <div className="relative">
+    <div className="relative z-[9999]">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+        className="relative rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors z-[9999]"
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white"
+            className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white z-[10000]"
           >
             {unreadCount > 9 ? "9+" : unreadCount}
           </motion.div>
@@ -125,18 +158,25 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       <AnimatePresence>
         {isOpen && (
           <>
-            {/* Backdrop */}
+            {/* Invisible backdrop to close on outside click - doesn't affect visual appearance */}
             <div
-              className="fixed inset-0 z-40 bg-black/20"
+              className="fixed inset-0 z-[9998]"
               onClick={() => setIsOpen(false)}
+              style={{ pointerEvents: 'auto' }}
             />
-            {/* Dropdown */}
+            {/* Dropdown - Highest z-index to appear above everything */}
             <motion.div
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="absolute right-0 top-full z-50 mt-2 w-96 rounded-xl border border-slate-200 bg-white shadow-xl"
+              className="fixed right-4 top-20 w-96 rounded-xl border border-slate-200 bg-white shadow-2xl"
+              style={{ 
+                maxHeight: 'calc(100vh - 6rem)',
+                zIndex: 9999,
+                position: 'fixed'
+              }}
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
                 <h3 className="text-sm font-semibold text-slate-900">Notifications</h3>

@@ -28,6 +28,7 @@ export default function OperatorInbox() {
   
   const { userProfile: orgUserProfile } = useOrganization();
   const userId = orgUserProfile?.uid || null;
+  const userEmail = orgUserProfile?.email || null;
 
   // Use organization-scoped query hook with additional status filter
   const runsQuery = useOrgQuery("active_runs", [
@@ -59,19 +60,26 @@ export default function OperatorInbox() {
           } as ActiveRun;
         });
 
-        // Filter by assignee: Only show runs assigned to this user or their team
+        // Filter by assignee: Only show runs assigned to this user
+        // Priority: currentAssignee (email) > currentAssigneeId (UID) > legacy assigneeId
         const userTasks = runs.filter((run) => {
-          // Check if assigned to this user
+          // Check if currentAssignee (email) matches
+          if (userEmail && run.currentAssignee === userEmail) {
+            return true;
+          }
+
+          // Check if currentAssigneeId (UID) matches
+          if (run.currentAssigneeId === userId && run.assigneeType === "USER") {
+            return true;
+          }
+
+          // Legacy: Check if assigned to this user (backward compatibility)
           if (run.assigneeId === userId && run.assigneeType === "USER") {
             return true;
           }
 
           // TODO: Check if assigned to user's team
-          // For now, if no assignee is set, show it (backward compatibility)
-          if (!run.assigneeId) {
-            return true;
-          }
-
+          // For now, if no assignee is set, don't show it (only show explicitly assigned tasks)
           return false;
         });
 
@@ -108,7 +116,7 @@ export default function OperatorInbox() {
     );
 
     return () => unsubscribe();
-  }, [runsQuery, userId, orgUserProfile]);
+  }, [runsQuery, userId, userEmail, orgUserProfile]);
 
   useEffect(() => {
     const checkMobile = () => {

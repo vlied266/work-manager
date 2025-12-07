@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AtomicStep } from "@/types/schema";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { getContextValue } from "@/lib/engine";
@@ -26,6 +26,7 @@ export function ValidateRenderer({
     passed: boolean;
     message: string;
   } | null>(null);
+  const prevOutputRef = useRef<any>(null);
 
   // Auto-validate when step loads if target is specified
   useEffect(() => {
@@ -67,9 +68,18 @@ export function ValidateRenderer({
       }
 
       setValidationResult({ passed, message });
-      setOutput({ passed, targetValue, expectedValue: step.config.value });
+      
+      // Only update output if it actually changed to prevent infinite loops
+      const newOutput = { passed, targetValue, expectedValue: step.config.value };
+      const newOutputStr = JSON.stringify(newOutput);
+      const prevOutputStr = prevOutputRef.current ? JSON.stringify(prevOutputRef.current) : null;
+      
+      if (newOutputStr !== prevOutputStr) {
+        prevOutputRef.current = newOutput;
+        setOutput(newOutput);
+      }
     }
-  }, [step.config, runContext, setOutput]);
+  }, [step.config.target, step.config.rule, step.config.value, runContext, setOutput]);
 
   const handleValidate = () => {
     if (validationResult?.passed) {

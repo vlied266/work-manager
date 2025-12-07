@@ -331,7 +331,7 @@ export default function DashboardLayout({
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white/80 backdrop-blur-xl px-6">
+        <header className="relative flex h-16 items-center justify-between border-b border-slate-200 bg-white/80 backdrop-blur-xl px-6 z-50">
           {!sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(true)}
@@ -341,7 +341,11 @@ export default function DashboardLayout({
             </button>
           )}
           <div className="flex-1" />
-          {userId && <NotificationBell userId={userId} />}
+          {userId && (
+            <div className="relative z-[9999]">
+              <NotificationBell userId={userId} />
+            </div>
+          )}
         </header>
 
         {/* Page Content */}

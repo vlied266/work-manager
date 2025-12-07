@@ -419,12 +419,11 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
         if (assignment && assignment.type === "SPECIFIC_USER" && assignment.assigneeId && userProfile) {
           // Notify specific user
           try {
-            await addDoc(collection(db, "notifications"), {
+            const notificationData: any = {
               recipientId: assignment.assigneeId,
               triggerBy: {
                 userId: userId || "",
                 name: userProfile.displayName,
-                avatar: userProfile.photoURL || undefined,
               },
               type: "ASSIGNMENT",
               title: `New Task Assigned: ${nextStep.title}`,
@@ -434,7 +433,14 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
               createdAt: serverTimestamp(),
               runId: run.id,
               stepId: nextStep.id,
-            });
+            };
+
+            // Only add avatar if it exists
+            if (userProfile.photoURL) {
+              notificationData.triggerBy.avatar = userProfile.photoURL;
+            }
+
+            await addDoc(collection(db, "notifications"), notificationData);
           } catch (error) {
             console.error("Error creating notification:", error);
           }
@@ -447,12 +453,11 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
 
       if (newStatus === "COMPLETED" && userProfile) {
         try {
-          await addDoc(collection(db, "notifications"), {
+          const notificationData: any = {
             recipientId: userId || "",
             triggerBy: {
               userId: userId || "",
               name: userProfile.displayName,
-              avatar: userProfile.photoURL || undefined,
             },
             type: "COMPLETION",
             title: `Process Completed: ${run.procedureTitle}`,
@@ -461,7 +466,14 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
             isRead: false,
             createdAt: serverTimestamp(),
             runId: run.id,
-          });
+          };
+
+          // Only add avatar if it exists
+          if (userProfile.photoURL) {
+            notificationData.triggerBy.avatar = userProfile.photoURL;
+          }
+
+          await addDoc(collection(db, "notifications"), notificationData);
         } catch (error) {
           console.error("Error creating completion notification:", error);
         }

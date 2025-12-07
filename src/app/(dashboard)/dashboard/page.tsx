@@ -11,11 +11,15 @@ import {
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useOrgQuery } from "@/hooks/useOrgData";
+import { useOrganization } from "@/contexts/OrganizationContext";
+import { Target } from "lucide-react";
 
 // Prevent SSR/prerendering - this page requires client-side auth
 export const dynamic = 'force-dynamic';
 
 export default function DashboardPage() {
+  const { userProfile } = useOrganization();
+  const isAdmin = userProfile?.role?.toUpperCase() === "ADMIN" || userProfile?.role?.toUpperCase() === "MANAGER";
   const [activeRuns, setActiveRuns] = useState<ActiveRun[]>([]);
   const [procedures, setProcedures] = useState<Record<string, Procedure>>({});
   const [loading, setLoading] = useState(true);
@@ -200,13 +204,23 @@ export default function DashboardPage() {
               Monitor active work instances and running processes
             </p>
           </div>
-          <Link
-            href="/processes"
-            className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg shadow-black/5 px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-xl"
-          >
-            <BarChart3 className="h-4 w-4" />
-            View Library
-          </Link>
+          {isAdmin ? (
+            <Link
+              href="/processes"
+              className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg shadow-black/5 px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-xl"
+            >
+              <BarChart3 className="h-4 w-4" />
+              View Library
+            </Link>
+          ) : (
+            <Link
+              href="/focus"
+              className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg shadow-black/5 px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-xl"
+            >
+              <Target className="h-4 w-4" />
+              Focus Mode
+            </Link>
+          )}
         </div>
 
         {/* Metrics Cards - Glass Widgets */}

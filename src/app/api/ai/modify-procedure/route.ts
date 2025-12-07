@@ -2,10 +2,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { NextRequest, NextResponse } from "next/server";
 import { AtomicStep, AtomicAction } from "@/types/schema";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { DEFAULT_ENGLISH_PROMPT } from "@/lib/ai/default-prompt";
 
 const ATOMIC_ACTIONS: AtomicAction[] = [
   "INPUT", "FETCH", "TRANSMIT", "STORE", "GOOGLE_SHEET_APPEND",
@@ -14,77 +11,29 @@ const ATOMIC_ACTIONS: AtomicAction[] = [
   "GENERATE", "NEGOTIATE", "AUTHORIZE"
 ];
 
-const GUARDRAIL_CLAUSE = `CRITICAL RULE: You are a strict Process Architect. If the user input is NOT a description of a business process, workflow, or task sequence (e.g., if it is a joke, a greeting, random characters, or code request), you must return a JSON array with a SINGLE step: { "id": "error", "title": "Invalid Request", "action": "INSPECT", "description": "I can only generate business workflows. Please describe a process." }. Do NOT attempt to interpret nonsense.`;
-
 const GOOGLE_SHEET_INSTRUCTION = `
 SPECIAL RULE FOR "GOOGLE_SHEET_APPEND":
 
-If the user asks to save data to a spreadsheet/excel, use action "GOOGLE_SHEET_APPEND".
+If the process involves saving data to a spreadsheet, Google Sheet, or Excel, use the action "GOOGLE_SHEET_APPEND".
 
-You MUST generate a "config" object:
+For this action, you MUST generate a "config" object with the following structure:
 
 {
   "sheetId": "",
   "mapping": {
-    "A": "{{step_x.output}}", 
-    "B": "Static Value"
+    "A": "{{step_previous_id.output}}",
+    "B": "Static Value or {{variable}}"
   }
 }
 
-- Leave "sheetId" empty.
-- Intelligently map previous steps' data to columns using mustache syntax.
+- Leave "sheetId" as an empty string (the user will select it later).
+- Intelligently map previous steps' data (like names, emails, dates) to columns A, B, C, etc. using mustache syntax {{step_id.output}}.
 - Use meaningful column mappings based on the data flow. For example:
   * If step 1 collects "Full Name", map it to column A: "{{step_1.output.fullName}}" or "{{step_1.output.name}}"
   * If step 2 collects "Email", map it to column B: "{{step_2.output.email}}"
   * If step 3 calculates "Total Amount", map it to column C: "{{step_3.output.total}}"
 - You can also use static text combined with variables, e.g., "Applicant: {{step_1.output.name}}"
 - Always include at least 2-3 column mappings (A, B, C) to make the template useful.
-`;
-
-const ASSIGNMENT_INSTRUCTION = `
-SPECIAL RULE FOR ASSIGNMENTS (CONTEXT AWARE):
-
-1. **Analyze Context:** The user may assign specific tasks to specific people in a single sentence.
-
-   - Example Input: "Create onboarding. Assign IT setup to @Jack and Welcome Email to @Sara."
-   - Example Input: "Create a hiring process. Assign resume review to @David and interview to @Sara."
-
-2. **Mapping Logic:**
-
-   - When generating steps, check if the user linked a specific person to that specific action.
-
-   - If found, look up that person in the "Organization Staff List" and set the \`assignee\` field for THAT step only.
-
-   - Each step should have its own \`assignee\` field based on what the user specified for that particular task.
-
-3. **Global Fallback:**
-
-   - If the user says "Assign the process to @Jack" (global assignment), then assign ALL human steps to Jack.
-
-   - If the user specifies different people for different steps, prioritize the specific assignment over global.
-
-4. **Staff Lookup:** Always use the exact Email or Name found in the staff list. Match names using partial matching (e.g., "@Jack" matches "Jack Smith", "David" matches "David Jones"). If no match is found, leave \`assignee\` empty.
-
-5. **Role-Based Assignment:**
-
-   - If the step is generic (e.g., "Manager Approval") and no specific name is mentioned, try to find a relevant role in the staff list.
-
-   - When generating steps that require human intervention (like "Approval", "Review", "Manual Input", "AUTHORIZE", "GENERATE"), you MUST populate the \`assignee\` field if a person is mentioned. If no person is mentioned, choose the most appropriate person from the staff list based on their role.
-
-Examples:
-- User says: "Create onboarding. Assign IT setup to @Jack and Welcome Email to @Sara"
-  → Step 1 (IT setup): assignee = "jack@test.com" or "Jack Smith"
-  → Step 2 (Welcome Email): assignee = "sara@test.com" or "Sara Johnson"
-  
-- User says: "Create a hiring process. Assign resume review to @David and interview to @Sara"
-  → Step 1 (Resume Review): assignee = "david@test.com" or "David Jones"
-  → Step 2 (Interview): assignee = "sara@test.com" or "Sara Johnson"
-  
-- User says: "Assign the process to @Jack" (global)
-  → All human steps: assignee = "jack@test.com" or "Jack Smith"
-  
-- User says: "Manager should review"
-  → Find person with Role: "Manager" → Set assignee to their email/name
 `;
 
 function formatStaffList(staff: Array<{ displayName?: string; role?: string; email?: string }>): string {
@@ -94,40 +43,68 @@ function formatStaffList(staff: Array<{ displayName?: string; role?: string; ema
 
   return staff
     .map((member) => {
-      const name = member.displayName || member.email?.split("@")[0] || "Unknown";
+      const name = member.displayName || member.email || "Unknown";
       const role = member.role || "Unknown";
       const email = member.email || "Not provided";
-      return `- Name: ${name}, Email: ${email}`;
+      return `- Name: ${name}, Role: ${role}, Email: ${email}`;
     })
     .join("\n");
 }
 
+const SYSTEM_PROMPT = `You are an expert Workflow Editor JSON machine.
+
+Your task: You will receive a JSON array of workflow steps and a user's modification request. You must MODIFY the JSON to satisfy the request.
+
+CRITICAL RULES:
+1. Return ONLY a valid JSON array of AtomicStep objects. No explanations, no markdown, just JSON.
+2. Preserve existing step IDs if they are not deleted (only change IDs for new steps).
+3. Ensure all "config" objects remain valid and properly structured.
+4. When adding new steps, generate appropriate IDs like "step_N" where N is the step number.
+5. Maintain logical step ordering and routing.
+6. If removing steps, ensure route references (onSuccessStepId, onFailureStepId, etc.) are updated accordingly.
+7. When reordering steps, update all step IDs to maintain sequential numbering (step_1, step_2, etc.) and update all route references.
+
+VALID ACTIONS:
+${ATOMIC_ACTIONS.join(", ")}
+
+STEP STRUCTURE:
+Each step must have:
+- "id": string (e.g., "step_1")
+- "title": string
+- "action": one of the valid actions above
+- "config": object (varies by action type)
+- Optional: "routes", "assignee", "description"
+
+${GOOGLE_SHEET_INSTRUCTION}
+
+EXAMPLES OF MODIFICATIONS:
+- "Remove step 2" → Delete step with id "step_2", renumber remaining steps, update route references
+- "Add Google Sheet save at the end" → Add new GOOGLE_SHEET_APPEND step with proper config
+- "Rename step 1 to 'Collect User Info'" → Update title of step_1
+- "Add approval step after step 3" → Insert new AUTHORIZE step between step_3 and step_4
+- "Swap step 2 and step 3" → Reorder steps and update IDs accordingly
+
+Remember: Always return a complete, valid JSON array.`;
+
 export async function POST(req: NextRequest) {
   try {
-    const { description, orgId } = await req.json();
+    const { currentSteps, userPrompt, orgId } = await req.json();
 
-    if (!description || typeof description !== "string") {
+    if (!currentSteps || !Array.isArray(currentSteps)) {
       return NextResponse.json(
-        { error: "Description is required" },
+        { error: "currentSteps must be a valid array of steps" },
         { status: 400 }
       );
     }
 
-    // Fetch dynamic prompt from Firestore, fallback to default
-    let systemPrompt = DEFAULT_ENGLISH_PROMPT;
-    try {
-      const promptDoc = await getDoc(doc(db, "system_configs", "ai_prompts"));
-      if (promptDoc.exists()) {
-        const data = promptDoc.data();
-        if (data.prompt_text && typeof data.prompt_text === "string") {
-          systemPrompt = data.prompt_text;
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching dynamic prompt, using default:", error);
-      // Continue with default prompt
+    if (!userPrompt || typeof userPrompt !== "string") {
+      return NextResponse.json(
+        { error: "userPrompt is required and must be a string" },
+        { status: 400 }
+      );
     }
 
+    // Fetch staff list if orgId is provided
     let staffListText = "";
     const trimmedOrgId = typeof orgId === "string" ? orgId.trim() : "";
     if (trimmedOrgId) {
@@ -148,32 +125,57 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Build assignment instruction
+    const assignmentInstruction = `INSTRUCTION FOR TASK ASSIGNMENT:
+
+When the user mentions a person's name (e.g., '@Jack', 'assign to David', 'give this to Sarah'), you MUST:
+1. Look up the closest match in the "Organization Staff List" below.
+2. Match names using partial matching (e.g., "@Jack" matches "Jack Smith", "David" matches "David Jones").
+3. Set the \`assignee\` field of that step to the person's Email (preferred) or Name from the staff list.
+4. If no match is found, leave \`assignee\` empty.
+
+Examples:
+- User says: "Assign step 2 to @Jack" → Find "Jack Smith" in staff list → Set assignee: "jack@test.com" or "Jack Smith"
+- User says: "Change assignee of step 3 to David" → Find "David Jones" in staff list → Set assignee: "david@test.com" or "David Jones"
+- User says: "Manager should review step 1" → Find person with Role: "Manager" → Set assignee to their email/name
+
+When modifying steps that require human intervention (like "Approval", "Review", "Manual Input", "AUTHORIZE", "GENERATE"), if a person is mentioned, you MUST populate the \`assignee\` field. If no person is mentioned, choose the most appropriate person from the staff list based on their role. If no match is found, leave \`assignee\` empty.`;
+
     const staffContextSection = `Organization Staff List:\n${
       staffListText || "- No staff records available for this organization."
     }`;
 
-    // Construct the final system prompt with all instructions
-    systemPrompt = [
-      systemPrompt, // Base prompt (from Firestore or default)
-      GUARDRAIL_CLAUSE,
-      staffContextSection, // The list of users
-      ASSIGNMENT_INSTRUCTION, // Smart Mentions logic
-      GOOGLE_SHEET_INSTRUCTION // Smart Sheet Mapping logic
+    // Build system prompt with staff context
+    const systemPromptWithStaff = [
+      SYSTEM_PROMPT,
+      staffContextSection,
+      assignmentInstruction,
     ].join("\n\n");
+
+    // Prepare the current workflow JSON string
+    const currentWorkflowJson = JSON.stringify(currentSteps, null, 2);
+
+    // Build the user prompt
+    const prompt = `CURRENT WORKFLOW JSON:
+${currentWorkflowJson}
+
+USER CHANGE REQUEST: "${userPrompt}"
+
+Modify the workflow JSON according to the user's request. Return ONLY the modified JSON array of steps.`;
 
     const result = await generateText({
       model: openai("gpt-4o"),
-      system: systemPrompt,
-      prompt: `Convert this process description into a workflow:\n\n"${description}"\n\nReturn only the JSON array of steps.`,
+      system: systemPromptWithStaff,
+      prompt: prompt,
       temperature: 0.7,
-      maxTokens: 2000,
+      maxTokens: 3000,
     });
 
     // Get the full response
-    const fullText = result.text;
+    const fullText = result.text.trim();
     
     // Try to extract JSON from the response
-    let jsonString = fullText.trim();
+    let jsonString = fullText;
     
     // Remove markdown code blocks if present
     if (jsonString.startsWith("```")) {
@@ -192,13 +194,15 @@ export async function POST(req: NextRequest) {
           steps = JSON.parse(jsonMatch[0]);
         } catch (nestedError) {
           console.error("Failed to parse extracted AI JSON:", nestedError);
+          console.error("AI Response:", fullText);
           return NextResponse.json(
-            { error: "Invalid AI response format. Please describe the process again." },
+            { error: "Invalid AI response format. Please try a different modification request." },
             { status: 400 }
           );
         }
       } else {
         console.error("AI response missing JSON array:", parseError);
+        console.error("AI Response:", fullText);
         return NextResponse.json(
           { error: "Could not find workflow steps in the AI response." },
           { status: 400 }
@@ -213,6 +217,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Sanitize and validate steps
     const sanitizedSteps: AtomicStep[] = [];
 
     for (const [index, rawStep] of steps.entries()) {
@@ -238,6 +243,11 @@ export async function POST(req: NextRequest) {
           ? (stepRecord.config as AtomicStep["config"])
           : ({} as AtomicStep["config"]);
 
+      // Preserve routes if they exist
+      const sanitizedRoutes = stepRecord.routes && typeof stepRecord.routes === "object" && !Array.isArray(stepRecord.routes)
+        ? (stepRecord.routes as AtomicStep["routes"])
+        : undefined;
+
       const sanitizedStep: AtomicStep = {
         id:
           typeof stepRecord.id === "string" && stepRecord.id.trim()
@@ -250,6 +260,7 @@ export async function POST(req: NextRequest) {
         action: actionValue,
         assignee: typeof stepRecord.assignee === "string" ? stepRecord.assignee : undefined,
         config: sanitizedConfig,
+        routes: sanitizedRoutes,
         description: typeof stepRecord.description === "string" ? stepRecord.description : "",
       };
 
@@ -258,9 +269,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ steps: sanitizedSteps });
   } catch (error) {
-    console.error("Error generating procedure:", error);
+    console.error("Error modifying procedure:", error);
     return NextResponse.json(
-      { error: "Failed to generate procedure. Please try again." },
+      { error: "Failed to modify procedure. Please try again." },
       { status: 500 }
     );
   }
