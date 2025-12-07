@@ -1,67 +1,34 @@
-<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg
+  width="512"
+  height="512"
+  viewBox="0 0 512 512"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+>
   <defs>
-    <radialGradient id="coreGradient" cx="50%" cy="50%">
-      <stop offset="0%" stop-color="#3b82f6" stop-opacity="1" />
-      <stop offset="70%" stop-color="#6366f1" stop-opacity="0.9" />
-      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.8" />
-    </radialGradient>
-
-    <radialGradient id="particleGradient" cx="50%" cy="50%">
-      <stop offset="0%" stop-color="#60a5fa" stop-opacity="1" />
-      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.8" />
-    </radialGradient>
-
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-      <feMerge>
-        <feMergeNode in="coloredBlur" />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
-    </filter>
-
-    <linearGradient id="shine" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0" />
-      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.3" />
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
-    </linearGradient>
+    <path
+      id="monogram-a"
+      d="M128 404L214 116C225 84 287 84 298 116L384 404H332L294 292C288 272 224 272 218 292L180 404Z"
+    />
+    <path
+      id="monogram-w"
+      d="M156 320L204 430C214 452 248 452 258 430L276 392L294 430C304 452 338 452 348 430L396 320H348L320 380L292 328C284 312 228 312 220 328L192 380L164 320Z"
+    />
+    <clipPath id="monogram-clip" clipPathUnits="userSpaceOnUse">
+      <use href="#monogram-a" />
+      <use href="#monogram-w" />
+    </clipPath>
   </defs>
-
-  <!-- Background -->
-  <rect width="120" height="120" rx="24" fill="#ffffff"/>
-  
-  <!-- Outer glow ring -->
-  <circle cx="60" cy="60" r="36" fill="none" stroke="url(#particleGradient)" stroke-width="1" opacity="0.2" />
-
-  <!-- Particle orbit path -->
-  <circle cx="60" cy="60" r="28" fill="none" stroke="rgba(59, 130, 246, 0.1)" stroke-width="0.5" stroke-dasharray="2 4" />
-
-  <!-- Particle 1 (top-right) -->
-  <g>
-    <circle cx="84.24" cy="35.76" r="4" fill="url(#particleGradient)" filter="url(#glow)" opacity="0.9" />
-    <circle cx="84.24" cy="35.76" r="2" fill="rgba(255, 255, 255, 0.6)" />
-  </g>
-
-  <!-- Particle 2 (bottom-left) -->
-  <g>
-    <circle cx="35.76" cy="84.24" r="4" fill="url(#particleGradient)" filter="url(#glow)" opacity="0.9" />
-    <circle cx="35.76" cy="84.24" r="2" fill="rgba(255, 255, 255, 0.6)" />
-  </g>
-
-  <!-- Particle 3 (left) -->
-  <g>
-    <circle cx="36" cy="60" r="4" fill="url(#particleGradient)" filter="url(#glow)" opacity="0.9" />
-    <circle cx="36" cy="60" r="2" fill="rgba(255, 255, 255, 0.6)" />
-  </g>
-
-  <!-- Central core (nucleus) -->
-  <circle cx="60" cy="60" r="12" fill="url(#coreGradient)" filter="url(#glow)" />
-
-  <!-- Core inner highlight -->
-  <circle cx="60" cy="56.4" r="6" fill="rgba(255, 255, 255, 0.4)" />
-
-  <!-- Core shine overlay -->
-  <ellipse cx="60" cy="55.2" rx="9.6" ry="4.8" fill="url(#shine)" opacity="0.5" />
-
-  <!-- Subtle outer ring for depth -->
-  <circle cx="60" cy="60" r="32" fill="none" stroke="rgba(59, 130, 246, 0.15)" stroke-width="1" />
+  <rect width="512" height="512" rx="120" fill="#ffffff" />
+  <use href="#monogram-a" fill="#0A6DFF" />
+  <use href="#monogram-w" fill="#0A6DFF" />
+  <path
+    d="M150 330C220 210 320 210 374 302"
+    stroke="#ffffff"
+    stroke-width="70"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    clip-path="url(#monogram-clip)"
+  />
 </svg>
