@@ -454,7 +454,7 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/50">
         {/* Premium Decorative Background Elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block">
           {/* Premium Blue Orb - Top Left */}
           <motion.div
             className="absolute rounded-full blur-3xl"
