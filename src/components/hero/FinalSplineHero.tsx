@@ -17,7 +17,7 @@ const Spline = dynamic(
 );
 
 // *** Using Spline Cloud URL ***
-const SCENE_PATH = 'https://prod.spline.design/sGBHgusL1FfZlZbk/scene.splinecode';
+const SCENE_PATH = 'https://prod.spline.design/r4sAp3rRePwLuDfq/scene.splinecode';
 
 export default function FinalSplineHero() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -28,10 +28,9 @@ export default function FinalSplineHero() {
       
       const canvas = containerRef.current.querySelector('canvas');
       if (canvas) {
-        // Set transparent background and ensure circular shape
+        // Ensure transparent background so the scene blends with layout
         canvas.style.background = 'transparent';
         canvas.style.backgroundColor = 'transparent';
-        canvas.style.borderRadius = '50%';
         canvas.style.overflow = 'hidden';
         
         // Fix any parent containers
@@ -39,7 +38,6 @@ export default function FinalSplineHero() {
         while (element && element !== containerRef.current) {
           element.style.background = 'transparent';
           element.style.backgroundColor = 'transparent';
-          element.style.borderRadius = '50%';
           element.style.overflow = 'hidden';
           element = element.parentElement;
         }
@@ -70,33 +68,29 @@ export default function FinalSplineHero() {
   }, []);
 
   return (
-    <div 
+    <div
       ref={containerRef}
-      className="w-full h-[600px] flex items-center justify-center"
-      style={{ 
+      className="w-full flex items-center justify-center"
+      style={{
         background: 'transparent',
         backgroundColor: 'transparent'
       }}
     >
-      <div 
-        className="relative overflow-hidden aspect-square w-full h-full max-w-[600px] max-h-[600px] mx-auto"
+      <div
+        className="relative overflow-hidden aspect-square w-full"
         style={{
           background: 'transparent',
-          backgroundColor: 'transparent',
-          borderRadius: '50%',
-          width: 'min(100%, 600px)',
-          height: 'min(100%, 600px)'
+          backgroundColor: 'transparent'
         }}
       >
-        <Spline 
+        <Spline
           scene={SCENE_PATH}
-          style={{ 
-            width: '100%', 
+          style={{
+            width: '100%',
             height: '100%',
             background: 'transparent',
             backgroundColor: 'transparent',
-            display: 'block',
-            borderRadius: '50%'
+            display: 'block'
           }}
         />
       </div>
