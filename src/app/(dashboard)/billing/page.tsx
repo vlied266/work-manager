@@ -5,7 +5,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { Organization } from "@/types/schema";
-import { Check, X, Zap, Users, Activity, Sparkles, ArrowRight, Loader2 } from "lucide-react";
+import { Check, X, Zap, Users, Activity, Sparkles, ArrowRight, Loader2, Calendar, FileText, Workflow } from "lucide-react";
 import { motion } from "framer-motion";
 import { getUsageStats, getPlanLimits, getUsagePercentage } from "@/lib/billing/limits";
 import Link from "next/link";
@@ -317,8 +317,188 @@ export default function BillingPage() {
         </div>
       </motion.div>
 
+      {/* Plan & Billing Details Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-8 hover:shadow-2xl transition-all"
+      >
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-xl font-extrabold tracking-tight text-slate-900">
+            Plan & Billing
+          </h2>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Current Plan */}
+          <div className="space-y-3">
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Current Plan
+            </label>
+            <div className="inline-flex rounded-full px-4 py-2 text-sm font-extrabold text-white shadow-md"
+              style={{
+                background: organization.plan === "ENTERPRISE" 
+                  ? "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
+                  : organization.plan === "PRO"
+                  ? "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)"
+                  : "linear-gradient(135deg, #64748b 0%, #475569 100%)"
+              }}
+            >
+              {organization.plan} PLAN
+            </div>
+            <p className="text-sm text-slate-600 font-medium">Billed Monthly</p>
+          </div>
+
+          {/* Next Payment */}
+          <div className="space-y-3">
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Next Payment
+            </label>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-slate-400" />
+              <p className="text-sm font-bold text-slate-900">
+                {(() => {
+                  const nextPaymentDate = new Date();
+                  nextPaymentDate.setDate(nextPaymentDate.getDate() + 30);
+                  return nextPaymentDate.toLocaleDateString();
+                })()}
+              </p>
+            </div>
+            <p className="text-sm text-slate-600 font-medium">
+              {(() => {
+                const nextPaymentDate = new Date();
+                nextPaymentDate.setDate(nextPaymentDate.getDate() + 30);
+                const daysRemaining = Math.ceil(
+                  (nextPaymentDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+                );
+                return `${daysRemaining} days remaining`;
+              })()}
+            </p>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="mt-6 flex gap-3">
+          <button
+            onClick={() => {
+              // Scroll to pricing plans section
+              const plansSection = document.getElementById('pricing-plans');
+              if (plansSection) {
+                plansSection.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
+            className="inline-flex items-center gap-2 rounded-full bg-[#007AFF] px-6 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-[#0071E3] hover:shadow-lg"
+          >
+            <ArrowRight className="h-4 w-4" />
+            Upgrade Plan
+          </button>
+          <button
+            onClick={() => {
+              // In a real app, this would open invoices
+              alert("Invoices feature coming soon!");
+            }}
+            className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-sm border border-white/60 px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-white hover:shadow-md"
+          >
+            <FileText className="h-4 w-4" />
+            Invoices
+          </button>
+        </div>
+      </motion.div>
+
+      {/* Resource Usage Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-8 hover:shadow-2xl transition-all"
+      >
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-xl font-extrabold tracking-tight text-slate-900">
+            Resource Usage
+          </h2>
+        </div>
+
+        <div className="space-y-6">
+          {/* Users Progress */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-slate-400" />
+                <span className="text-sm font-bold text-slate-900">Users</span>
+              </div>
+              <span className="text-sm font-semibold text-slate-600">
+                {usage?.currentUsers || 0} / {limits.maxUsers === Infinity ? "∞" : limits.maxUsers}
+              </span>
+            </div>
+            <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={`h-full transition-all ${
+                  userUsagePercent >= 80
+                    ? "bg-gradient-to-r from-rose-500 to-rose-600"
+                    : userUsagePercent >= 50
+                    ? "bg-gradient-to-r from-amber-500 to-amber-600"
+                    : "bg-gradient-to-r from-blue-500 to-blue-600"
+                }`}
+                style={{ width: `${Math.min(userUsagePercent, 100)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Active Runs Progress */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Workflow className="h-4 w-4 text-slate-400" />
+                <span className="text-sm font-bold text-slate-900">Active Runs</span>
+              </div>
+              <span className="text-sm font-semibold text-slate-600">
+                {usage?.currentActiveRuns || 0} / {limits.maxActiveRuns === Infinity ? "∞" : limits.maxActiveRuns}
+              </span>
+            </div>
+            <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={`h-full transition-all ${
+                  runsUsagePercent >= 80
+                    ? "bg-gradient-to-r from-rose-500 to-rose-600"
+                    : runsUsagePercent >= 50
+                    ? "bg-gradient-to-r from-amber-500 to-amber-600"
+                    : "bg-gradient-to-r from-blue-500 to-blue-600"
+                }`}
+                style={{ width: `${Math.min(runsUsagePercent, 100)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* AI Credits Progress */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-slate-400" />
+                <span className="text-sm font-bold text-slate-900">AI Generations</span>
+              </div>
+              <span className="text-sm font-semibold text-slate-600">
+                {usage?.currentAiGenerations || 0} / {limits.aiGenerations === Infinity ? "∞" : limits.aiGenerations}
+              </span>
+            </div>
+            <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={`h-full transition-all ${
+                  getUsagePercentage(usage?.currentAiGenerations || 0, limits.aiGenerations) >= 80
+                    ? "bg-gradient-to-r from-rose-500 to-rose-600"
+                    : getUsagePercentage(usage?.currentAiGenerations || 0, limits.aiGenerations) >= 50
+                    ? "bg-gradient-to-r from-amber-500 to-amber-600"
+                    : "bg-gradient-to-r from-purple-500 to-purple-600"
+                }`}
+                style={{ width: `${Math.min(getUsagePercentage(usage?.currentAiGenerations || 0, limits.aiGenerations), 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
       {/* Pricing Plans - Apple One Style */}
-      <div>
+      <div id="pricing-plans">
         <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 mb-8">Choose Your Plan</h2>
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           {plans.map((plan, index) => (
@@ -404,7 +584,6 @@ export default function BillingPage() {
             </motion.div>
           ))}
         </div>
-      </div>
 
       {/* Subscription Status */}
       {organization.subscriptionStatus !== "active" && (
@@ -430,6 +609,7 @@ export default function BillingPage() {
           </div>
         </motion.div>
       )}
+      </div>
       </div>
     </div>
   );

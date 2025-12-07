@@ -3,19 +3,20 @@
 import { useEffect, useState } from "react";
 import { collection, addDoc, onSnapshot, query, where, deleteDoc, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Plus, Trash2, UserPlus, Users, Building2, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Trash2, UserPlus, Users, Building2, CheckCircle2, XCircle, Zap } from "lucide-react";
 import { Team, UserProfile, Organization } from "@/types/schema";
 import { useOrgQuery, useOrgId, useOrgDataCreator } from "@/hooks/useOrgData";
 import { checkUsageLimit, getPlanLimits } from "@/lib/billing/limits";
 import { UpgradeModal } from "@/components/billing/upgrade-modal";
 import { GeneralTab } from "@/components/settings/GeneralTab";
 import { InviteUserForm } from "@/components/settings/InviteUserForm";
+import { IntegrationsTab } from "@/components/settings/IntegrationsTab";
 
 // Prevent SSR/prerendering - this page requires client-side auth
 export const dynamic = 'force-dynamic';
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<"general" | "teams" | "users">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "teams" | "users" | "integrations">("general");
   const [teams, setTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -227,6 +228,7 @@ export default function SettingsPage() {
                   { id: "general", label: "General", icon: Building2 },
                   { id: "teams", label: "Teams", icon: Users },
                   { id: "users", label: "Users", icon: UserPlus },
+                  { id: "integrations", label: "Integrations", icon: Zap },
                 ].map((tab) => {
                   const Icon = tab.icon;
                   return (
@@ -252,6 +254,8 @@ export default function SettingsPage() {
 
               {/* Tab Content */}
               {activeTab === "general" && <GeneralTab />}
+
+              {activeTab === "integrations" && <IntegrationsTab />}
 
               {activeTab === "teams" && (
                 <div className="space-y-8">

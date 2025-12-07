@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import Logo from "@/components/Logo";
 import Image from "next/image";
 
@@ -158,40 +159,72 @@ export default function IntegrationsSection() {
                   transform: "translate(-50%, -50%)",
                 }}
               >
-                {innerPositions.map(({ logo, x, y }) => (
-                  <div
-                    key={logo.name}
-                    className="absolute"
-                    style={{
-                      left: "50%",
-                      top: "50%",
-                      transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
-                    }}
-                  >
-                    <div className="relative orbit-counter-rotate">
-                      <div className="relative group">
-                        {/* Glass Container */}
-                        <div className="relative w-12 h-12 rounded-xl bg-white/90 backdrop-blur-sm border border-slate-200/50 shadow-lg flex items-center justify-center p-2 group-hover:shadow-xl transition-shadow">
-                          <Image
-                            src={logo.src}
-                            alt={logo.alt}
-                            width={32}
-                            height={32}
-                            className="w-full h-full object-contain"
-                            unoptimized
-                          />
-                        </div>
-                        
-                        {/* Tooltip */}
-                        <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-30">
-                          <span className="text-xs font-medium text-slate-700 bg-white px-2 py-1 rounded shadow-sm border border-slate-200">
-                            {logo.name}
-                          </span>
-                        </div>
+                {innerPositions.map(({ logo, x, y }) => {
+                  const isSlack = logo.name === "Slack";
+
+                  return (
+                    <div
+                      key={logo.name}
+                      className="absolute"
+                      style={{
+                        left: "50%",
+                        top: "50%",
+                        transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
+                      }}
+                    >
+                      <div className="relative orbit-counter-rotate">
+                        {isSlack ? (
+                          <Link 
+                            href="/api/integrations/slack/auth"
+                            className="block cursor-pointer z-10 relative"
+                          >
+                            <div className="relative group">
+                              {/* Glass Container */}
+                              <div className="relative w-12 h-12 rounded-xl bg-white/90 backdrop-blur-sm border border-slate-200/50 shadow-lg flex items-center justify-center p-2 group-hover:shadow-xl group-hover:border-blue-400 transition-all">
+                                <Image
+                                  src={logo.src}
+                                  alt={logo.alt}
+                                  width={32}
+                                  height={32}
+                                  className="w-full h-full object-contain"
+                                  unoptimized
+                                />
+                              </div>
+                              
+                              {/* Tooltip */}
+                              <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-30">
+                                <span className="text-xs font-medium text-slate-700 bg-white px-2 py-1 rounded shadow-sm border border-slate-200">
+                                  {logo.name}
+                                </span>
+                              </div>
+                            </div>
+                          </Link>
+                        ) : (
+                          <div className="relative group">
+                            {/* Glass Container */}
+                            <div className="relative w-12 h-12 rounded-xl bg-white/90 backdrop-blur-sm border border-slate-200/50 shadow-lg flex items-center justify-center p-2 group-hover:shadow-xl transition-shadow">
+                              <Image
+                                src={logo.src}
+                                alt={logo.alt}
+                                width={32}
+                                height={32}
+                                className="w-full h-full object-contain"
+                                unoptimized
+                              />
+                            </div>
+                            
+                            {/* Tooltip */}
+                            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-30">
+                              <span className="text-xs font-medium text-slate-700 bg-white px-2 py-1 rounded shadow-sm border border-slate-200">
+                                {logo.name}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Outer Orbit Container */}
@@ -285,30 +318,52 @@ export default function IntegrationsSection() {
               </motion.div>
 
               {/* Integration Logos in Grid */}
-              {[...innerOrbitLogos, ...outerOrbitLogos].map((logo, index) => (
-                <motion.div
-                  key={logo.name}
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className="flex flex-col items-center"
-                >
-                  <div className="relative w-14 h-14 rounded-xl bg-white/90 backdrop-blur-sm border border-slate-200/50 shadow-lg flex items-center justify-center p-2">
-                    <Image
-                      src={logo.src}
-                      alt={logo.alt}
-                      width={32}
-                      height={32}
-                      className="w-full h-full object-contain"
-                      unoptimized
-                    />
-                  </div>
-                  <span className="mt-2 text-xs font-medium text-slate-600 text-center">
-                    {logo.name}
-                  </span>
-                </motion.div>
-              ))}
+              {[...innerOrbitLogos, ...outerOrbitLogos].map((logo, index) => {
+                const isSlack = logo.name === "Slack";
+
+                return (
+                  <motion.div
+                    key={logo.name}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                    className="flex flex-col items-center"
+                  >
+                    {isSlack ? (
+                      <Link 
+                        href="/api/integrations/slack/auth"
+                        className="block cursor-pointer"
+                      >
+                        <div className="relative w-14 h-14 rounded-xl bg-white/90 backdrop-blur-sm border border-slate-200/50 shadow-lg flex items-center justify-center p-2 hover:border-blue-400 hover:shadow-xl transition-all">
+                          <Image
+                            src={logo.src}
+                            alt={logo.alt}
+                            width={32}
+                            height={32}
+                            className="w-full h-full object-contain"
+                            unoptimized
+                          />
+                        </div>
+                      </Link>
+                    ) : (
+                      <div className="relative w-14 h-14 rounded-xl bg-white/90 backdrop-blur-sm border border-slate-200/50 shadow-lg flex items-center justify-center p-2">
+                        <Image
+                          src={logo.src}
+                          alt={logo.alt}
+                          width={32}
+                          height={32}
+                          className="w-full h-full object-contain"
+                          unoptimized
+                        />
+                      </div>
+                    )}
+                    <span className="mt-2 text-xs font-medium text-slate-600 text-center">
+                      {logo.name}
+                    </span>
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
         </div>
