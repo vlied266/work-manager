@@ -140,7 +140,7 @@ export default function IntegrationsSection() {
               />
               
               {/* Glass Card */}
-              <div className="relative w-24 h-24 rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-xl flex items-center justify-center">
+              <div className="relative w-24 h-24 rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-xl flex items-center justify-center p-2">
                 <Logo size="medium" />
               </div>
             </motion.div>
@@ -241,7 +241,7 @@ export default function IntegrationsSection() {
                     }}
                   />
                   
-                  <div className="relative w-24 h-24 rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-xl flex items-center justify-center">
+                  <div className="relative w-24 h-24 rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-xl flex items-center justify-center p-2">
                     <Logo size="medium" />
                   </div>
                 </div>

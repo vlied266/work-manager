@@ -115,7 +115,7 @@ function SignInForm() {
         {/* Logo */}
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-3 group">
-            <Logo size="small" />
+            <Logo size="medium" />
             <div>
               <span className="text-xl font-bold text-slate-900 group-hover:text-slate-700 transition-colors block">
                 Atomic Work
@@ -213,7 +213,7 @@ export default function SignInPage() {
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-50 to-white px-4 py-12">
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
-            <Logo size="small" />
+            <Logo size="medium" />
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
             <div className="flex items-center justify-center py-8">
