@@ -40,10 +40,29 @@ export default function SettingsPage() {
   }>({ isOpen: false, resource: "users" });
 
   useEffect(() => {
-    if (!teamsQuery || !usersQuery || !organizationId) {
+    if (!organizationId) {
       setLoading(false);
+      setTeams([]);
+      setUsers([]);
       return;
     }
+
+    if (!teamsQuery || !usersQuery) {
+      setLoading(true);
+      return;
+    }
+
+    setLoading(true);
+    let teamsLoaded = false;
+    let usersLoaded = false;
+    let initialLoadComplete = false;
+
+    const finishInitialLoad = () => {
+      if (!initialLoadComplete && teamsLoaded && usersLoaded) {
+        initialLoadComplete = true;
+        setLoading(false);
+      }
+    };
 
     // Fetch teams
     const unsubscribeTeams = onSnapshot(
@@ -55,14 +74,16 @@ export default function SettingsPage() {
           createdAt: doc.data().createdAt?.toDate() || new Date(),
         })) as Team[];
         setTeams(teamsData);
+        teamsLoaded = true;
+        finishInitialLoad();
       },
       (error) => {
         console.error("Error fetching teams:", error);
+        setLoading(false);
       }
     );
 
     // Fetch users
-
     const unsubscribeUsers = onSnapshot(
       usersQuery,
       (snapshot) => {
@@ -77,9 +98,12 @@ export default function SettingsPage() {
           };
         }) as UserProfile[];
         setUsers(usersData);
+        usersLoaded = true;
+        finishInitialLoad();
       },
       (error) => {
         console.error("Error fetching users:", error);
+        setLoading(false);
       }
     );
 
@@ -87,7 +111,7 @@ export default function SettingsPage() {
       unsubscribeTeams();
       unsubscribeUsers();
     };
-  }, [organizationId]);
+  }, [organizationId, teamsQuery, usersQuery]);
 
   const handleCreateTeam = async () => {
     if (!teamName.trim()) return;
