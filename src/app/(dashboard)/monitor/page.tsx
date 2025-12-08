@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { onSnapshot, doc, getDoc, where, orderBy } from "firebase/firestore";
+import { onSnapshot, doc, getDoc, where, query, collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ActiveRun, Procedure, UserProfile } from "@/types/schema";
 import { 
@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useOrgQuery } from "@/hooks/useOrgData";
+import { useOrgQuery, useOrgId } from "@/hooks/useOrgData";
 import { ReassignModal } from "@/components/monitor/ReassignModal";
 
 // Prevent SSR/prerendering - this page requires client-side auth
@@ -32,6 +32,7 @@ export default function MonitorPage() {
   const [reassigningRunId, setReassigningRunId] = useState<string | null>(null);
   const [reassignModalOpen, setReassignModalOpen] = useState(false);
   const [selectedRunForReassign, setSelectedRunForReassign] = useState<ActiveRun | null>(null);
+  const orgId = useOrgId();
   
   // Query: Only IN_PROGRESS or FLAGGED runs
   // Note: We'll sort client-side by last activity (oldest first)
@@ -95,13 +96,21 @@ export default function MonitorPage() {
         }
         setProcedures(proceduresData);
 
-        // Fetch assignee profiles
+        // Fetch assignee profiles (by ID and by email)
         const assigneeIds = [...new Set(
           runsData
             .map((r) => r.currentAssigneeId)
             .filter((id): id is string => !!id)
         )];
+        const assigneeEmails = [...new Set(
+          runsData
+            .map((r) => r.currentAssignee)
+            .filter((email): email is string => !!email)
+        )];
+        
         const assigneesData: Record<string, AssigneeInfo> = {};
+        
+        // Fetch by ID
         for (const assigneeId of assigneeIds) {
           try {
             const userDoc = await getDoc(doc(db, "users", assigneeId));
@@ -118,6 +127,36 @@ export default function MonitorPage() {
             console.error(`Error fetching assignee ${assigneeId}:`, error);
           }
         }
+        
+        // Fetch by email (for cases where we only have email)
+        if (orgId) {
+          for (const email of assigneeEmails) {
+            // Skip if we already have this user by ID
+            if (Object.values(assigneesData).some((a) => a.email === email)) continue;
+            
+            try {
+              const usersQuery = query(
+                collection(db, "users"),
+                where("email", "==", email),
+                where("organizationId", "==", orgId)
+              );
+              const usersSnapshot = await getDocs(usersQuery);
+              if (!usersSnapshot.empty) {
+                const userDoc = usersSnapshot.docs[0];
+                const userData = userDoc.data();
+                assigneesData[userDoc.id] = {
+                  id: userDoc.id,
+                  name: userData.displayName || userData.email?.split("@")[0] || "Unknown",
+                  email: userData.email || "",
+                  avatar: userData.photoURL || undefined,
+                };
+              }
+            } catch (error) {
+              console.error(`Error fetching assignee by email ${email}:`, error);
+            }
+          }
+        }
+        
         setAssignees(assigneesData);
         setLoading(false);
       },
@@ -164,8 +203,22 @@ export default function MonitorPage() {
 
   // Get assignee info
   const getAssigneeInfo = (run: ActiveRun): AssigneeInfo | null => {
-    if (!run.currentAssigneeId) return null;
-    return assignees[run.currentAssigneeId] || null;
+    // Try currentAssigneeId first (UID), then currentAssignee (email), then assigneeId (legacy)
+    const assigneeId = run.currentAssigneeId || run.assigneeId;
+    const assigneeEmail = run.currentAssignee;
+    
+    // First try to find by ID
+    if (assigneeId && assignees[assigneeId]) {
+      return assignees[assigneeId];
+    }
+    
+    // If not found by ID, try to find by email
+    if (assigneeEmail) {
+      const found = Object.values(assignees).find((a) => a.email === assigneeEmail);
+      if (found) return found;
+    }
+    
+    return null;
   };
 
   // Filter runs: Show all active or only stalled/late
@@ -287,15 +340,15 @@ export default function MonitorPage() {
 
           {/* Runs Table - Operational Control Style */}
           <div className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 overflow-hidden">
-            {filteredRuns.length === 0 ? (
+                {filteredRuns.length === 0 ? (
               <div className="p-16 text-center">
-                <div className="flex flex-col items-center">
-                  <div className="relative mb-6">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-indigo-100/50 rounded-3xl blur-2xl" />
-                    <div className="relative h-20 w-20 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 flex items-center justify-center shadow-lg">
-                      <Clock className="h-10 w-10 text-slate-400" />
-                    </div>
-                  </div>
+                      <div className="flex flex-col items-center">
+                        <div className="relative mb-6">
+                          <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-indigo-100/50 rounded-3xl blur-2xl" />
+                          <div className="relative h-20 w-20 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 flex items-center justify-center shadow-lg">
+                            <Clock className="h-10 w-10 text-slate-400" />
+                          </div>
+                        </div>
                   <p className="text-lg font-extrabold text-slate-900 mb-2">
                     {showStalledOnly ? "No stalled processes" : "No active processes"}
                   </p>
@@ -305,7 +358,7 @@ export default function MonitorPage() {
                       : "Start a process to see it here"}
                   </p>
                 </div>
-              </div>
+                      </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
@@ -323,7 +376,7 @@ export default function MonitorPage() {
                       <th className="px-8 py-4 text-xs font-bold uppercase tracking-wider text-slate-400 text-right">
                         Quick Actions
                       </th>
-                    </tr>
+                  </tr>
                   </thead>
                   <tbody>
                     {filteredRuns.map((run, index) => {
@@ -332,20 +385,20 @@ export default function MonitorPage() {
                       const currentStepName = getCurrentStepName(run);
                       const runTitle = (run as any).title || run.procedureTitle || "Untitled Process";
 
-                      return (
+                    return (
                         <motion.tr
-                          key={run.id}
+                        key={run.id}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.05 }}
                           className={`transition-colors ${
                             index % 2 === 0 ? "bg-white/50" : "bg-white/30"
                           } hover:bg-white/70 ${
-                            run.status === "FLAGGED" ? "bg-rose-50/30" : ""
+                          run.status === "FLAGGED" ? "bg-rose-50/30" : ""
                           } ${timeInStep.isStalled ? "bg-orange-50/30" : ""}`}
-                        >
+                      >
                           {/* Process Context */}
-                          <td className="px-8 py-5">
+                        <td className="px-8 py-5">
                             <div>
                               <p className="text-sm font-bold text-slate-900 mb-0.5">
                                 {runTitle}
@@ -359,12 +412,12 @@ export default function MonitorPage() {
                                   Flagged
                                 </span>
                               )}
-                            </div>
-                          </td>
+                          </div>
+                        </td>
 
                           {/* Current Bottleneck */}
-                          <td className="px-8 py-5">
-                            <div className="flex items-center gap-3">
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-3">
                               {assignee ? (
                                 <>
                                   {assignee.avatar ? (
@@ -402,12 +455,12 @@ export default function MonitorPage() {
                                   </div>
                                 </div>
                               )}
-                            </div>
-                          </td>
+                          </div>
+                        </td>
 
                           {/* Time in Step */}
-                          <td className="px-8 py-5">
-                            <div className="flex items-center gap-2">
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-2">
                               <Clock className={`h-4 w-4 ${timeInStep.isStalled ? "text-rose-600" : "text-slate-400"}`} />
                               <span
                                 className={`text-sm font-semibold ${
@@ -431,21 +484,21 @@ export default function MonitorPage() {
                           {/* Quick Actions */}
                           <td className="px-8 py-5">
                             <div className="flex items-center justify-end gap-2">
-                              <button
+                                <button
                                 onClick={() => handleNudge(run)}
                                 className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-all shadow-sm"
                                 title="Send reminder to assignee"
                               >
                                 <Bell className="h-4 w-4" />
-                              </button>
-                              <button
+                                </button>
+                                <button
                                 onClick={() => handleReassign(run)}
                                 disabled={reassigningRunId === run.id}
                                 className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-purple-100 text-purple-600 hover:bg-purple-200 transition-all shadow-sm disabled:opacity-50"
                                 title="Reassign to another user"
                               >
                                 <UserCheck className="h-4 w-4" />
-                              </button>
+                                </button>
                               <Link
                                 href={`/run/${run.id}`}
                                 className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all shadow-sm"
@@ -453,16 +506,16 @@ export default function MonitorPage() {
                               >
                                 <Eye className="h-4 w-4" />
                               </Link>
-                            </div>
-                          </td>
+                          </div>
+                        </td>
                         </motion.tr>
-                      );
+                    );
                     })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+              </tbody>
+            </table>
           </div>
+            )}
+        </div>
         </div>
       </div>
 

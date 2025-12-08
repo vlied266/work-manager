@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
-import { Procedure, AtomicStep } from "@/types/schema";
+import { Procedure, AtomicStep, Organization } from "@/types/schema";
 
 interface StartRunRequest {
   procedureId: string;
@@ -51,6 +51,66 @@ export async function POST(req: NextRequest) {
     }
 
     const db = getAdminDb();
+
+    // 0. Usage Limit Check: Fetch organization and check monthly run limit
+    const orgDoc = await db.collection("organizations").doc(orgId).get();
+    let subscriptionPlan: "FREE" | "PRO" | "ENTERPRISE" = "FREE";
+    
+    if (orgDoc.exists) {
+      const orgData = orgDoc.data() as Organization;
+      subscriptionPlan = orgData.plan || "FREE";
+    }
+
+    // Count runs created in current month for this organization
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfMonthTimestamp = Timestamp.fromDate(startOfMonth);
+
+    const monthlyRunsQuery = await db
+      .collection("active_runs")
+      .where("organizationId", "==", orgId)
+      .where("startedAt", ">=", startOfMonthTimestamp)
+      .get();
+
+    const monthlyRunCount = monthlyRunsQuery.size;
+
+    // Check monthly run limit for FREE plan
+    if (subscriptionPlan === "FREE" && monthlyRunCount >= 50) {
+      return NextResponse.json(
+        {
+          error: "LIMIT_REACHED",
+          message: "You have reached the free limit of 50 runs per month. Please upgrade.",
+          limit: 50,
+          currentUsage: monthlyRunCount,
+          resource: "monthlyRuns",
+        },
+        { status: 403 }
+      );
+    }
+
+    // Check active runs limit (for FREE plan: max 10 active runs)
+    if (subscriptionPlan === "FREE") {
+      const activeRunsQuery = await db
+        .collection("active_runs")
+        .where("organizationId", "==", orgId)
+        .where("status", "in", ["IN_PROGRESS", "FLAGGED"])
+        .get();
+
+      const activeRunsCount = activeRunsQuery.size;
+
+      if (activeRunsCount >= 10) {
+        return NextResponse.json(
+          {
+            error: "LIMIT_REACHED",
+            message: "You have reached the free limit of 10 active runs. Please complete or cancel existing runs, or upgrade to Pro.",
+            limit: 10,
+            currentUsage: activeRunsCount,
+            resource: "activeRuns",
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     // 1. Fetch the Procedure template
     const procedureDoc = await db.collection("procedures").doc(procedureId).get();
@@ -152,9 +212,31 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error starting run:", error);
+    
+    // Provide more specific error messages
+    let errorMessage = "Failed to start run";
+    let statusCode = 500;
+    
+    if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    // Handle specific Firebase errors
+    if (error.code === "permission-denied") {
+      errorMessage = "Permission denied. Please check your authentication.";
+      statusCode = 403;
+    } else if (error.code === "not-found") {
+      errorMessage = "Resource not found. Please refresh and try again.";
+      statusCode = 404;
+    }
+    
     return NextResponse.json(
-      { error: "Failed to start run", details: error.message },
-      { status: 500 }
+      { 
+        error: errorMessage,
+        details: error.message || "An unexpected error occurred",
+        code: error.code || "UNKNOWN_ERROR"
+      },
+      { status: statusCode }
     );
   }
 }

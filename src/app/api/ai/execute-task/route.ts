@@ -2,16 +2,76 @@ import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { NextRequest, NextResponse } from "next/server";
 import { AtomicStep, AtomicAction } from "@/types/schema";
+import { getAdminDb } from "@/lib/firebase-admin";
+import { Timestamp } from "firebase-admin/firestore";
 
 export async function POST(req: NextRequest) {
   try {
-    const { step, context, previousOutputs } = await req.json();
+    const { step, context, previousOutputs, orgId } = await req.json();
 
     if (!step || !step.action) {
       return NextResponse.json(
         { error: "Step is required" },
         { status: 400 }
       );
+    }
+
+    // Check AI plan limit
+    if (orgId) {
+      try {
+        const adminDb = getAdminDb();
+        const orgDoc = await adminDb.collection("organizations").doc(orgId).get();
+        
+        if (orgDoc.exists) {
+          const orgData = orgDoc.data();
+          const plan = (orgData?.plan || "FREE").toUpperCase() as "FREE" | "PRO" | "ENTERPRISE";
+          
+          // FREE plan has no AI access
+          if (plan === "FREE") {
+            return NextResponse.json(
+              {
+                error: "PLAN_LIMIT",
+                message: "AI Copilot is not available on the Free plan. Please upgrade to Pro or Enterprise to use AI features.",
+                resource: "aiGenerations",
+              },
+              { status: 403 }
+            );
+          }
+
+          // PRO plan: Check monthly AI generation limit (1000 per month)
+          if (plan === "PRO") {
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const startOfMonthTimestamp = Timestamp.fromDate(startOfMonth);
+
+            const monthlyAiGenerationsQuery = await adminDb
+              .collection("ai_usage_logs")
+              .where("organizationId", "==", orgId)
+              .where("timestamp", ">=", startOfMonthTimestamp)
+              .get();
+
+            const monthlyAiCount = monthlyAiGenerationsQuery.size;
+
+            if (monthlyAiCount >= 1000) {
+              return NextResponse.json(
+                {
+                  error: "LIMIT_REACHED",
+                  message: "You have reached the Pro plan limit of 1000 AI generations per month. Please upgrade to Enterprise for unlimited AI.",
+                  limit: 1000,
+                  currentUsage: monthlyAiCount,
+                  resource: "aiGenerations",
+                },
+                { status: 403 }
+              );
+            }
+          }
+
+          // ENTERPRISE plan: Unlimited (no check needed)
+        }
+      } catch (orgError) {
+        console.error("Error checking organization plan:", orgError);
+        // Continue execution if org check fails (fail open for now)
+      }
     }
 
     const action = step.action as AtomicAction;
@@ -60,6 +120,22 @@ Complete the task based on the provided context and instructions.`;
       temperature: 0.3, // Lower temperature for more consistent results
       maxTokens: 1000,
     });
+
+    // Log AI usage (after successful execution)
+    if (orgId) {
+      try {
+        const adminDb = getAdminDb();
+        await adminDb.collection("ai_usage_logs").add({
+          organizationId: orgId,
+          type: "execute-task",
+          timestamp: Timestamp.now(),
+          tokensUsed: result.usage?.totalTokens || 0,
+        });
+      } catch (logError) {
+        console.error("Error logging AI usage:", logError);
+        // Don't fail the request if logging fails
+      }
+    }
 
     return NextResponse.json({
       output: result.text,

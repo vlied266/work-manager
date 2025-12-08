@@ -44,12 +44,13 @@ export default function BillingPage() {
                 async (orgDoc) => {
                   if (orgDoc.exists()) {
                     const data = orgDoc.data();
+                    const planValue = (data.plan || "FREE").toUpperCase() as "FREE" | "PRO" | "ENTERPRISE";
                     const org: Organization = {
                       id: orgDoc.id,
                       name: data.name || "",
-                      plan: data.plan || "FREE",
+                      plan: planValue,
                       subscriptionStatus: data.subscriptionStatus || "active",
-                      limits: data.limits || getPlanLimits(data.plan || "FREE"),
+                      limits: data.limits || getPlanLimits(planValue),
                       createdAt: data.createdAt?.toDate() || new Date(),
                     };
                     setOrganization(org);
@@ -121,7 +122,7 @@ export default function BillingPage() {
         { text: "Priority support", included: false },
         { text: "SSO & Audit Logs", included: false },
       ],
-      cta: "Current Plan",
+      cta: organization?.plan === "FREE" ? "Current Plan" : "Downgrade to Free",
       ctaDisabled: organization?.plan === "FREE",
       highlight: false,
     },
@@ -379,7 +380,7 @@ export default function BillingPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 flex gap-3 flex-wrap">
           <button
             onClick={() => {
               // Scroll to pricing plans section
@@ -402,6 +403,41 @@ export default function BillingPage() {
           >
             <FileText className="h-4 w-4" />
             Invoices
+          </button>
+          <button
+            onClick={async () => {
+              if (!organization?.id) {
+                alert("Organization ID not found");
+                return;
+              }
+              
+              const confirmed = confirm(
+                `This will generate 30 demo runs for analytics. Continue?`
+              );
+              
+              if (!confirmed) return;
+              
+              try {
+                const response = await fetch(
+                  `/api/seed?secret=atomic_demo&orgId=${organization.id}`
+                );
+                const data = await response.json();
+                
+                if (response.ok) {
+                  alert(`✅ Success! ${data.message}\n\nCreated:\n- ${data.details.statusDistribution.COMPLETED} Completed\n- ${data.details.statusDistribution.IN_PROGRESS} In Progress\n- ${data.details.statusDistribution.FLAGGED} Flagged\n\nRefresh the Analytics page to see the data.`);
+                  // Optionally refresh the page or reload analytics
+                  window.location.reload();
+                } else {
+                  alert(`❌ Error: ${data.error}\n${data.details || ''}`);
+                }
+              } catch (error: any) {
+                alert(`❌ Failed to seed data: ${error.message}`);
+              }
+            }}
+            className="inline-flex items-center gap-2 rounded-full bg-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-purple-700 hover:shadow-lg"
+          >
+            <Zap className="h-4 w-4" />
+            Seed Demo Data
           </button>
         </div>
       </motion.div>

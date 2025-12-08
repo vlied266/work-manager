@@ -5,6 +5,7 @@ import { AtomicStep, AtomicAction } from "@/types/schema";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { Timestamp } from "firebase-admin/firestore";
 import { DEFAULT_ENGLISH_PROMPT } from "@/lib/ai/default-prompt";
 
 const ATOMIC_ACTIONS: AtomicAction[] = [
@@ -104,6 +105,44 @@ You must return a JSON Object (NOT just an array) with this exact structure:
 - The "steps" array must follow the atomic step schema as defined before.
 `;
 
+const SLACK_INSTRUCTION = `
+SPECIAL RULE FOR "SLACK_NOTIFY":
+
+If the process involves sending a message to Slack:
+
+1. Use action "TRANSMIT" (Slack notifications are sent via TRANSMIT action).
+
+2. You MUST generate a "config" object:
+
+   {
+     "channel": "#channel_name", 
+     "message": "The message template",
+     "service": "slack"
+   }
+
+3. **Extraction Logic:**
+
+   - If the user specifies a channel (e.g., "to #marketing", "in general channel", "send to #sales"), set "channel" to that value (e.g., "#marketing", "#general", "#sales"). 
+   
+   - If the user mentions a channel without "#", add it (e.g., "general" becomes "#general").
+   
+   - Default "channel" to "#general" if not specified.
+
+   - For "message", create a helpful notification string using mustache variables from previous steps (e.g., "New request from {{step_1.output.name}}" or "Task completed: {{step_1.output.title}}").
+
+   - Always include "service": "slack" in the config to identify this as a Slack notification.
+
+4. **Examples:**
+   - User says: "Send notification to #marketing when order is approved"
+     → action: "TRANSMIT", config: { channel: "#marketing", message: "Order approved: {{step_1.output.orderId}}", service: "slack" }
+   
+   - User says: "Notify the team in general channel"
+     → action: "TRANSMIT", config: { channel: "#general", message: "Team notification: {{step_1.output.message}}", service: "slack" }
+   
+   - User says: "Send Slack message about new hire"
+     → action: "TRANSMIT", config: { channel: "#general", message: "New hire: {{step_1.output.name}} has joined the team!", service: "slack" }
+`;
+
 function formatStaffList(staff: Array<{ displayName?: string; role?: string; email?: string }>): string {
   if (!staff.length) {
     return "- No staff records available for this organization.";
@@ -128,6 +167,64 @@ export async function POST(req: NextRequest) {
         { error: "Description is required" },
         { status: 400 }
       );
+    }
+
+    // Check AI plan limit
+    if (orgId) {
+      try {
+        const adminDb = getAdminDb();
+        const orgDoc = await adminDb.collection("organizations").doc(orgId).get();
+        
+        if (orgDoc.exists) {
+          const orgData = orgDoc.data();
+          const plan = (orgData?.plan || "FREE").toUpperCase() as "FREE" | "PRO" | "ENTERPRISE";
+          
+          // FREE plan has no AI access
+          if (plan === "FREE") {
+            return NextResponse.json(
+              {
+                error: "PLAN_LIMIT",
+                message: "AI Copilot is not available on the Free plan. Please upgrade to Pro or Enterprise to use AI features.",
+                resource: "aiGenerations",
+              },
+              { status: 403 }
+            );
+          }
+
+          // PRO plan: Check monthly AI generation limit (1000 per month)
+          if (plan === "PRO") {
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const startOfMonthTimestamp = Timestamp.fromDate(startOfMonth);
+
+            const monthlyAiGenerationsQuery = await adminDb
+              .collection("ai_usage_logs")
+              .where("organizationId", "==", orgId)
+              .where("timestamp", ">=", startOfMonthTimestamp)
+              .get();
+
+            const monthlyAiCount = monthlyAiGenerationsQuery.size;
+
+            if (monthlyAiCount >= 1000) {
+              return NextResponse.json(
+                {
+                  error: "LIMIT_REACHED",
+                  message: "You have reached the Pro plan limit of 1000 AI generations per month. Please upgrade to Enterprise for unlimited AI.",
+                  limit: 1000,
+                  currentUsage: monthlyAiCount,
+                  resource: "aiGenerations",
+                },
+                { status: 403 }
+              );
+            }
+          }
+
+          // ENTERPRISE plan: Unlimited (no check needed)
+        }
+      } catch (orgError) {
+        console.error("Error checking organization plan:", orgError);
+        // Continue execution if org check fails (fail open for now)
+      }
     }
 
     // Fetch dynamic prompt from Firestore, fallback to default
@@ -176,7 +273,8 @@ export async function POST(req: NextRequest) {
       staffContextSection, // The list of users
       ASSIGNMENT_INSTRUCTION, // Smart Mentions logic
       GOOGLE_SHEET_INSTRUCTION, // Smart Sheet Mapping logic
-      METADATA_INSTRUCTION // Professional Title & Description generation
+      METADATA_INSTRUCTION, // Professional Title & Description generation
+      SLACK_INSTRUCTION // Smart Slack channel & message extraction
     ].join("\n\n");
 
     const result = await generateText({
@@ -299,6 +397,22 @@ export async function POST(req: NextRequest) {
       };
 
       sanitizedSteps.push(sanitizedStep);
+    }
+
+    // Log AI usage (after successful generation)
+    if (orgId) {
+      try {
+        const adminDb = getAdminDb();
+        await adminDb.collection("ai_usage_logs").add({
+          organizationId: orgId,
+          type: "generate-procedure",
+          timestamp: Timestamp.now(),
+          tokensUsed: result.usage?.totalTokens || 0,
+        });
+      } catch (logError) {
+        console.error("Error logging AI usage:", logError);
+        // Don't fail the request if logging fails
+      }
     }
 
     return NextResponse.json({ 

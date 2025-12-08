@@ -36,6 +36,7 @@ export function TemplateCustomizerModal({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [staff, setStaff] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [slackChannels, setSlackChannels] = useState<Array<{ id: string; name: string }>>([]);
   
   // Fetch organization users
   const organizationId = useOrgId();
@@ -238,7 +239,7 @@ export function TemplateCustomizerModal({
                     <li>"Add approval step after step 3 and assign to @Jack"</li>
                   </ul>
                   <p className="text-xs text-blue-600 mt-2 font-medium">
-                    💡 Tip: Type @ to mention team members and assign tasks
+                    💡 Tip: Type @ to mention team members and assign tasks, or mention Slack channels like #general
                   </p>
                 </div>
 
@@ -263,7 +264,8 @@ export function TemplateCustomizerModal({
                     }}
                     onSend={handleUpdate}
                     users={staff}
-                    placeholder="e.g., Remove step 2 and add Google Sheet save at the end. Type @ to mention someone..."
+                    slackChannels={slackChannels}
+                    placeholder="e.g., Remove step 2 and add Google Sheet save at the end. Type @ to mention someone, or mention Slack channels like #general..."
                     disabled={isLoading}
                     className="w-full"
                   />

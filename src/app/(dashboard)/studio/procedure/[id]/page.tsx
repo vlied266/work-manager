@@ -210,8 +210,44 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to start procedure");
+        let errorMessage = "Failed to start procedure";
+        let shouldRedirectToBilling = false;
+        
+        try {
+          const errorData = await response.json();
+          
+          // Handle specific error types
+          if (errorData.error === "LIMIT_REACHED") {
+            errorMessage = errorData.message || "You have reached your plan limit.";
+            shouldRedirectToBilling = true;
+          } else if (errorData.error === "Procedure not found") {
+            errorMessage = "The procedure could not be found. Please refresh the page and try again.";
+          } else if (errorData.error === "Procedure has no steps") {
+            errorMessage = "The procedure has no steps. Please add at least one step.";
+          } else if (errorData.error === "Could not determine assignee for first step") {
+            errorMessage = "Could not determine who should be assigned to the first step. Please check the step configuration.";
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
+          } else if (errorData.details) {
+            errorMessage = errorData.details;
+          }
+        } catch (parseError) {
+          // If JSON parsing fails, use status text
+          errorMessage = `Failed to start procedure: ${response.statusText || "Unknown error"}`;
+        }
+        
+        // Show error and optionally redirect to billing
+        if (shouldRedirectToBilling) {
+          const upgrade = confirm(`${errorMessage}\n\nWould you like to upgrade your plan?`);
+          if (upgrade) {
+            router.push("/billing");
+          }
+        } else {
+          alert(errorMessage);
+        }
+        
+        setSaving(false);
+        return;
       }
 
       const result = await response.json();
@@ -229,7 +265,17 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
       }
     } catch (error: any) {
       console.error("Error starting procedure:", error);
-      alert(error.message || "Failed to start procedure. Please try again.");
+      
+      // Handle network errors or other unexpected errors
+      let errorMessage = "Failed to start procedure. Please try again.";
+      
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        errorMessage = "Network error. Please check your connection and try again.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
       setSaving(false);
     }
   };

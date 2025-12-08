@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { onSnapshot, doc, getDoc, where, orderBy } from "firebase/firestore";
+import { onSnapshot, doc, getDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ActiveRun, Procedure } from "@/types/schema";
 import { FileText, Download, CheckCircle2, AlertTriangle, Clock, XCircle } from "lucide-react";
@@ -20,9 +20,9 @@ export default function HistoryPage() {
   const [exporting, setExporting] = useState(false);
 
   // Use organization-scoped query hook with additional filters
+  // Note: We filter by status but sort client-side to avoid requiring a composite index
   const runsQuery = useOrgQuery("active_runs", [
-    where("status", "in", ["COMPLETED", "FLAGGED"]),
-    orderBy("completedAt", "desc")
+    where("status", "in", ["COMPLETED", "FLAGGED"])
   ]);
 
   useEffect(() => {
@@ -47,6 +47,15 @@ export default function HistoryPage() {
             })),
           } as ActiveRun;
         });
+        
+        // Sort by completedAt descending (most recent first)
+        // For runs without completedAt, use startedAt as fallback
+        runsData.sort((a, b) => {
+          const aDate = a.completedAt || a.startedAt;
+          const bDate = b.completedAt || b.startedAt;
+          return bDate.getTime() - aDate.getTime(); // Descending order
+        });
+        
         setRuns(runsData);
 
         // Fetch procedures
