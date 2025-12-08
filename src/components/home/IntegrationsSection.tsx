@@ -63,8 +63,35 @@ export default function IntegrationsSection() {
 
   return (
     <section className="relative overflow-hidden bg-white">
-      {/* Nebula Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Simple Static Background for Mobile */}
+      <div className="md:hidden absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Simple static gradient orbs for mobile - no animation */}
+        <div
+          className="absolute rounded-full blur-3xl"
+          style={{
+            width: '400px',
+            height: '400px',
+            background: 'radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.08) 50%, transparent 70%)',
+            top: '-10%',
+            left: '-10%',
+            filter: 'blur(60px)',
+          }}
+        />
+        <div
+          className="absolute rounded-full blur-3xl"
+          style={{
+            width: '350px',
+            height: '350px',
+            background: 'radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(168, 85, 247, 0.08) 50%, transparent 70%)',
+            bottom: '-10%',
+            right: '-10%',
+            filter: 'blur(60px)',
+          }}
+        />
+      </div>
+
+      {/* Nebula Background Elements - Desktop Only */}
+      <div className="hidden md:block absolute inset-0 overflow-hidden pointer-events-none">
         {/* Large Gradient Orbs */}
         {/* Blue Nebula - Top Left */}
         <motion.div
