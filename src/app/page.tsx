@@ -780,6 +780,7 @@ export default function LandingPage() {
                   { name: "Pricing", href: "/pricing" },
                   { name: "Templates", href: "/templates" },
                   { name: "Integrations", href: "/integrations" },
+                  { name: "Download App", href: "/mobile-app" },
                   { name: "API", href: "/api" },
                 ].map((item) => (
                   <li key={item.name}>

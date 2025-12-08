@@ -29,6 +29,7 @@
     "@xyflow/react": "^12.9.3",
     "ai": "^5.0.108",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "driver.js": "^1.4.0",
     "file-saver": "^2.0.5",
     "firebase": "^12.6.0",

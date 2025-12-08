@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Github, Twitter, Linkedin, Mail, ArrowRight } from "lucide-react";
+import { Github, Twitter, Linkedin, Mail, ArrowRight, Smartphone } from "lucide-react";
 import Logo from "@/components/Logo";
 
 export function LandingFooter() {
@@ -107,14 +107,16 @@ export function LandingFooter() {
                   { name: "Studio", href: "/studio" },
                   { name: "Templates", href: "/templates" },
                   { name: "Integrations", href: "/integrations" },
+                  { name: "Download App", href: "/mobile-app", icon: Smartphone },
                   { name: "API", href: "/api" },
                 ].map((item) => (
                   <li key={item.name}>
                     <Link
                       href={item.href}
                       prefetch={false}
-                      className="text-sm text-slate-500 hover:text-blue-600 transition-colors duration-200 inline-block relative z-10"
+                      className="text-sm text-slate-500 hover:text-blue-600 transition-colors duration-200 inline-flex items-center gap-2 relative z-10"
                     >
+                      {item.icon && <item.icon className="h-4 w-4" />}
                       {item.name}
                     </Link>
                   </li>
