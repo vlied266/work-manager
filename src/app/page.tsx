@@ -329,7 +329,7 @@ export default function LandingPage() {
               </div>
             </motion.div>
 
-            {/* Right Column - Video */}
+            {/* Right Column - Image */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -337,14 +337,20 @@ export default function LandingPage() {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="relative"
             >
-              <div className="relative rounded-2xl border border-slate-200 shadow-2xl overflow-hidden bg-slate-900">
-                <video
-                  src="/images/animation.webm"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full h-auto rounded-2xl bg-slate-900"
+              <div className="relative w-full h-full flex items-center">
+                <Image
+                  src="/images/sa.png"
+                  alt="AI Nudge Preview"
+                  width={1200}
+                  height={900}
+                  quality={100}
+                  className="w-full h-auto rounded-2xl object-contain mix-blend-multiply opacity-90"
+                  style={{ 
+                    mixBlendMode: 'multiply',
+                    backgroundColor: 'transparent'
+                  }}
+                  priority
+                  unoptimized={false}
                 />
               </div>
             </motion.div>
