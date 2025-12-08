@@ -6,7 +6,7 @@ import { auth } from "@/lib/firebase";
 import Link from "next/link";
 import { Sparkles, Zap, Users, Layers, ArrowRight, Check, Circle, Move, Bot, BarChart3, TrendingUp, Activity, Github, Twitter, Linkedin, Mail, LayoutDashboard, Eye, Rocket } from "lucide-react";
 import { motion } from "framer-motion";
-import FinalSplineHero from "@/components/hero/FinalSplineHero";
+import Image from "next/image";
 import Logo from "@/components/Logo";
 import IntegrationsSection from "@/components/home/IntegrationsSection";
 
@@ -212,9 +212,45 @@ export default function LandingPage() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
-                className="relative z-0 w-full lg:w-[520px]"
+                className="relative z-0 w-full lg:w-full max-w-6xl mx-auto"
               >
-                <FinalSplineHero />
+                {/* Hero Image Container - Seamlessly Blended with Background */}
+                <div className="relative w-full aspect-[16/10] lg:aspect-[16/9] bg-white">
+                  {/* Hero Image - Large and Centered */}
+                  <Image
+                    src="/images/hero-main8.png"
+                    alt="Atomic Work Dashboard Preview"
+                    fill
+                    priority
+                    quality={95}
+                    className="object-contain object-center"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1400px"
+                  />
+                  
+                  {/* Bottom Gradient Mask for Seamless Blend */}
+                  <div 
+                    className="absolute bottom-0 left-0 right-0 h-1/4 pointer-events-none"
+                    style={{
+                      background: 'linear-gradient(to bottom, transparent 0%, transparent 60%, rgba(255, 255, 255, 0.3) 80%, rgba(255, 255, 255, 0.7) 95%, rgba(255, 255, 255, 1) 100%)',
+                    }}
+                  />
+                  
+                  {/* Left Edge Gradient Mask */}
+                  <div 
+                    className="absolute top-0 bottom-0 left-0 w-1/6 pointer-events-none"
+                    style={{
+                      background: 'linear-gradient(to right, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%)',
+                    }}
+                  />
+                  
+                  {/* Right Edge Gradient Mask */}
+                  <div 
+                    className="absolute top-0 bottom-0 right-0 w-1/6 pointer-events-none"
+                    style={{
+                      background: 'linear-gradient(to left, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%)',
+                    }}
+                  />
+                </div>
               </motion.div>
             </div>
           </div>
@@ -452,186 +488,7 @@ export default function LandingPage() {
       </div>
 
       {/* CTA Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
-        {/* Premium Decorative Background Elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Subtle gradient orbs */}
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-200/20 rounded-full blur-3xl" />
-          {/* Premium Blue Orb - Top Left */}
-          <motion.div
-            className="absolute rounded-full blur-3xl"
-            style={{
-              width: '900px',
-              height: '900px',
-              background: 'radial-gradient(circle, rgba(59, 130, 246, 0.5) 0%, rgba(37, 99, 235, 0.3) 25%, rgba(29, 78, 216, 0.15) 50%, transparent 75%)',
-              top: '-30%',
-              left: '-20%',
-              filter: 'blur(90px)',
-            }}
-            animate={{
-              x: [0, 70, 0],
-              y: [0, 50, 0],
-              scale: [1, 1.25, 1],
-              opacity: [0.4, 0.6, 0.4],
-              rotate: [0, 180, 360],
-            }}
-            transition={{
-              duration: 16,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          />
-          
-          {/* Premium Purple Orb - Bottom Right */}
-          <motion.div
-            className="absolute rounded-full blur-3xl"
-            style={{
-              width: '900px',
-              height: '900px',
-              background: 'radial-gradient(circle, rgba(139, 92, 246, 0.5) 0%, rgba(168, 85, 247, 0.3) 25%, rgba(192, 132, 252, 0.15) 50%, transparent 75%)',
-              bottom: '-30%',
-              right: '-20%',
-              filter: 'blur(90px)',
-            }}
-            animate={{
-              x: [0, -70, 0],
-              y: [0, -50, 0],
-              scale: [1, 1.25, 1],
-              opacity: [0.4, 0.6, 0.4],
-              rotate: [360, 180, 0],
-            }}
-            transition={{
-              duration: 16,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 3.5,
-            }}
-          />
-
-          {/* Premium Cyan Accent - Center */}
-          <motion.div
-            className="absolute rounded-full blur-3xl"
-            style={{
-              width: '650px',
-              height: '650px',
-              background: 'radial-gradient(circle, rgba(6, 182, 212, 0.4) 0%, rgba(79, 240, 183, 0.25) 30%, rgba(34, 211, 238, 0.12) 60%, transparent 80%)',
-              top: '45%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              filter: 'blur(75px)',
-            }}
-            animate={{
-              scale: [1, 1.4, 1],
-              opacity: [0.3, 0.5, 0.3],
-              rotate: [0, 360, 0],
-            }}
-            transition={{
-              duration: 14,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 1.5,
-            }}
-          />
-
-          {/* Pink Accent - Top Right */}
-          <motion.div
-            className="absolute rounded-full blur-3xl"
-            style={{
-              width: '550px',
-              height: '550px',
-              background: 'radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, rgba(219, 39, 119, 0.25) 35%, rgba(190, 24, 93, 0.15) 60%, transparent 80%)',
-              top: '10%',
-              right: '15%',
-              filter: 'blur(70px)',
-            }}
-            animate={{
-              x: [0, -40, 0],
-              y: [0, 30, 0],
-              scale: [1, 1.2, 1],
-              opacity: [0.35, 0.55, 0.35],
-              rotate: [0, -90, 0],
-            }}
-            transition={{
-              duration: 13,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 2,
-            }}
-          />
-
-          {/* Enhanced Floating Particles with More Variety */}
-          {[...Array(12)].map((_, i) => {
-            const colors = [
-              'radial-gradient(circle, rgba(59, 130, 246, 0.25) 0%, rgba(37, 99, 235, 0.12) 50%, transparent 70%)',
-              'radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, rgba(168, 85, 247, 0.12) 50%, transparent 70%)',
-              'radial-gradient(circle, rgba(6, 182, 212, 0.25) 0%, rgba(79, 240, 183, 0.12) 50%, transparent 70%)',
-              'radial-gradient(circle, rgba(236, 72, 153, 0.25) 0%, rgba(219, 39, 119, 0.12) 50%, transparent 70%)',
-            ];
-            return (
-              <motion.div
-                key={i}
-                className="absolute rounded-full blur-2xl"
-                style={{
-                  width: `${110 + i * 22}px`,
-                  height: `${110 + i * 22}px`,
-                  background: colors[i % colors.length],
-                  top: `${15 + (i * 7) % 75}%`,
-                  left: `${8 + (i * 9) % 80}%`,
-                  filter: 'blur(55px)',
-                }}
-                animate={{
-                  x: [0, Math.sin(i) * 40, 0],
-                  y: [0, Math.cos(i) * 40, 0],
-                  scale: [1, 1.2, 1],
-                  opacity: [0.2, 0.4, 0.2],
-                  rotate: [0, 360, 0],
-                }}
-                transition={{
-                  duration: 11 + i * 1.8,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: i * 0.35,
-                }}
-              />
-            );
-          })}
-
-          {/* Glowing Star Particles */}
-          {[...Array(20)].map((_, i) => (
-            <motion.div
-              key={`star-${i}`}
-              className="absolute rounded-full"
-              style={{
-                width: `${3 + (i % 4) * 1.5}px`,
-                height: `${3 + (i % 4) * 1.5}px`,
-                background: i % 5 === 0 
-                  ? 'rgba(59, 130, 246, 0.9)'
-                  : i % 5 === 1
-                  ? 'rgba(139, 92, 246, 0.9)'
-                  : i % 5 === 2
-                  ? 'rgba(6, 182, 212, 0.9)'
-                  : i % 5 === 3
-                  ? 'rgba(236, 72, 153, 0.9)'
-                  : 'rgba(79, 240, 183, 0.9)',
-                top: `${5 + (i * 4.5) % 90}%`,
-                left: `${3 + (i * 4.7) % 95}%`,
-                boxShadow: `0 0 ${10 + (i % 3) * 3}px currentColor, 0 0 ${20 + (i % 3) * 5}px currentColor`,
-              }}
-              animate={{
-                y: [0, -40, 0],
-                opacity: [0.2, 1, 0.2],
-                scale: [0.5, 1.5, 0.5],
-              }}
-              transition={{
-                duration: 4 + (i % 4) * 0.6,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: i * 0.15,
-              }}
-            />
-          ))}
-        </div>
+      <section className="relative overflow-hidden bg-white">
 
         <div className="relative mx-auto max-w-[1600px] px-6 py-20 sm:py-24 lg:py-28">
           <motion.div
@@ -674,7 +531,7 @@ export default function LandingPage() {
                   your workflows
                 </span>
                 <motion.span
-                  className="absolute bottom-3 left-0 right-0 h-5 bg-gradient-to-r from-blue-200/50 via-purple-200/50 to-blue-200/50 -z-0 rounded-lg"
+                  className="absolute bottom-3 left-0 right-0 h-5 bg-transparent -z-0 rounded-lg"
                   initial={{ scaleX: 0 }}
                   whileInView={{ scaleX: 1 }}
                   viewport={{ once: true }}

@@ -63,7 +63,185 @@ export default function IntegrationsSection() {
 
   return (
     <section className="relative overflow-hidden bg-white">
-      <div className="mx-auto max-w-[1600px] px-6">
+      {/* Nebula Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Large Gradient Orbs */}
+        {/* Blue Nebula - Top Left */}
+        <motion.div
+          className="absolute rounded-full blur-3xl"
+          style={{
+            width: '800px',
+            height: '800px',
+            background: 'radial-gradient(circle, rgba(59, 130, 246, 0.4) 0%, rgba(37, 99, 235, 0.25) 25%, rgba(29, 78, 216, 0.12) 50%, transparent 75%)',
+            top: '-20%',
+            left: '-15%',
+            filter: 'blur(80px)',
+          }}
+          animate={{
+            x: [0, 50, 0],
+            y: [0, 40, 0],
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
+            rotate: [0, 180, 360],
+          }}
+          transition={{
+            duration: 18,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+        
+        {/* Purple Nebula - Bottom Right */}
+        <motion.div
+          className="absolute rounded-full blur-3xl"
+          style={{
+            width: '750px',
+            height: '750px',
+            background: 'radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, rgba(168, 85, 247, 0.25) 30%, rgba(192, 132, 252, 0.15) 50%, transparent 75%)',
+            bottom: '-25%',
+            right: '-10%',
+            filter: 'blur(85px)',
+          }}
+          animate={{
+            x: [0, -60, 0],
+            y: [0, -45, 0],
+            scale: [1, 1.25, 1],
+            opacity: [0.35, 0.55, 0.35],
+            rotate: [360, 180, 0],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 2,
+          }}
+        />
+
+        {/* Cyan Nebula - Center */}
+        <motion.div
+          className="absolute rounded-full blur-3xl"
+          style={{
+            width: '600px',
+            height: '600px',
+            background: 'radial-gradient(circle, rgba(6, 182, 212, 0.35) 0%, rgba(79, 240, 183, 0.2) 30%, rgba(34, 211, 238, 0.1) 60%, transparent 80%)',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            filter: 'blur(70px)',
+          }}
+          animate={{
+            scale: [1, 1.3, 1],
+            opacity: [0.25, 0.45, 0.25],
+            rotate: [0, 360, 0],
+          }}
+          transition={{
+            duration: 16,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1,
+          }}
+        />
+
+        {/* Pink Nebula - Top Right */}
+        <motion.div
+          className="absolute rounded-full blur-3xl"
+          style={{
+            width: '500px',
+            height: '500px',
+            background: 'radial-gradient(circle, rgba(236, 72, 153, 0.35) 0%, rgba(219, 39, 119, 0.22) 35%, rgba(190, 24, 93, 0.12) 60%, transparent 80%)',
+            top: '15%',
+            right: '20%',
+            filter: 'blur(65px)',
+          }}
+          animate={{
+            x: [0, -35, 0],
+            y: [0, 25, 0],
+            scale: [1, 1.15, 1],
+            opacity: [0.3, 0.5, 0.3],
+            rotate: [0, -90, 0],
+          }}
+          transition={{
+            duration: 15,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1.5,
+          }}
+        />
+
+        {/* Floating Particles */}
+        {[...Array(10)].map((_, i) => {
+          const colors = [
+            'radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, rgba(37, 99, 235, 0.1) 50%, transparent 70%)',
+            'radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, rgba(168, 85, 247, 0.1) 50%, transparent 70%)',
+            'radial-gradient(circle, rgba(6, 182, 212, 0.2) 0%, rgba(79, 240, 183, 0.1) 50%, transparent 70%)',
+            'radial-gradient(circle, rgba(236, 72, 153, 0.2) 0%, rgba(219, 39, 119, 0.1) 50%, transparent 70%)',
+          ];
+          return (
+            <motion.div
+              key={i}
+              className="absolute rounded-full blur-2xl"
+              style={{
+                width: `${100 + i * 20}px`,
+                height: `${100 + i * 20}px`,
+                background: colors[i % colors.length],
+                top: `${10 + (i * 8) % 80}%`,
+                left: `${5 + (i * 10) % 90}%`,
+                filter: 'blur(50px)',
+              }}
+              animate={{
+                x: [0, Math.sin(i) * 30, 0],
+                y: [0, Math.cos(i) * 30, 0],
+                scale: [1, 1.15, 1],
+                opacity: [0.15, 0.3, 0.15],
+                rotate: [0, 360, 0],
+              }}
+              transition={{
+                duration: 12 + i * 1.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: i * 0.3,
+              }}
+            />
+          );
+        })}
+
+        {/* Glowing Star Particles */}
+        {[...Array(15)].map((_, i) => (
+          <motion.div
+            key={`star-${i}`}
+            className="absolute rounded-full"
+            style={{
+              width: `${2 + (i % 3) * 1}px`,
+              height: `${2 + (i % 3) * 1}px`,
+              background: i % 5 === 0 
+                ? 'rgba(59, 130, 246, 0.8)'
+                : i % 5 === 1
+                ? 'rgba(139, 92, 246, 0.8)'
+                : i % 5 === 2
+                ? 'rgba(6, 182, 212, 0.8)'
+                : i % 5 === 3
+                ? 'rgba(236, 72, 153, 0.8)'
+                : 'rgba(79, 240, 183, 0.8)',
+              top: `${8 + (i * 5) % 85}%`,
+              left: `${4 + (i * 6) % 92}%`,
+              boxShadow: `0 0 ${8 + (i % 3) * 2}px currentColor, 0 0 ${15 + (i % 3) * 3}px currentColor`,
+            }}
+            animate={{
+              y: [0, -30, 0],
+              opacity: [0.15, 0.8, 0.15],
+              scale: [0.5, 1.3, 0.5],
+            }}
+            transition={{
+              duration: 3 + (i % 4) * 0.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: i * 0.12,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="relative mx-auto max-w-[1600px] px-6">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -142,8 +320,8 @@ export default function IntegrationsSection() {
                   }}
                 />
                 
-                {/* Glass Card */}
-                <div className="relative w-28 h-28 rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-xl flex items-center justify-center p-3">
+                {/* Glass Card - Transparent Background */}
+                <div className="relative w-28 h-28 rounded-2xl bg-transparent backdrop-blur-xl border border-slate-200/50 shadow-xl flex items-center justify-center p-3">
                   <Logo size="medium" />
                 </div>
               </motion.div>
@@ -311,7 +489,8 @@ export default function IntegrationsSection() {
                     }}
                   />
                   
-                  <div className="relative w-24 h-24 rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-xl flex items-center justify-center p-2">
+                  {/* Glass Card - Transparent Background */}
+                  <div className="relative w-24 h-24 rounded-2xl bg-transparent backdrop-blur-xl border border-slate-200/50 shadow-xl flex items-center justify-center p-2">
                     <Logo size="medium" />
                   </div>
                 </div>
