@@ -337,20 +337,26 @@ export default function LandingPage() {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="relative"
             >
-              <div className="relative w-full h-full flex items-center">
+              <div className="relative w-full h-full flex items-center overflow-hidden">
                 <Image
-                  src="/images/sa.png"
+                  src="/images/gen.png"
                   alt="AI Nudge Preview"
                   width={1200}
                   height={900}
                   quality={100}
-                  className="w-full h-auto rounded-2xl object-contain mix-blend-multiply opacity-90"
+                  className="h-full w-auto rounded-2xl object-cover mix-blend-multiply opacity-90"
                   style={{ 
                     mixBlendMode: 'multiply',
-                    backgroundColor: 'transparent'
+                    backgroundColor: 'transparent',
+                    imageRendering: 'crisp-edges',
+                    WebkitImageRendering: 'crisp-edges',
+                    filter: 'contrast(1.1)',
+                    transform: 'scale(1.3)',
+                    transformOrigin: 'right center',
+                    objectPosition: 'right center'
                   }}
                   priority
-                  unoptimized={false}
+                  unoptimized={true}
                 />
               </div>
             </motion.div>
