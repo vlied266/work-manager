@@ -40,13 +40,23 @@ export async function GET(req: NextRequest) {
 
     const db = getAdminDb();
 
-    // Verify organization exists
+    // Verify organization exists and ensure it has a plan
     const orgDoc = await db.collection("organizations").doc(orgId).get();
     if (!orgDoc.exists) {
       return NextResponse.json(
         { error: "Organization not found" },
         { status: 404 }
       );
+    }
+
+    // Ensure organization has a plan (default to ENTERPRISE for demo)
+    const orgData = orgDoc.data();
+    if (!orgData?.plan) {
+      await db.collection("organizations").doc(orgId).update({
+        plan: "ENTERPRISE",
+        updatedAt: Timestamp.now(),
+      });
+      console.log("✅ Set organization plan to ENTERPRISE");
     }
 
     const batch = db.batch();
@@ -61,35 +71,35 @@ export async function GET(req: NextRequest) {
         displayName: "Jack Smith",
         role: "ADMIN",
         jobTitle: "Operations Manager",
-        photoURL: "https://api.dicebear.com/7.x/avataaars/svg?seed=jack&backgroundColor=b6e3ff,c0aede,d1d4f9",
+        photoURL: "/avatar/men/uifaces-human-avatar (10).jpg", // Real person photo
       },
       {
         email: "sara@company.com",
         displayName: "Sara Johnson",
         role: "LEAD",
         jobTitle: "Team Lead",
-        photoURL: "https://api.dicebear.com/7.x/avataaars/svg?seed=sara&backgroundColor=ffd5dc,ffdfbf,d1d4f9",
+        photoURL: "/avatar/women/uifaces-human-avatar (1).jpg", // Real person photo
       },
       {
         email: "mike@company.com",
         displayName: "Mike Davis",
         role: "OPERATOR",
         jobTitle: "Operations Specialist",
-        photoURL: "https://api.dicebear.com/7.x/avataaars/svg?seed=mike&backgroundColor=b6e3ff,ffd5dc,c0aede",
+        photoURL: "/avatar/men/uifaces-human-avatar (11).jpg", // Real person photo
       },
       {
         email: "emily@company.com",
         displayName: "Emily Wilson",
         role: "OPERATOR",
         jobTitle: "Support Agent",
-        photoURL: "https://api.dicebear.com/7.x/avataaars/svg?seed=emily&backgroundColor=ffdfbf,ffd5dc,d1d4f9",
+        photoURL: "/avatar/women/uifaces-human-avatar (3).jpg", // Real person photo
       },
       {
         email: "david@company.com",
         displayName: "David Brown",
         role: "OPERATOR",
         jobTitle: "Analyst",
-        photoURL: "https://api.dicebear.com/7.x/avataaars/svg?seed=david&backgroundColor=b6e3ff,c0aede,ffdfbf",
+        photoURL: "/avatar/men/uifaces-human-avatar (12).jpg", // Real person photo
       },
     ];
 
@@ -180,51 +190,261 @@ export async function GET(req: NextRequest) {
       const procedureRef = db.collection("procedures").doc();
       procedureIds.push(procedureRef.id);
 
-      const steps: AtomicStep[] = [
+      // Create meaningful step names based on procedure type
+      const stepTemplates = [
+        // Employee Onboarding
         {
-          id: "step_1",
-          title: "Initial Review",
-          action: "INPUT" as AtomicAction,
-          description: "Collect initial information",
-          config: {
-            fields: [
-              { name: "name", label: "Name", type: "text", required: true },
-              { name: "email", label: "Email", type: "email", required: true },
-            ],
-          },
-          assignment: {
-            type: "SPECIFIC_USER",
-            assigneeId: userIds[i % userIds.length], // Rotate through users
-          },
+          steps: [
+            {
+              id: "step_1",
+              title: "Collect Employee Details",
+              action: "INPUT" as AtomicAction,
+              description: "Gather new employee information",
+              config: {
+                inputType: "text",
+                fields: [
+                  { name: "name", label: "Full Name", type: "text", required: true },
+                  { name: "email", label: "Email", type: "email", required: true },
+                  { name: "department", label: "Department", type: "text", required: true },
+                ],
+              },
+              assignment: {
+                type: "SPECIFIC_USER",
+                assigneeId: userIds[0], // Jack
+              },
+            },
+            {
+              id: "step_2",
+              title: "Manager Approval",
+              action: "AUTHORIZE" as AtomicAction,
+              description: "Get approval from hiring manager",
+              config: {
+                approverId: userIds[1], // Sara
+                requireSignature: true,
+              },
+              assignment: {
+                type: "SPECIFIC_USER",
+                assigneeId: userIds[1], // Sara
+              },
+            },
+            {
+              id: "step_3",
+              title: "IT Setup Request",
+              action: "TRANSMIT" as AtomicAction,
+              description: "Send IT setup request",
+              config: {
+                service: "slack",
+                channel: "#it-support",
+                message: "New employee onboarding: {{step_1.output.name}}",
+              },
+              assignment: {
+                type: "SPECIFIC_USER",
+                assigneeId: userIds[2], // Emily
+              },
+            },
+          ],
         },
+        // Purchase Request
         {
-          id: "step_2",
-          title: "Approval",
-          action: "AUTHORIZE" as AtomicAction,
-          description: "Get approval from manager",
-          config: {
-            approverId: userIds[0], // Jack (Admin) as approver
-            requireSignature: true,
-          },
-          assignment: {
-            type: "SPECIFIC_USER",
-            assigneeId: userIds[0], // Jack
-          },
+          steps: [
+            {
+              id: "step_1",
+              title: "Purchase Request Form",
+              action: "INPUT" as AtomicAction,
+              description: "Collect purchase details",
+              config: {
+                inputType: "text",
+                fields: [
+                  { name: "item", label: "Item Name", type: "text", required: true },
+                  { name: "amount", label: "Amount", type: "number", required: true },
+                  { name: "vendor", label: "Vendor", type: "text", required: true },
+                ],
+              },
+              assignment: {
+                type: "SPECIFIC_USER",
+                assigneeId: userIds[2], // Emily
+              },
+            },
+            {
+              id: "step_2",
+              title: "Finance Review",
+              action: "AUTHORIZE" as AtomicAction,
+              description: "Finance team approval",
+              config: {
+                approverId: userIds[3], // David
+                requireSignature: true,
+              },
+              assignment: {
+                type: "SPECIFIC_USER",
+                assigneeId: userIds[3], // David
+              },
+            },
+            {
+              id: "step_3",
+              title: "Process Payment",
+              action: "STORE" as AtomicAction,
+              description: "Record payment in system",
+              config: {
+                storageType: "database",
+              },
+              assignment: {
+                type: "SPECIFIC_USER",
+                assigneeId: userIds[4], // Mike
+              },
+            },
+          ],
         },
+        // IT Helpdesk
         {
-          id: "step_3",
-          title: "Finalize",
-          action: "STORE" as AtomicAction,
-          description: "Save and finalize",
-          config: {
-            storageType: "database",
-          },
-          assignment: {
-            type: "SPECIFIC_USER",
-            assigneeId: userIds[1], // Sara
-          },
+          steps: [
+            {
+              id: "step_1",
+              title: "Ticket Details",
+              action: "INPUT" as AtomicAction,
+              description: "Collect support ticket information",
+              config: {
+                inputType: "text",
+                fields: [
+                  { name: "issue", label: "Issue Description", type: "text", required: true },
+                  { name: "priority", label: "Priority", type: "select", required: true },
+                ],
+              },
+              assignment: {
+                type: "SPECIFIC_USER",
+                assigneeId: userIds[3], // David
+              },
+            },
+            {
+              id: "step_2",
+              title: "Technical Review",
+              action: "VALIDATE" as AtomicAction,
+              description: "Review and validate ticket",
+              config: {
+                rule: "CONTAINS",
+                target: "step_1_output_issue",
+                value: "",
+              },
+              assignment: {
+                type: "SPECIFIC_USER",
+                assigneeId: userIds[2], // Emily
+              },
+            },
+            {
+              id: "step_3",
+              title: "Resolution",
+              action: "STORE" as AtomicAction,
+              description: "Mark ticket as resolved",
+              config: {
+                storageType: "database",
+              },
+              assignment: {
+                type: "SPECIFIC_USER",
+                assigneeId: userIds[3], // David
+              },
+            },
+          ],
+        },
+        // Contract Review
+        {
+          steps: [
+            {
+              id: "step_1",
+              title: "Contract Upload",
+              action: "INPUT" as AtomicAction,
+              description: "Upload contract document",
+              config: {
+                inputType: "file",
+                fields: [
+                  { name: "contract", label: "Contract File", type: "file", required: true },
+                ],
+              },
+              assignment: {
+                type: "SPECIFIC_USER",
+                assigneeId: userIds[1], // Sara
+              },
+            },
+            {
+              id: "step_2",
+              title: "Legal Review",
+              action: "AUTHORIZE" as AtomicAction,
+              description: "Legal team review and approval",
+              config: {
+                approverId: userIds[0], // Jack
+                requireSignature: true,
+              },
+              assignment: {
+                type: "SPECIFIC_USER",
+                assigneeId: userIds[0], // Jack
+              },
+            },
+            {
+              id: "step_3",
+              title: "Archive Contract",
+              action: "STORE" as AtomicAction,
+              description: "Store approved contract",
+              config: {
+                storageType: "database",
+              },
+              assignment: {
+                type: "SPECIFIC_USER",
+                assigneeId: userIds[4], // Mike
+              },
+            },
+          ],
+        },
+        // Legal Approval
+        {
+          steps: [
+            {
+              id: "step_1",
+              title: "Document Submission",
+              action: "INPUT" as AtomicAction,
+              description: "Submit legal documents",
+              config: {
+                inputType: "file",
+                fields: [
+                  { name: "document", label: "Legal Document", type: "file", required: true },
+                ],
+              },
+              assignment: {
+                type: "SPECIFIC_USER",
+                assigneeId: userIds[4], // Mike
+              },
+            },
+            {
+              id: "step_2",
+              title: "Compliance Check",
+              action: "VALIDATE" as AtomicAction,
+              description: "Verify compliance requirements",
+              config: {
+                rule: "EQUAL",
+                target: "step_1_output_status",
+                value: "compliant",
+              },
+              assignment: {
+                type: "SPECIFIC_USER",
+                assigneeId: userIds[0], // Jack
+              },
+            },
+            {
+              id: "step_3",
+              title: "Final Approval",
+              action: "AUTHORIZE" as AtomicAction,
+              description: "Get final legal approval",
+              config: {
+                approverId: userIds[1], // Sara
+                requireSignature: true,
+              },
+              assignment: {
+                type: "SPECIFIC_USER",
+                assigneeId: userIds[1], // Sara
+              },
+            },
+          ],
         },
       ];
+      
+      const steps: AtomicStep[] = stepTemplates[i % stepTemplates.length].steps;
 
       batch.set(procedureRef, {
         title: procedureTitles[i],

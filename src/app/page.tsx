@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import Link from "next/link";
-import { Sparkles, Zap, Users, Layers, ArrowRight, Check, Circle, Move, Bot, BarChart3, TrendingUp, Activity, Github, Twitter, Linkedin, Mail, LayoutDashboard, Eye, Rocket } from "lucide-react";
+import { Sparkles, Zap, Users, Layers, ArrowRight, Check, Circle, Move, Bot, BarChart3, TrendingUp, Activity, Github, Twitter, Linkedin, Mail, LayoutDashboard, Eye, Rocket, Brain, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Logo from "@/components/Logo";
@@ -142,9 +142,9 @@ export default function LandingPage() {
                   transition={{ duration: 0.6, delay: 0.1 }}
                   className="text-[2.75rem] sm:text-6xl lg:text-[4.5rem] font-semibold leading-[1.05] text-slate-900 tracking-tight"
                 >
-                  Your workflows,
+                  The Workflow Engine That{" "}
                   <span className="block bg-gradient-to-r from-[#a163f1] via-[#6363f1] via-[#3498ea] to-[#40dfa3] bg-clip-text text-transparent">
-                    Atomic Ready.
+                    Thinks Before You Do.
                   </span>
                 </motion.h1>
                 <motion.p
@@ -153,7 +153,7 @@ export default function LandingPage() {
                   transition={{ duration: 0.6, delay: 0.2 }}
                   className="text-lg sm:text-xl text-slate-600 leading-8 max-w-2xl"
                 >
-                  Transform complex processes into atomic tasks. Build workflows in minutes instead of months.
+                  Meet <span className="font-semibold text-slate-900">Atomic Insight™</span>—the proactive AI co-pilot that monitors your business 24/7. It finds bottlenecks, identifies risks, and suggests fixes before you even ask. Stop managing; start leading.
                 </motion.p>
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -181,10 +181,11 @@ export default function LandingPage() {
                             <ArrowRight className="h-5 w-5" />
                           </Link>
                           <Link
-                            href="/sign-in"
-                            className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-8 py-4 text-base font-semibold text-slate-700 transition hover:border-slate-400"
+                            href="#zero-click-intelligence"
+                            className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-8 py-4 text-base font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
                           >
-                            Sign In
+                            Meet the AI
+                            <Bot className="h-5 w-5" />
                           </Link>
                         </>
                       )}
@@ -253,6 +254,100 @@ export default function LandingPage() {
                 </div>
               </motion.div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Zero-Click Intelligence Section */}
+      <section id="zero-click-intelligence" className="relative bg-slate-50">
+        <div className="mx-auto max-w-[1600px] px-6 py-24">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            {/* Left Column - Copy */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="space-y-8"
+            >
+              <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200/50 px-4 py-2 mb-4">
+                <Bot className="h-4 w-4 text-purple-600" />
+                <span className="text-sm font-semibold text-purple-700">PROACTIVE INTELLIGENCE</span>
+              </div>
+              
+              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-slate-900">
+                It speaks first.
+              </h2>
+              
+              <p className="text-lg sm:text-xl text-slate-600 leading-8">
+                Most tools wait for your commands. Atomic Work watches your back. Whether it's a stalled approval or a sudden spike in workload, our AI nudges you with the right insights at the right moment.
+              </p>
+
+              {/* Key Bullet Points */}
+              <div className="space-y-4">
+                <div className="flex items-start gap-4 p-4 rounded-xl bg-white border border-slate-200 hover:border-purple-200 hover:shadow-md transition-all">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 text-purple-600">
+                      <AlertTriangle className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-slate-900 mb-1">Proactive Alerts</h3>
+                    <p className="text-sm text-slate-600">
+                      "⚠️ 2 bottlenecks detected in HR." Get notified before problems escalate.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4 p-4 rounded-xl bg-white border border-slate-200 hover:border-indigo-200 hover:shadow-md transition-all">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+                      <Brain className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-slate-900 mb-1">Context-Aware</h3>
+                    <p className="text-sm text-slate-600">
+                      Knows your team, your data, and your history. Every suggestion is personalized.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4 p-4 rounded-xl bg-white border border-slate-200 hover:border-blue-200 hover:shadow-md transition-all">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+                      <Zap className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-slate-900 mb-1">Instant Action</h3>
+                    <p className="text-sm text-slate-600">
+                      Fix problems directly from the chat. No context switching, no delays.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Right Column - Video */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="relative"
+            >
+              <div className="relative rounded-2xl border border-slate-200 shadow-2xl overflow-hidden bg-slate-900">
+                <video
+                  src="/images/animation.webm"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-auto rounded-2xl bg-slate-900"
+                />
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>

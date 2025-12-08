@@ -7,7 +7,8 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { usePathname } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, onSnapshot, Timestamp } from "firebase/firestore";
+import { hasProactiveNudges } from "@/lib/billing/limits";
+import { collection, query, where, getDocs, onSnapshot, Timestamp, doc, getDoc } from "firebase/firestore";
 
 interface Message {
   id: string;
@@ -30,6 +31,7 @@ export default function AICopilot() {
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [organizationPlan, setOrganizationPlan] = useState<"FREE" | "PRO" | "ENTERPRISE" | null>(null);
   const [nudge, setNudge] = useState<NudgeData | null>(null);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const pathname = usePathname();
@@ -64,11 +66,11 @@ export default function AICopilot() {
       setUserEmail(user?.email || null);
       if (user?.uid) {
         try {
-          const { doc, getDoc } = await import("firebase/firestore");
           const userDoc = await getDoc(doc(db, "users", user.uid));
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            setOrganizationId(userData.organizationId || null);
+            const orgId = userData.organizationId || null;
+            setOrganizationId(orgId);
             // Also set email from user doc if available
             if (userData.email && !user?.email) {
               setUserEmail(userData.email);
@@ -82,6 +84,60 @@ export default function AICopilot() {
     return () => unsubscribe();
   }, []);
 
+  // Fetch organization plan when organizationId changes
+  useEffect(() => {
+    if (!organizationId) {
+      setOrganizationPlan(null);
+      return;
+    }
+
+    const fetchOrganizationPlan = async () => {
+      try {
+        const orgDoc = await getDoc(doc(db, "organizations", organizationId));
+        if (orgDoc.exists()) {
+          const orgData = orgDoc.data();
+          // If plan doesn't exist, default to PRO for testing nudges
+          // In production, this should default to "FREE"
+          const plan = orgData.plan || "PRO";
+          setOrganizationPlan(plan as "FREE" | "PRO" | "ENTERPRISE");
+          console.log("✅ [AICopilot] Organization plan loaded:", plan, "(from org data:", orgData.plan || "not set, defaulting to PRO)");
+        } else {
+          console.warn("⚠️ [AICopilot] Organization not found:", organizationId);
+          setOrganizationPlan("PRO"); // Default to PRO for testing if org doesn't exist
+        }
+      } catch (error) {
+        console.error("Error fetching organization plan:", error);
+        setOrganizationPlan("PRO"); // Default to PRO for testing on error
+      }
+    };
+
+    fetchOrganizationPlan();
+  }, [organizationId]);
+
+  // Also use onSnapshot to listen for real-time plan changes
+  useEffect(() => {
+    if (!organizationId) {
+      return;
+    }
+
+    const unsubscribe = onSnapshot(
+      doc(db, "organizations", organizationId),
+      (orgDoc) => {
+        if (orgDoc.exists()) {
+          const orgData = orgDoc.data();
+          const plan = orgData.plan || "PRO";
+          setOrganizationPlan(plan as "FREE" | "PRO" | "ENTERPRISE");
+          console.log("✅ [AICopilot] Organization plan updated (real-time):", plan);
+        }
+      },
+      (error) => {
+        console.error("Error listening to organization plan:", error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [organizationId]);
+
   // Smart proactive nudge based on pathname and real data
   useEffect(() => {
     // Reset nudge state when pathname changes
@@ -94,14 +150,25 @@ export default function AICopilot() {
       nudgeTimeoutRef.current = null;
     }
 
+    // Wait for organization plan to be loaded before checking
+    if (organizationId && !organizationPlan) {
+      console.log("🔍 [Nudge] Waiting for organization plan to load...");
+      return;
+    }
+
+    // Check if organization has access to proactive nudges
+    const canShowNudges = organizationPlan ? hasProactiveNudges(organizationPlan) : false;
+    
     // Debug logs
     console.log("🔍 [Nudge] Pathname:", pathname);
     console.log("🔍 [Nudge] Is App Path:", isAppPath);
     console.log("🔍 [Nudge] Is Open:", isOpen);
     console.log("🔍 [Nudge] Organization ID:", organizationId);
+    console.log("🔍 [Nudge] Organization Plan:", organizationPlan);
+    console.log("🔍 [Nudge] Can Show Nudges:", canShowNudges);
     console.log("🔍 [Nudge] User ID:", userId);
 
-    // Only show nudge for app paths when user is logged in
+    // Only show nudge for app paths when user is logged in and has access
     if (!isAppPath) {
       console.log("🔍 [Nudge] Skipping - not app path");
       return;
@@ -119,6 +186,12 @@ export default function AICopilot() {
     
     if (!userId) {
       console.log("🔍 [Nudge] Skipping - no user ID");
+      return;
+    }
+    
+    // Check if plan allows proactive nudges (only PRO/ENTERPRISE)
+    if (!canShowNudges) {
+      console.log("🔍 [Nudge] Skipping - no access to proactive nudges (plan:", organizationPlan || "null", ")");
       return;
     }
 
@@ -273,7 +346,7 @@ export default function AICopilot() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, isAppPath, isOpen, organizationId, userId, userEmail]);
+  }, [pathname, isAppPath, isOpen, organizationId, organizationPlan, userId, userEmail]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {

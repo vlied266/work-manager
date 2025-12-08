@@ -118,7 +118,10 @@ export default function BillingPage() {
         { text: "Up to 3 users", included: true },
         { text: "10 active runs per month", included: true },
         { text: "Basic process builder", included: true },
+        { text: "Basic AI Support", included: true, detail: "Access to Atomic AI for general questions and documentation help." },
         { text: "AI Copilot", included: false },
+        { text: "Atomic Insight™", included: false },
+        { text: "Proactive Nudges", included: false },
         { text: "Priority support", included: false },
         { text: "SSO & Audit Logs", included: false },
       ],
@@ -135,6 +138,8 @@ export default function BillingPage() {
         { text: "Unlimited users", included: true },
         { text: "Unlimited active runs", included: true },
         { text: "Advanced process builder", included: true },
+        { text: "✨ Atomic Insight™ (Analyst)", included: true, detail: "Full access to Data Analyst Persona. Connects to live data to identify bottlenecks and trends." },
+        { text: "✅ Proactive Nudges & Alerts", included: true },
         { text: "AI Copilot (1000 gen/month)", included: true },
         { text: "Priority support", included: true },
         { text: "SSO & Audit Logs", included: false },
@@ -152,6 +157,9 @@ export default function BillingPage() {
         { text: "Unlimited everything", included: true },
         { text: "Unlimited AI generations", included: true },
         { text: "Advanced process builder", included: true },
+        { text: "Custom AI Models", included: true, detail: "Train Atomic Insight on your specific company policies and historical data." },
+        { text: "✨ Atomic Insight™ (Analyst)", included: true },
+        { text: "✅ Proactive Nudges & Alerts", included: true },
         { text: "SSO & Audit Logs", included: true },
         { text: "Dedicated support", included: true },
         { text: "Custom integrations", included: true },
@@ -569,22 +577,47 @@ export default function BillingPage() {
               </div>
 
               <ul className="space-y-3 mb-6">
-                {plan.features.map((feature, idx) => (
-                  <li key={idx} className="flex items-start gap-3">
-                    {feature.included ? (
-                      <Check className="h-5 w-5 flex-shrink-0 text-green-600" />
-                    ) : (
-                      <X className="h-5 w-5 flex-shrink-0 text-slate-300" />
-                    )}
-                    <span
-                      className={`text-sm ${
-                        feature.included ? "text-slate-700" : "text-slate-400"
-                      }`}
-                    >
-                      {feature.text}
-                    </span>
-                  </li>
-                ))}
+                {plan.features.map((feature, idx) => {
+                  const isAIFeature = feature.text.includes("Atomic Insight") || feature.text.includes("AI Support") || feature.text.includes("Custom AI");
+                  const isProactiveNudge = feature.text.includes("Proactive Nudges");
+                  const isBasicAI = feature.text === "Basic AI Support";
+                  
+                  return (
+                    <li key={idx} className="flex items-start gap-3">
+                      {feature.included ? (
+                        isBasicAI ? (
+                          <div className="h-5 w-5 rounded-full border-2 border-slate-300 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <div className="h-2 w-2 rounded-full bg-slate-400" />
+                          </div>
+                        ) : (
+                          <Check className={`h-5 w-5 flex-shrink-0 ${isAIFeature || isProactiveNudge ? "text-purple-600" : "text-green-600"}`} />
+                        )
+                      ) : (
+                        <X className="h-5 w-5 flex-shrink-0 text-slate-300" />
+                      )}
+                      <div className="flex-1">
+                        <span
+                          className={`text-sm ${
+                            feature.included 
+                              ? isAIFeature 
+                                ? "font-semibold text-slate-900" 
+                                : isBasicAI 
+                                ? "text-slate-500" 
+                                : "text-slate-700"
+                              : "text-slate-400"
+                          }`}
+                        >
+                          {feature.text}
+                        </span>
+                        {feature.detail && (
+                          <span className="block text-xs text-slate-500 mt-1 italic">
+                            {feature.detail}
+                          </span>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
 
               <button

@@ -22,6 +22,7 @@ export default function PricingPage() {
         "Up to 3 users",
         "10 active runs per month",
         "Basic process builder",
+        "Basic AI Support",
       ],
       cta: "Get Started",
       popular: false,
@@ -37,6 +38,8 @@ export default function PricingPage() {
         "Unlimited users",
         "Unlimited active runs",
         "Advanced process builder",
+        "✨ Atomic Insight™ (Analyst)",
+        "✅ Proactive Nudges & Alerts",
         "AI Copilot (1000 gen/month)",
         "Priority support",
       ],
@@ -54,6 +57,7 @@ export default function PricingPage() {
         "Unlimited everything",
         "Unlimited AI generations",
         "Advanced process builder",
+        "Custom AI Models",
         "SSO & Audit Logs",
         "Dedicated support",
         "Custom integrations",
@@ -82,6 +86,21 @@ export default function PricingPage() {
       free: "Basic",
       pro: "Advanced",
       enterprise: "Advanced",
+    },
+    {
+      feature: "AI Support",
+      free: "Basic",
+      pro: "✨ Atomic Insight™",
+      enterprise: "Custom AI Models",
+      freeDetail: "General questions & docs",
+      proDetail: "Data Analyst Persona + Live Data",
+      enterpriseDetail: "Trained on your policies",
+    },
+    {
+      feature: "Proactive Nudges",
+      free: "No",
+      pro: "Yes",
+      enterprise: "Yes",
     },
     {
       feature: "AI Copilot",
@@ -292,12 +311,41 @@ export default function PricingPage() {
 
                   {/* Features List */}
                   <ul className="space-y-3 mb-8">
-                    {plan.features.map((feature, j) => (
-                      <li key={j} className="flex items-start gap-3">
-                        <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm text-slate-700 leading-6">{feature}</span>
-                      </li>
-                    ))}
+                    {plan.features.map((feature, j) => {
+                      const isAIFeature = feature.includes("Atomic Insight") || feature.includes("AI Support") || feature.includes("Custom AI");
+                      const isProactiveNudge = feature.includes("Proactive Nudges");
+                      const isBasicAI = feature === "Basic AI Support";
+                      
+                      return (
+                        <li key={j} className="flex items-start gap-3">
+                          {isBasicAI ? (
+                            <div className="h-5 w-5 rounded-full border-2 border-slate-300 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <div className="h-2 w-2 rounded-full bg-slate-400" />
+                            </div>
+                          ) : (
+                            <Check className={`h-5 w-5 ${isAIFeature || isProactiveNudge ? "text-purple-600" : "text-green-500"} flex-shrink-0 mt-0.5`} />
+                          )}
+                          <span className={`text-sm leading-6 ${isAIFeature ? "font-semibold text-slate-900" : isBasicAI ? "text-slate-500" : "text-slate-700"}`}>
+                            {feature}
+                            {isBasicAI && (
+                              <span className="block text-xs text-slate-400 mt-1 italic">
+                                Access to Atomic AI for general questions and documentation help.
+                              </span>
+                            )}
+                            {feature.includes("Atomic Insight") && (
+                              <span className="block text-xs text-slate-500 mt-1">
+                                Full access to Data Analyst Persona. Connects to live data to identify bottlenecks and trends.
+                              </span>
+                            )}
+                            {feature.includes("Custom AI Models") && (
+                              <span className="block text-xs text-slate-500 mt-1">
+                                Train Atomic Insight on your specific company policies and historical data.
+                              </span>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
 
                   {/* CTA Button */}
@@ -375,14 +423,35 @@ export default function PricingPage() {
                       <td className="px-8 py-4 text-sm font-semibold text-slate-900">
                         {item.feature}
                       </td>
-                      <td className="px-8 py-4 text-center text-sm text-slate-700">
-                        {item.free}
+                      <td className="px-8 py-4 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={`text-sm ${item.free === "No" || item.free === "Basic" ? "text-slate-500" : "text-slate-700"}`}>
+                            {item.free}
+                          </span>
+                          {(item as any).freeDetail && (
+                            <span className="text-xs text-slate-400 italic max-w-[150px]">{((item as any).freeDetail)}</span>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-8 py-4 text-center text-sm text-slate-700">
-                        {item.pro}
+                      <td className="px-8 py-4 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={`text-sm ${item.pro === "No" ? "text-slate-500" : "text-slate-700 font-semibold"}`}>
+                            {item.pro}
+                          </span>
+                          {(item as any).proDetail && (
+                            <span className="text-xs text-slate-500 max-w-[150px]">{((item as any).proDetail)}</span>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-8 py-4 text-center text-sm text-slate-700">
-                        {item.enterprise}
+                      <td className="px-8 py-4 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={`text-sm ${item.enterprise === "No" ? "text-slate-500" : "text-slate-700 font-semibold"}`}>
+                            {item.enterprise}
+                          </span>
+                          {(item as any).enterpriseDetail && (
+                            <span className="text-xs text-slate-500 max-w-[150px]">{((item as any).enterpriseDetail)}</span>
+                          )}
+                        </div>
                       </td>
                     </motion.tr>
                   ))}
@@ -390,6 +459,49 @@ export default function PricingPage() {
               </table>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Why Upgrade Banner */}
+      <section className="py-12">
+        <div className="mx-auto max-w-[1600px] px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="mx-auto max-w-4xl rounded-[2.5rem] bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 p-8 sm:p-12 shadow-2xl"
+          >
+            <div className="text-center">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 px-4 py-2 mb-6">
+                <Sparkles className="h-4 w-4 text-white" />
+                <span className="text-sm font-semibold text-white">Why Upgrade?</span>
+              </div>
+              
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">
+                The average Pro user saves{" "}
+                <span className="bg-gradient-to-r from-yellow-200 to-yellow-300 bg-clip-text text-transparent">
+                  12 hours/week
+                </span>{" "}
+                by letting Atomic Insight find the bottlenecks for them.
+              </h3>
+              
+              <p className="text-lg text-white/90 mb-8 max-w-2xl mx-auto">
+                Stop guessing. Start knowing. Upgrade to Pro and let AI do the heavy lifting.
+              </p>
+              
+              <Link href="/sign-up">
+                <motion.button
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-base font-semibold text-purple-600 shadow-xl transition-all hover:shadow-2xl"
+                >
+                  Upgrade to Pro
+                  <ArrowRight className="h-5 w-5" />
+                </motion.button>
+              </Link>
+            </div>
+          </motion.div>
         </div>
       </section>
 

@@ -135,3 +135,35 @@ export function getUsagePercentage(current: number, limit: number): number {
   return Math.min(100, Math.round((current / limit) * 100));
 }
 
+/**
+ * Check if organization has access to Atomic Insight (Data Analyst Persona)
+ * Only available for PRO and ENTERPRISE plans
+ */
+export function hasAtomicInsight(plan: Organization["plan"]): boolean {
+  return plan === "PRO" || plan === "ENTERPRISE";
+}
+
+/**
+ * Check if organization has access to Proactive Nudges
+ * Only available for PRO and ENTERPRISE plans
+ */
+export function hasProactiveNudges(plan: Organization["plan"]): boolean {
+  return plan === "PRO" || plan === "ENTERPRISE";
+}
+
+/**
+ * Check if organization has access to Basic AI Support
+ * Available for all plans (FREE, PRO, ENTERPRISE)
+ */
+export function hasBasicAISupport(plan: Organization["plan"]): boolean {
+  return true; // Available for all plans
+}
+
+/**
+ * Check if organization has access to Custom AI Models
+ * Only available for ENTERPRISE plan
+ */
+export function hasCustomAIModels(plan: Organization["plan"]): boolean {
+  return plan === "ENTERPRISE";
+}
+

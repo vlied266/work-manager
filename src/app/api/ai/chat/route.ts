@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { openai } from "@ai-sdk/openai";
 import { streamText } from "ai";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { hasAtomicInsight } from "@/lib/billing/limits";
 
 // Determine persona based on current path
 function getPersonaFromPath(currentPath: string): {
@@ -193,10 +194,55 @@ export async function POST(req: NextRequest) {
     console.log("🔍 [API] Selected persona role:", persona.role);
     console.log("🔍 [API] ==================================");
 
-    // Fetch app context if in app mode
+    // Check plan access for Atomic Insight (Data Analyst Persona)
+    let hasAccessToAtomicInsight = false;
+    let organizationPlan: "FREE" | "PRO" | "ENTERPRISE" = "FREE";
+    
+    if (isAppRoute && userId) {
+      try {
+        const db = getAdminDb();
+        const userDoc = await db.collection("users").doc(userId).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          const orgId = userData?.organizationId;
+          
+          if (orgId) {
+            const orgDoc = await db.collection("organizations").doc(orgId).get();
+            if (orgDoc.exists) {
+              const orgData = orgDoc.data();
+              organizationPlan = (orgData?.plan || "FREE").toUpperCase() as "FREE" | "PRO" | "ENTERPRISE";
+              hasAccessToAtomicInsight = hasAtomicInsight(organizationPlan);
+              
+              console.log("🔍 [API] Organization plan:", organizationPlan);
+              console.log("🔍 [API] Has Atomic Insight access:", hasAccessToAtomicInsight);
+              
+              // If FREE plan and trying to use Atomic Insight, restrict to Basic AI
+              if (!hasAccessToAtomicInsight) {
+                console.log("⚠️ [API] FREE plan detected - restricting to Basic AI Support");
+                // Override persona for FREE plan users
+                persona = {
+                  role: "Customer Support & Sales Agent",
+                  systemPrompt: `You are the Atomic Work Guide, a friendly and knowledgeable customer support agent. You can help with:
+- General questions about workflows
+- Documentation and how-to guides
+- Basic troubleshooting
+
+Note: Advanced data analysis and Atomic Insight features are available on Pro and Enterprise plans. For real-time data analysis, bottleneck detection, and proactive insights, please upgrade your plan.`,
+                };
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error checking organization plan:", error);
+        // Continue with default behavior if check fails
+      }
+    }
+
+    // Fetch app context if in app mode and has access
     let appContext = null;
     
-    if (isAppRoute) {
+    if (isAppRoute && hasAccessToAtomicInsight) {
       if (userId) {
         console.log("🔍 [API] Fetching app context for userId:", userId);
         appContext = await fetchAppContext(userId);
@@ -207,6 +253,8 @@ export async function POST(req: NextRequest) {
       } else {
         console.log("🔍 [API] No userId provided, skipping app context");
       }
+    } else if (isAppRoute && !hasAccessToAtomicInsight) {
+      console.log("🔍 [API] No Atomic Insight access - using Basic AI Support");
     } else {
       console.log("🔍 [API] Public route - skipping app context fetch");
     }

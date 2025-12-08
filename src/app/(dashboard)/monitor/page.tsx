@@ -104,14 +104,24 @@ export default function MonitorPage() {
         )];
         const assigneeEmails = [...new Set(
           runsData
-            .map((r) => r.currentAssignee)
+            .map((r) => {
+              // If currentAssigneeId is an email, use it; otherwise use currentAssignee
+              const assigneeId = r.currentAssigneeId;
+              if (assigneeId && assigneeId.includes("@")) {
+                return assigneeId;
+              }
+              return r.currentAssignee;
+            })
             .filter((email): email is string => !!email)
         )];
         
         const assigneesData: Record<string, AssigneeInfo> = {};
         
-        // Fetch by ID
+        // Fetch by ID (only if it's not an email)
         for (const assigneeId of assigneeIds) {
+          // Skip if it's an email (we'll fetch by email instead)
+          if (assigneeId.includes("@")) continue;
+          
           try {
             const userDoc = await getDoc(doc(db, "users", assigneeId));
             if (userDoc.exists()) {
@@ -120,15 +130,21 @@ export default function MonitorPage() {
                 id: assigneeId,
                 name: userData.displayName || userData.email?.split("@")[0] || "Unknown",
                 email: userData.email || "",
-                avatar: userData.photoURL || undefined,
+                avatar: userData.photoURL || userData.avatar || undefined,
               };
+              // Debug log
+              if (userData.photoURL) {
+                console.log(`✅ [Monitor] Loaded avatar for ${assigneeId}:`, userData.photoURL);
+              } else {
+                console.warn(`⚠️ [Monitor] No photoURL for user ${assigneeId}`);
+              }
             }
           } catch (error) {
             console.error(`Error fetching assignee ${assigneeId}:`, error);
           }
         }
         
-        // Fetch by email (for cases where we only have email)
+        // Fetch by email (for cases where we only have email or assigneeId is an email)
         if (orgId) {
           for (const email of assigneeEmails) {
             // Skip if we already have this user by ID
@@ -144,12 +160,19 @@ export default function MonitorPage() {
               if (!usersSnapshot.empty) {
                 const userDoc = usersSnapshot.docs[0];
                 const userData = userDoc.data();
+                // Store by both UID and email for easy lookup
                 assigneesData[userDoc.id] = {
                   id: userDoc.id,
                   name: userData.displayName || userData.email?.split("@")[0] || "Unknown",
                   email: userData.email || "",
-                  avatar: userData.photoURL || undefined,
+                  avatar: userData.photoURL || userData.avatar || undefined,
                 };
+                // Also store by email for legacy data
+                assigneesData[email] = assigneesData[userDoc.id];
+                // Debug log
+                if (userData.photoURL) {
+                  console.log(`✅ [Monitor] Loaded avatar for ${userDoc.id} (by email ${email}):`, userData.photoURL);
+                }
               }
             } catch (error) {
               console.error(`Error fetching assignee by email ${email}:`, error);
@@ -195,8 +218,21 @@ export default function MonitorPage() {
 
   // Get current step name
   const getCurrentStepName = (run: ActiveRun): string => {
+    // First try to get from run's steps (if included in seed data)
+    if ((run as any).steps && Array.isArray((run as any).steps)) {
+      const step = (run as any).steps[run.currentStepIndex];
+      if (step?.title) return step.title;
+    }
+    
+    // Fallback to procedure steps
     const procedure = procedures[run.procedureId];
-    if (!procedure || !procedure.steps) return "Unknown Step";
+    if (!procedure || !procedure.steps) {
+      // Try to get from run's currentStepId
+      if ((run as any).currentStepId) {
+        return `Step ${run.currentStepIndex + 1}`;
+      }
+      return "Pending Review";
+    }
     const step = procedure.steps[run.currentStepIndex];
     return step?.title || `Step ${run.currentStepIndex + 1}`;
   };
@@ -207,15 +243,34 @@ export default function MonitorPage() {
     const assigneeId = run.currentAssigneeId || run.assigneeId;
     const assigneeEmail = run.currentAssignee;
     
-    // First try to find by ID
-    if (assigneeId && assignees[assigneeId]) {
+    // Check if assigneeId is actually an email (legacy data)
+    const isEmail = assigneeId && assigneeId.includes("@");
+    
+    // First try to find by ID (if it's a UID, not email)
+    if (assigneeId && !isEmail && assignees[assigneeId]) {
       return assignees[assigneeId];
     }
     
-    // If not found by ID, try to find by email
-    if (assigneeEmail) {
-      const found = Object.values(assignees).find((a) => a.email === assigneeEmail);
-      if (found) return found;
+    // If assigneeId is an email, or if we have assigneeEmail, try to find by email
+    const emailToSearch = isEmail ? assigneeId : assigneeEmail;
+    if (emailToSearch) {
+      const found = Object.values(assignees).find((a) => a.email === emailToSearch);
+      if (found) {
+        return found;
+      }
+    }
+    
+    // If still not found, try to fetch by email on the fly (for legacy data)
+    // This is a fallback for old runs that have email as assigneeId
+    if (emailToSearch && orgId) {
+      // We'll return a temporary assignee info based on email
+      const emailName = emailToSearch.split("@")[0];
+      return {
+        id: emailToSearch, // Use email as ID temporarily
+        name: emailName.charAt(0).toUpperCase() + emailName.slice(1),
+        email: emailToSearch,
+        avatar: undefined, // No avatar for legacy data
+      };
     }
     
     return null;
@@ -270,14 +325,20 @@ export default function MonitorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50/40 via-white to-cyan-50/40 relative overflow-hidden font-sans">
-      <div className="p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 relative overflow-hidden font-sans">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-purple-100/20 blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 rounded-full bg-blue-100/20 blur-3xl" />
+      </div>
+      
+      <div className="relative p-8">
         <div className="mx-auto max-w-7xl">
           {/* Header */}
           <div className="mb-8 flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Operational Monitor</h1>
-              <p className="mt-2 text-sm text-slate-600 font-medium">
+              <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 mb-2">Operational Monitor</h1>
+              <p className="text-base text-slate-600 font-medium">
                 Air Traffic Control: Track active processes and identify bottlenecks
               </p>
             </div>
@@ -298,48 +359,63 @@ export default function MonitorPage() {
           </div>
 
           {/* Stats Bar */}
-          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="rounded-2xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg p-4">
+          <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="relative rounded-2xl bg-gradient-to-br from-white to-blue-50/50 backdrop-blur-xl border border-blue-200/50 shadow-xl p-6 hover:shadow-2xl transition-all"
+            >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Processes</p>
-                  <p className="mt-1 text-2xl font-extrabold text-slate-900">{runs.length}</p>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Active Processes</p>
+                  <p className="text-3xl font-extrabold text-slate-900">{runs.length}</p>
                 </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
-                  <Clock className="h-6 w-6" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
+                  <Clock className="h-7 w-7" />
                 </div>
               </div>
-            </div>
-            <div className="rounded-2xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg p-4">
+            </motion.div>
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="relative rounded-2xl bg-gradient-to-br from-white to-rose-50/50 backdrop-blur-xl border border-rose-200/50 shadow-xl p-6 hover:shadow-2xl transition-all"
+            >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Stalled (&gt;24h)</p>
-                  <p className="mt-1 text-2xl font-extrabold text-rose-600">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Stalled (&gt;24h)</p>
+                  <p className="text-3xl font-extrabold text-rose-600">
                     {runs.filter((r) => getTimeInStep(r as ActiveRun & { lastActivity: Date }).isStalled).length}
                   </p>
                 </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-100 text-rose-600">
-                  <AlertTriangle className="h-6 w-6" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-lg">
+                  <AlertTriangle className="h-7 w-7" />
                 </div>
               </div>
-            </div>
-            <div className="rounded-2xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg p-4">
+            </motion.div>
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="relative rounded-2xl bg-gradient-to-br from-white to-orange-50/50 backdrop-blur-xl border border-orange-200/50 shadow-xl p-6 hover:shadow-2xl transition-all"
+            >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Flagged</p>
-                  <p className="mt-1 text-2xl font-extrabold text-orange-600">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Flagged</p>
+                  <p className="text-3xl font-extrabold text-orange-600">
                     {runs.filter((r) => r.status === "FLAGGED").length}
                   </p>
                 </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
-                  <AlertCircle className="h-6 w-6" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg">
+                  <AlertCircle className="h-7 w-7" />
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
 
           {/* Runs Table - Operational Control Style */}
-          <div className="rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 overflow-hidden">
+          <div className="rounded-[2.5rem] bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-2xl shadow-black/10 overflow-hidden">
                 {filteredRuns.length === 0 ? (
               <div className="p-16 text-center">
                       <div className="flex flex-col items-center">
@@ -421,35 +497,54 @@ export default function MonitorPage() {
                               {assignee ? (
                                 <>
                                   {assignee.avatar ? (
-                                    <img
-                                      src={assignee.avatar}
-                                      alt={assignee.name}
-                                      className="h-10 w-10 rounded-full border-2 border-white shadow-sm object-cover"
-                                    />
+                                    <div className="relative h-12 w-12">
+                                      <img
+                                        src={assignee.avatar}
+                                        alt={assignee.name}
+                                        className="h-12 w-12 rounded-full border-2 border-white shadow-md object-cover ring-2 ring-purple-100"
+                                        loading="lazy"
+                                        onLoad={() => {
+                                          console.log(`✅ [Monitor] Image loaded successfully: ${assignee.name}`, assignee.avatar);
+                                        }}
+                                        onError={(e) => {
+                                          console.error(`❌ [Monitor] Image failed to load: ${assignee.name}`, assignee.avatar);
+                                          // Hide the broken image and show fallback
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = 'none';
+                                          const parent = target.parentElement;
+                                          if (parent && !parent.querySelector('.avatar-fallback')) {
+                                            const fallback = document.createElement('div');
+                                            fallback.className = 'avatar-fallback absolute inset-0 h-12 w-12 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-purple-100';
+                                            fallback.textContent = assignee.name.charAt(0).toUpperCase();
+                                            parent.appendChild(fallback);
+                                          }
+                                }}
+                              />
+                            </div>
                                   ) : (
-                                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-purple-100">
                                       {assignee.name.charAt(0).toUpperCase()}
                                     </div>
                                   )}
-                                  <div>
-                                    <p className="text-sm font-semibold text-slate-900">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-bold text-slate-900 truncate">
                                       {currentStepName}
                                     </p>
-                                    <p className="text-xs text-slate-600 font-medium">
-                                      Waiting for <span className="font-semibold">{assignee.name}</span>
+                                    <p className="text-xs text-slate-600 font-semibold mt-0.5">
+                                      <span className="text-slate-500">Assigned to</span> <span className="text-purple-600 font-bold">{assignee.name}</span>
                                     </p>
                                   </div>
                                 </>
                               ) : (
-                                <div className="flex items-center gap-2">
-                                  <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center">
-                                    <User className="h-5 w-5 text-slate-400" />
+                                <div className="flex items-center gap-3">
+                                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center ring-2 ring-slate-200">
+                                    <User className="h-6 w-6 text-slate-500" />
                                   </div>
                                   <div>
-                                    <p className="text-sm font-semibold text-slate-900">
-                                      {currentStepName}
+                                    <p className="text-sm font-bold text-slate-900">
+                                      {currentStepName !== "Unknown Step" ? currentStepName : "Pending Assignment"}
                                     </p>
-                                    <p className="text-xs text-slate-500 font-medium">
+                                    <p className="text-xs text-slate-500 font-medium mt-0.5">
                                       No assignee
                                     </p>
                                   </div>

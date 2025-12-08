@@ -6,7 +6,7 @@ import {
   Zap, Sparkles, Eye, Rocket, Shield, Lock, 
   Code, Moon, ArrowRight, CheckCircle2, Layers,
   Brain, FileSpreadsheet, Calendar, MessageSquare,
-  Cpu, Network, Target, TrendingUp
+  Cpu, Network, Target, TrendingUp, BarChart3, Radio, Building2
 } from "lucide-react";
 import { LandingNavbar } from "@/components/layout/landing-navbar";
 import { LandingFooter } from "@/components/layout/landing-footer";
@@ -332,6 +332,187 @@ export default function FeaturesPage() {
                     <ArrowRight className="h-4 w-4" />
                   </motion.button>
                 </Link>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* NEW: AI Capabilities Section - Context-Aware Intelligence */}
+      <section className="relative py-32 sm:py-40 overflow-hidden bg-white">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-50/30 via-indigo-50/20 to-blue-50/30" />
+        
+        <div className="relative mx-auto max-w-[1600px] px-6">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
+            <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200/50 px-4 py-2 mb-6">
+              <Brain className="h-4 w-4 text-purple-600" />
+              <span className="text-sm font-semibold text-purple-700">AI Capabilities</span>
+            </div>
+            
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 mb-6">
+              More Than Just a Chatbot.{" "}
+              <span className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 bg-clip-text text-transparent">
+                A Data Analyst.
+              </span>
+            </h2>
+            
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-8">
+              Atomic Insight connects directly to your organization's live database to provide answers that matter.
+            </p>
+          </motion.div>
+
+          {/* Feature Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Card 1: The Analyst */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              whileHover={{ y: -4 }}
+              className="group relative rounded-2xl border border-slate-200 bg-white p-8 transition-all hover:border-purple-300 hover:shadow-xl overflow-hidden"
+            >
+              {/* Animated Background Gradient */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-br from-purple-50/0 via-purple-50/0 to-purple-50/0 group-hover:from-purple-50/40 group-hover:via-purple-50/20 group-hover:to-purple-50/10 transition-all duration-500"
+                initial={false}
+              />
+              
+              {/* Icon Container */}
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-100 to-purple-50 text-purple-600 mb-6">
+                <BarChart3 className="h-8 w-8" />
+                <motion.div
+                  className="absolute inset-0 rounded-2xl"
+                  animate={{
+                    opacity: [0.3, 0.6, 0.3],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                >
+                  <BarChart3 className="h-8 w-8 text-purple-400" />
+                </motion.div>
+              </div>
+              
+              <h3 className="relative text-2xl font-extrabold tracking-tight text-slate-900 mb-3">
+                Real-Time Diagnosis
+              </h3>
+              <p className="relative text-base leading-7 text-slate-600">
+                Don't guess why projects are late. Ask <em className="font-semibold text-slate-900">"Who is delaying the launch?"</em> and get a data-backed answer identifying specific bottlenecks and team load.
+              </p>
+              
+              <div className="relative mt-4">
+                <span className="inline-flex items-center rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700 border border-purple-200">
+                  For Managers
+                </span>
+              </div>
+            </motion.div>
+
+            {/* Card 2: The Watchtower */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              whileHover={{ y: -4 }}
+              className="group relative rounded-2xl border border-slate-200 bg-white p-8 transition-all hover:border-indigo-300 hover:shadow-xl overflow-hidden"
+            >
+              {/* Animated Background Gradient */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-br from-indigo-50/0 via-indigo-50/0 to-indigo-50/0 group-hover:from-indigo-50/40 group-hover:via-indigo-50/20 group-hover:to-indigo-50/10 transition-all duration-500"
+                initial={false}
+              />
+              
+              {/* Icon Container with Radar Animation */}
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-100 to-indigo-50 text-indigo-600 mb-6">
+                <Radio className="h-8 w-8" />
+                {/* Pulsing radar rings */}
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute inset-0 rounded-2xl border-2 border-indigo-400"
+                    animate={{
+                      scale: [1, 1.5, 1],
+                      opacity: [0.6, 0, 0.6],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeOut",
+                      delay: i * 0.4,
+                    }}
+                  />
+                ))}
+              </div>
+              
+              <h3 className="relative text-2xl font-extrabold tracking-tight text-slate-900 mb-3">
+                The Silent Observer
+              </h3>
+              <p className="relative text-base leading-7 text-slate-600">
+                You can't be everywhere. Atomic Insight monitors every run, 24/7. If a KPI drops or a process freezes, you get a gentle nudge instantly.
+              </p>
+              
+              <div className="relative mt-4">
+                <span className="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 border border-indigo-200">
+                  Proactive Nudges
+                </span>
+              </div>
+            </motion.div>
+
+            {/* Card 3: The Builder */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              whileHover={{ y: -4 }}
+              className="group relative rounded-2xl border border-slate-200 bg-white p-8 transition-all hover:border-blue-300 hover:shadow-xl overflow-hidden"
+            >
+              {/* Animated Background Gradient */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-br from-blue-50/0 via-blue-50/0 to-blue-50/0 group-hover:from-blue-50/40 group-hover:via-blue-50/20 group-hover:to-blue-50/10 transition-all duration-500"
+                initial={false}
+              />
+              
+              {/* Icon Container */}
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-blue-50 text-blue-600 mb-6">
+                <Building2 className="h-8 w-8" />
+                <motion.div
+                  className="absolute -top-1 -right-1"
+                  animate={{
+                    rotate: [0, 15, 0],
+                    scale: [1, 1.1, 1],
+                  }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                >
+                  <Sparkles className="h-4 w-4 text-blue-500" />
+                </motion.div>
+              </div>
+              
+              <h3 className="relative text-2xl font-extrabold tracking-tight text-slate-900 mb-3">
+                Text-to-Workflow
+              </h3>
+              <p className="relative text-base leading-7 text-slate-600">
+                Describe your process in plain English. The AI builds the forms, assigns the roles, and sets up the automation logic in seconds.
+              </p>
+              
+              <div className="relative mt-4">
+                <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-200">
+                  For Creators
+                </span>
               </div>
             </motion.div>
           </div>
