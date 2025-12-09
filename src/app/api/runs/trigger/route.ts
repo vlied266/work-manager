@@ -341,8 +341,30 @@ async function createTriggeredRun(
     },
   };
 
-  const runRef = await db.collection("active_runs").add(runData);
-  return runRef.id;
+  console.log(`[createTriggeredRun] Creating run document in Firestore...`);
+  console.log(`[createTriggeredRun] Run data summary:`, {
+    procedureId,
+    procedureTitle: procedure.title,
+    organizationId: procedure.organizationId,
+    status: runData.status,
+    currentStepIndex: runData.currentStepIndex,
+    stepsCount: runData.steps?.length || 0,
+  });
+  
+  try {
+    const runRef = await db.collection("active_runs").add(runData);
+    console.log(`[createTriggeredRun] ✅ Run document created with ID: ${runRef.id}`);
+    return runRef.id;
+  } catch (error: any) {
+    console.error(`[createTriggeredRun] ❌ Error creating run document:`, error);
+    console.error(`[createTriggeredRun] Error details:`, {
+      message: error?.message,
+      stack: error?.stack,
+      procedureId,
+      procedureTitle: procedure.title,
+    });
+    throw error; // Re-throw to be caught by caller
+  }
 }
 
 /**
