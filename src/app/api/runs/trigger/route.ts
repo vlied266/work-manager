@@ -78,20 +78,30 @@ export async function POST(req: NextRequest) {
         return path.replace(/^\/+|\/+$/g, '').toLowerCase();
       };
 
+      // Extract folder from file path for comparison
+      const extractFolderFromPath = (path: string): string => {
+        const lastSlash = path.lastIndexOf('/');
+        if (lastSlash === -1) return '';
+        return path.substring(0, lastSlash).replace(/^\/+|\/+$/g, '');
+      };
+
       // Check if the folder path matches (flexible matching)
       const normalizedFilePath = normalizePath(filePath);
       const normalizedConfigPath = configFolderPath ? normalizePath(configFolderPath) : '';
+      const fileFolder = normalizePath(extractFolderFromPath(filePath));
+      
+      console.log(`[Trigger] Comparing: fileFolder="${fileFolder}", configPath="${normalizedConfigPath}"`);
       
       const doesMatch = configFolderPath && (
-        // Exact match (normalized)
-        normalizedFilePath === normalizedConfigPath ||
+        // Folder extracted from file path matches config folder path (normalized)
+        fileFolder === normalizedConfigPath ||
         // File path starts with folder path (normalized)
         normalizedFilePath.startsWith(normalizedConfigPath + '/') ||
         // File path starts with folder path (original, with slashes)
-        filePath.startsWith(configFolderPath) ||
-        filePath.startsWith('/' + configFolderPath) ||
         filePath.startsWith(configFolderPath + '/') ||
         filePath.startsWith('/' + configFolderPath + '/') ||
+        filePath.startsWith(configFolderPath) ||
+        filePath.startsWith('/' + configFolderPath) ||
         // Folder path is a Google Drive folder ID and appears in file path
         (configFolderPath.match(/^[a-zA-Z0-9_-]+$/) && filePath.includes(configFolderPath))
       );
