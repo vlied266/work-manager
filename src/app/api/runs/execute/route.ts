@@ -410,7 +410,7 @@ export async function POST(req: NextRequest) {
             
             // Check if data is empty
             if (Object.keys(cleanData).length === 0) {
-              console.warn("[DB_INSERT] Warning: No data to insert. This may indicate a variable resolution issue.");
+              throw new Error("No data to insert. This may indicate a variable resolution issue or missing previous step output.");
             }
             
             // Check if all values are unresolved variables (still contain {{)
@@ -418,7 +418,12 @@ export async function POST(req: NextRequest) {
               typeof value === "string" && value.includes("{{")
             );
             if (unresolvedVars.length > 0) {
-              console.warn("[DB_INSERT] Warning: Some variables were not resolved:", unresolvedVars);
+              console.error("[DB_INSERT] Error: Some variables were not resolved:", unresolvedVars);
+              throw new Error(
+                `Failed to resolve variables: ${unresolvedVars.map(([k, v]) => `${k}=${v}`).join(", ")}. ` +
+                `This usually means the previous step (AI_PARSE) failed or did not produce the expected output. ` +
+                `Please check the previous step's execution result.`
+              );
             }
             
             if (!currentStep.config.collectionName) {
