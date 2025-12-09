@@ -64,9 +64,31 @@ export async function POST(req: NextRequest) {
     for (const procedureDoc of proceduresSnapshot.docs) {
       const procedureData = procedureDoc.data() as Procedure;
       const triggerConfig = procedureData.trigger?.config;
+      const configFolderPath = triggerConfig?.folderPath;
 
-      // Check if the folder path matches
-      if (triggerConfig?.folderPath && filePath.startsWith(triggerConfig.folderPath)) {
+      // Normalize folder paths for comparison
+      const normalizePath = (path: string) => {
+        // Remove leading/trailing slashes and normalize
+        return path.replace(/^\/+|\/+$/g, '').toLowerCase();
+      };
+
+      // Check if the folder path matches (flexible matching)
+      const doesMatch = configFolderPath && (
+        // Exact match (normalized)
+        normalizePath(filePath) === normalizePath(configFolderPath) ||
+        // File path starts with folder path (normalized)
+        normalizePath(filePath).startsWith(normalizePath(configFolderPath) + '/') ||
+        // File path starts with folder path (original, with slashes)
+        filePath.startsWith(configFolderPath) ||
+        filePath.startsWith('/' + configFolderPath) ||
+        filePath.startsWith(configFolderPath + '/') ||
+        filePath.startsWith('/' + configFolderPath + '/') ||
+        // Folder path is a Google Drive folder ID and appears in file path
+        (configFolderPath.match(/^[a-zA-Z0-9_-]+$/) && filePath.includes(configFolderPath))
+      );
+
+      if (doesMatch) {
+        console.log(`[Trigger] Matching procedure: ${procedureData.title}, folderPath: ${configFolderPath}, filePath: ${filePath}`);
         try {
           // Create a new run for this procedure
           const runId = await createTriggeredRun(
