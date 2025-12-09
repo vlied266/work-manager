@@ -18,6 +18,7 @@ interface ParseDocumentRequest {
   fieldsToExtract: string[]; // List of field names to extract (e.g., ["invoiceDate", "amount", "vendor"])
   fileType?: "pdf" | "excel" | "image"; // Optional file type hint
   orgId?: string; // Organization ID for plan limits
+  fileId?: string; // Google Drive file ID if available
 }
 
 // Schema for extracted data
@@ -110,7 +111,7 @@ export async function POST(req: NextRequest) {
     // Step 1: Extract content based on file type
     switch (detectedFileType) {
       case "pdf":
-        extractedText = await extractTextFromPDF(fileUrl);
+        extractedText = await extractTextFromPDF(fileUrl, fileId);
         break;
       case "excel":
         extractedData = await extractDataFromExcel(fileUrl);

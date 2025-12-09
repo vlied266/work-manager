@@ -382,6 +382,7 @@ export async function POST(req: NextRequest) {
             
             // Call parse-document API
             const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+            console.log(`[AI_PARSE] Calling parse-document API with fileUrl: ${fileUrl}, fileId: ${fileId}`);
             const parseResponse = await fetch(`${baseUrl}/api/ai/parse-document`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -390,6 +391,7 @@ export async function POST(req: NextRequest) {
                 fieldsToExtract: currentStep.config.fieldsToExtract || [],
                 fileType: currentStep.config.fileType,
                 orgId,
+                fileId, // Pass fileId for Google Drive API access
               }),
             });
             
