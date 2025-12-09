@@ -323,8 +323,14 @@ export async function POST(req: NextRequest) {
             }
             
             if (!fileUrl) {
+              console.error("[AI_PARSE] File URL not found. Trigger context:", run.triggerContext);
+              console.error("[AI_PARSE] Initial input:", run.initialInput);
+              console.error("[AI_PARSE] Step config:", currentStep.config);
               throw new Error("File URL not found. Please ensure the file source is configured correctly.");
             }
+            
+            console.log(`[AI_PARSE] Parsing document from URL: ${fileUrl}`);
+            console.log(`[AI_PARSE] Fields to extract:`, currentStep.config.fieldsToExtract);
             
             // Call parse-document API
             const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -341,10 +347,21 @@ export async function POST(req: NextRequest) {
             
             if (!parseResponse.ok) {
               const errorData = await parseResponse.json().catch(() => ({}));
-              throw new Error(errorData.error || errorData.message || "Failed to parse document");
+              console.error(`[AI_PARSE] Parse API error:`, errorData);
+              throw new Error(errorData.error || errorData.message || `Failed to parse document: ${parseResponse.status} ${parseResponse.statusText}`);
             }
             
             const parseResult = await parseResponse.json();
+            console.log(`[AI_PARSE] Parse result:`, {
+              success: parseResult.success,
+              extractedData: parseResult.extractedData,
+              fieldsExtracted: parseResult.fieldsExtracted,
+            });
+            
+            if (!parseResult.extractedData || Object.keys(parseResult.extractedData).length === 0) {
+              console.warn("[AI_PARSE] Warning: No data extracted from document. This may indicate an empty file or extraction failure.");
+            }
+            
             executionResult = {
               success: true,
               parsed: true,
@@ -355,6 +372,8 @@ export async function POST(req: NextRequest) {
           }
 
           case "DB_INSERT": {
+            console.log(`[DB_INSERT] Starting DB insert for collection: ${currentStep.config.collectionName}`);
+            
             // Build run context for variable resolution
             const runContext = (run.logs || []).reduce((acc: any, log, idx) => {
               const step = procedure.steps[idx];
@@ -367,6 +386,9 @@ export async function POST(req: NextRequest) {
               return acc;
             }, {});
             
+            console.log(`[DB_INSERT] Run context:`, JSON.stringify(runContext, null, 2));
+            console.log(`[DB_INSERT] Step config.data:`, currentStep.config.data);
+            
             // Resolve data mapping variables
             const resolvedData = resolveConfig(
               currentStep.config.data || {},
@@ -374,12 +396,29 @@ export async function POST(req: NextRequest) {
               procedure.steps
             );
             
+            console.log(`[DB_INSERT] Resolved data:`, resolvedData);
+            
             // Remove _sources metadata if present
             const cleanData: Record<string, any> = {};
             for (const [key, value] of Object.entries(resolvedData)) {
               if (key !== "_sources") {
                 cleanData[key] = value;
               }
+            }
+            
+            console.log(`[DB_INSERT] Clean data to insert:`, cleanData);
+            
+            // Check if data is empty
+            if (Object.keys(cleanData).length === 0) {
+              console.warn("[DB_INSERT] Warning: No data to insert. This may indicate a variable resolution issue.");
+            }
+            
+            // Check if all values are unresolved variables (still contain {{)
+            const unresolvedVars = Object.entries(cleanData).filter(([key, value]) => 
+              typeof value === "string" && value.includes("{{")
+            );
+            if (unresolvedVars.length > 0) {
+              console.warn("[DB_INSERT] Warning: Some variables were not resolved:", unresolvedVars);
             }
             
             if (!currentStep.config.collectionName) {
@@ -401,6 +440,8 @@ export async function POST(req: NextRequest) {
             const collectionDoc = collectionsSnapshot.docs[0];
             const collectionId = collectionDoc.id;
             
+            console.log(`[DB_INSERT] Found collection ID: ${collectionId}`);
+            
             // Insert into Firestore records collection
             const collectionRef = db.collection("records");
             const newRecord = {
@@ -411,6 +452,7 @@ export async function POST(req: NextRequest) {
             };
             
             const recordRef = await collectionRef.add(newRecord);
+            console.log(`[DB_INSERT] Successfully inserted record: ${recordRef.id}`);
             
             executionResult = {
               success: true,

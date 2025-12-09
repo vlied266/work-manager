@@ -203,28 +203,50 @@ function detectFileType(fileUrl: string): "pdf" | "excel" | "image" {
  */
 async function extractTextFromPDF(fileUrl: string): Promise<string> {
   try {
+    console.log(`[PDF Parser] Attempting to fetch PDF from: ${fileUrl}`);
+    
     // Fetch the PDF file
     const response = await fetch(fileUrl);
     if (!response.ok) {
-      throw new Error(`Failed to fetch PDF: ${response.statusText}`);
+      const errorText = await response.text().catch(() => "");
+      console.error(`[PDF Parser] Failed to fetch PDF: ${response.status} ${response.statusText}`, errorText.substring(0, 200));
+      throw new Error(`Failed to fetch PDF: ${response.status} ${response.statusText}. URL: ${fileUrl}`);
     }
+    
+    const contentType = response.headers.get("content-type");
+    console.log(`[PDF Parser] Content-Type: ${contentType}`);
     
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    
+    if (buffer.length === 0) {
+      throw new Error(`PDF file is empty. URL: ${fileUrl}`);
+    }
+    
+    console.log(`[PDF Parser] File size: ${buffer.length} bytes`);
 
     // Try to use pdf-parse if available, otherwise use a fallback
     try {
       const pdfParse = require("pdf-parse");
       const pdfData = await pdfParse(buffer);
-      return pdfData.text;
-    } catch (pdfParseError) {
+      const extractedText = pdfData.text || "";
+      console.log(`[PDF Parser] Extracted ${extractedText.length} characters from PDF`);
+      
+      if (extractedText.length === 0) {
+        console.warn("[PDF Parser] Warning: PDF appears to be empty or image-based. Trying Vision API fallback...");
+        return await extractTextFromImage(fileUrl);
+      }
+      
+      return extractedText;
+    } catch (pdfParseError: any) {
       // Fallback: Use OpenAI Vision API to extract text from PDF
-      // Note: This is a workaround if pdf-parse is not installed
-      console.warn("pdf-parse not available, using Vision API fallback");
+      // Note: This is a workaround if pdf-parse is not installed or PDF is image-based
+      console.warn(`[PDF Parser] pdf-parse error: ${pdfParseError.message}. Using Vision API fallback...`);
       return await extractTextFromImage(fileUrl);
     }
   } catch (error: any) {
-    throw new Error(`Failed to extract text from PDF: ${error.message}`);
+    console.error(`[PDF Parser] Error extracting text from PDF:`, error);
+    throw new Error(`Failed to extract text from PDF: ${error.message}. URL: ${fileUrl}`);
   }
 }
 
@@ -302,6 +324,18 @@ async function extractFieldsWithAI(
   fieldsToExtract: string[],
   fileType: string
 ): Promise<Record<string, any>> {
+  console.log(`[AI Extractor] Extracting ${fieldsToExtract.length} fields from ${fileType} content (${content.length} chars)`);
+  
+  if (!content || content.trim().length === 0) {
+    console.warn("[AI Extractor] Warning: Content is empty. AI may not be able to extract fields.");
+    // Return null values for all fields
+    const emptyResult: Record<string, any> = {};
+    fieldsToExtract.forEach(field => {
+      emptyResult[field] = null;
+    });
+    return emptyResult;
+  }
+  
   const prompt = `You are a data extraction specialist. Extract the following fields from the provided ${fileType} content and return them as a JSON object.
 
 Fields to extract:
@@ -319,8 +353,10 @@ Return a JSON object with the extracted fields. If a field is not found, use nul
       prompt,
     });
 
+    console.log(`[AI Extractor] Successfully extracted fields:`, Object.keys(object));
     return object;
   } catch (error: any) {
+    console.error(`[AI Extractor] Error extracting fields with AI:`, error);
     throw new Error(`Failed to extract fields with AI: ${error.message}`);
   }
 }
