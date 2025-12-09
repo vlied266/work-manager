@@ -118,8 +118,8 @@ export async function POST(req: NextRequest) {
         startsWithNormalized: normalizedFilePath.startsWith(normalizedConfigPath + '/'),
         startsWithOriginal: filePath.startsWith(configFolderPath + '/'),
         startsWithSlash: filePath.startsWith('/' + configFolderPath + '/'),
-        startsWithNoSlash: filePath.startsWith(configFolderPath),
-        startsWithSlashNoSlash: filePath.startsWith('/' + configFolderPath),
+        startsWithNoSlash: configFolderPath ? filePath.startsWith(configFolderPath) : false,
+        startsWithSlashNoSlash: configFolderPath ? filePath.startsWith('/' + configFolderPath) : false,
         driveIdMatch: configFolderPath ? (configFolderPath.match(/^[a-zA-Z0-9_-]+$/) && filePath.includes(configFolderPath)) : false,
       });
 
