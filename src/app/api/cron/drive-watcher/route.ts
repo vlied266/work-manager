@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     const procedures = activeProceduresSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
-    }));
+    })) as any[];
 
     // Group procedures by folder path and organization
     const folderWatchers = new Map<string, any[]>();
