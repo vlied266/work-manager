@@ -27,8 +27,10 @@ interface SortableStepItemProps {
 }
 
 function SortableStepItem({ step, index, isSelected, onClick, onDelete, validationError }: SortableStepItemProps) {
-  const metadata = ATOMIC_ACTION_METADATA[step.action];
-  const IconComponent = (LucideIcons as any)[metadata.icon] || LucideIcons.Type;
+  const metadata = (step.action && step.action in ATOMIC_ACTION_METADATA) 
+    ? ATOMIC_ACTION_METADATA[step.action as AtomicAction] 
+    : null;
+  const IconComponent = metadata ? ((LucideIcons as any)[metadata.icon] || LucideIcons.Type) : LucideIcons.Type;
   const [showTooltip, setShowTooltip] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -75,9 +77,9 @@ function SortableStepItem({ step, index, isSelected, onClick, onDelete, validati
         <div className="flex items-center gap-4">
           {/* Icon */}
           <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-            metadata.color === "blue" ? "bg-blue-100 text-blue-600" :
-            metadata.color === "green" ? "bg-green-100 text-green-600" :
-            metadata.color === "yellow" ? "bg-yellow-100 text-yellow-600" :
+            metadata?.color === "blue" ? "bg-blue-100 text-blue-600" :
+            metadata?.color === "green" ? "bg-green-100 text-green-600" :
+            metadata?.color === "yellow" ? "bg-yellow-100 text-yellow-600" :
             "bg-purple-100 text-purple-600"
           }`}>
             <IconComponent className="h-5 w-5" strokeWidth={2} />

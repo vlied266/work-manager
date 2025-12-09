@@ -22,6 +22,7 @@ import {
   Target,
   User,
   FileText,
+  Database,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Logo from "@/components/Logo";
@@ -35,6 +36,7 @@ const ADMIN_NAVIGATION = [
   { name: "Inbox", href: "/inbox", icon: Inbox },
   { name: "Studio", href: "/studio", icon: Sparkles },
   { name: "Explore Templates", href: "/explore-templates", icon: FileText },
+  { name: "Database", href: "/data/schema", icon: Database },
   { name: "Monitor", href: "/monitor", icon: Monitor },
   { name: "History", href: "/history", icon: Clock },
   { name: "Analytics", href: "/analytics", icon: TrendingUp },

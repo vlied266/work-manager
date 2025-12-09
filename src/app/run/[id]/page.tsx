@@ -21,6 +21,7 @@ import { TaskChat } from "@/components/run/task-chat";
 import { ContextPanel } from "@/components/run/context-panel";
 import { generateRunCertificate, exportRunToCSV } from "@/lib/exporter";
 import { AddToCalendarButton } from "@/components/run/add-to-calendar-button";
+import { isAutoStep, isHumanStep } from "@/lib/constants";
 
 export default function RunPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -244,6 +245,50 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
     }
   }, [run?.status]);
 
+  // Auto-execute AUTO steps when run is loaded
+  useEffect(() => {
+    if (!run || !procedure || !userId || submitting) return;
+    
+    const currentStep = procedure.steps[run.currentStepIndex];
+    if (!currentStep) return;
+
+    // Check if current step is AUTO and run is IN_PROGRESS
+    if (isAutoStep(currentStep.action) && run.status === "IN_PROGRESS") {
+      // Auto-execute the step
+      const autoExecute = async () => {
+        try {
+          const orgId = run.organizationId || "";
+          if (!orgId) return;
+
+          const executeResponse = await fetch("/api/runs/execute", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              runId: run.id,
+              stepId: currentStep.id,
+              output: {},
+              outcome: "SUCCESS",
+              orgId,
+              userId,
+            }),
+          });
+
+          if (executeResponse.ok) {
+            const result = await executeResponse.json();
+            // If should continue, the API will handle the next step
+            // The run will be updated via onSnapshot
+          }
+        } catch (error) {
+          console.error("Error auto-executing step:", error);
+        }
+      };
+
+      // Small delay to ensure run is fully loaded
+      const timeout = setTimeout(autoExecute, 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [run?.id, run?.currentStepIndex, run?.status, procedure?.steps, userId, submitting]);
+
   const handleCompleteStep = async (outcome: "SUCCESS" | "FAILURE" | "FLAGGED", autoFlagged = false) => {
     if (!run || !procedure || !currentStep) return;
 
@@ -257,6 +302,45 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
 
     setSubmitting(true);
     try {
+      // Use new execution API for proper Human/Auto step handling
+      const orgId = run.organizationId || "";
+      if (orgId && userId) {
+        try {
+          const executeResponse = await fetch("/api/runs/execute", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              runId: run.id,
+              stepId: currentStep.id,
+              output: stepOutput,
+              outcome,
+              orgId,
+              userId,
+            }),
+          });
+
+          if (executeResponse.ok) {
+            const result = await executeResponse.json();
+            // If it's an AUTO step and should continue, recursively execute next AUTO steps
+            if (result.shouldContinue && result.nextStepId && isAutoStep(currentStep.action)) {
+              // Auto-execute next AUTO step
+              setTimeout(async () => {
+                const nextStep = procedure.steps.find(s => s.id === result.nextStepId);
+                if (nextStep && isAutoStep(nextStep.action)) {
+                  await handleCompleteStep("SUCCESS", true);
+                }
+              }, 500);
+            }
+            setSubmitting(false);
+            return; // Execution API handled everything
+          }
+        } catch (apiError) {
+          console.error("Error calling execution API, falling back to client-side logic:", apiError);
+          // Fall through to client-side logic
+        }
+      }
+
+      // Fallback: Original client-side execution logic (for backward compatibility)
       const outputVariableName = currentStep.config.outputVariableName || `step_${run.currentStepIndex + 1}_output`;
       const updatedContext = setContextValue(runContext, outputVariableName, stepOutput);
 
@@ -697,6 +781,7 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
                     setValidationError={setValidationError}
                     validationError={validationError}
                     run={run}
+                    procedure={procedure}
                     handleCompleteStep={handleCompleteStep}
                     submitting={submitting}
                     runId={run?.id}

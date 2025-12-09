@@ -15,6 +15,7 @@ const PROTECTED_PATHS = [
   "/profile",
   "/notifications",
   "/admin",
+  "/data",
 ];
 
 const isProtected = (pathname: string) =>
@@ -52,6 +53,7 @@ export const config = {
     "/profile/:path*",
     "/notifications/:path*",
     "/admin/:path*",
+    "/data/:path*",
   ],
 };
 

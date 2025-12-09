@@ -23,6 +23,8 @@ import { TableInputRenderer } from "./table-input-renderer";
 import { GatewayRenderer } from "./gateway-renderer";
 import { AITaskRenderer } from "./ai-task-renderer";
 import { GoogleSheetRenderer } from "./google-sheet-renderer";
+import { DBInsertRenderer } from "./db-insert-renderer";
+import { AIParseRenderer } from "./ai-parse-renderer";
 import { EvidenceUpload } from "./evidence-upload";
 import { DataSourceBadge } from "./data-source-badge";
 
@@ -35,6 +37,7 @@ interface TaskRendererProps {
   setValidationError: (error: string | null) => void;
   validationError?: string | null;
   run: any;
+  procedure?: any; // Procedure object with steps
   handleCompleteStep: (outcome: "SUCCESS" | "FAILURE" | "FLAGGED", autoFlagged?: boolean) => void;
   submitting: boolean;
   runId?: string;
@@ -50,6 +53,7 @@ export function TaskRenderer({
   setValidationError,
   validationError,
   run,
+  procedure,
   handleCompleteStep,
   submitting,
   runId,
@@ -333,6 +337,37 @@ export function TaskRenderer({
             setOutput(sheetOutput);
             handleCompleteWithEvidence("SUCCESS");
           }}
+        />
+      );
+      break;
+
+    case "DB_INSERT":
+      // Database insert task
+      taskContent = (
+        <DBInsertRenderer
+          step={{ ...step, config: stepConfig }}
+          output={output}
+          setOutput={setOutput}
+          runLogs={run?.logs || []}
+          procedureSteps={procedure?.steps || []}
+          handleCompleteStep={handleCompleteWithEvidence}
+          submitting={submitting || (requiresEvidence && !evidenceUrl)}
+        />
+      );
+      break;
+
+    case "AI_PARSE":
+      // AI Document Parser task
+      taskContent = (
+        <AIParseRenderer
+          step={{ ...step, config: stepConfig }}
+          output={output}
+          setOutput={setOutput}
+          runLogs={run?.logs || []}
+          procedureSteps={procedure?.steps || []}
+          handleCompleteStep={handleCompleteWithEvidence}
+          submitting={submitting || (requiresEvidence && !evidenceUrl)}
+          runContext={runContext}
         />
       );
       break;

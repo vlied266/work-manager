@@ -25,7 +25,8 @@ export function useProcedureValidation(steps: AtomicStep[]): ValidationResult {
       switch (step.action) {
         case "INPUT":
           // INPUT requires label and data type
-          if (!stepConfig.fieldLabel || stepConfig.fieldLabel.trim() === "") {
+          const fieldLabel = stepConfig.fieldLabel;
+          if (!fieldLabel || typeof fieldLabel !== "string" || fieldLabel.trim() === "") {
             errors.push({
               stepId: step.id,
               message: "Missing field label. Please provide a label for this input field.",
@@ -48,13 +49,15 @@ export function useProcedureValidation(steps: AtomicStep[]): ValidationResult {
 
         case "COMPARE":
           // COMPARE requires targetA and targetB
-          if (!stepConfig.targetA || stepConfig.targetA.trim() === "") {
+          const targetA = stepConfig.targetA;
+          if (!targetA || typeof targetA !== "string" || targetA.trim() === "") {
             errors.push({
               stepId: step.id,
               message: "Missing Target A. Please select a variable for the first comparison target.",
             });
           }
-          if (!stepConfig.targetB || stepConfig.targetB.trim() === "") {
+          const targetB = stepConfig.targetB;
+          if (!targetB || typeof targetB !== "string" || targetB.trim() === "") {
             errors.push({
               stepId: step.id,
               message: "Missing Target B. Please select a variable for the second comparison target.",
@@ -65,7 +68,8 @@ export function useProcedureValidation(steps: AtomicStep[]): ValidationResult {
         case "AUTHORIZE":
         case "NEGOTIATE":
           // AUTHORIZE/NEGOTIATE requires instructions
-          if (!stepConfig.instruction || stepConfig.instruction.trim() === "") {
+          const instruction = stepConfig.instruction;
+          if (!instruction || typeof instruction !== "string" || instruction.trim() === "") {
             errors.push({
               stepId: step.id,
               message: "Missing instructions. Please provide approval instructions for this step.",
@@ -75,7 +79,8 @@ export function useProcedureValidation(steps: AtomicStep[]): ValidationResult {
 
         case "GOOGLE_SHEET_APPEND":
           // GOOGLE_SHEET_APPEND requires sheetId
-          if (!stepConfig.sheetId || stepConfig.sheetId.trim() === "") {
+          const sheetId = stepConfig.sheetId;
+          if (!sheetId || typeof sheetId !== "string" || sheetId.trim() === "") {
             errors.push({
               stepId: step.id,
               message: "Missing Google Sheet. Please select a Google Sheet in the configuration panel.",

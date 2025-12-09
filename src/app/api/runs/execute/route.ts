@@ -1,0 +1,684 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getAdminDb } from "@/lib/firebase-admin";
+import { Timestamp } from "firebase-admin/firestore";
+import { ActiveRun, Procedure, AtomicStep } from "@/types/schema";
+import { isHumanStep, isAutoStep, getStepExecutionType } from "@/lib/constants";
+import { resolveConfig } from "@/lib/engine/resolver";
+
+interface ExecuteStepRequest {
+  runId: string;
+  stepId: string;
+  output?: any;
+  outcome: "SUCCESS" | "FAILURE" | "FLAGGED";
+  orgId: string;
+  userId: string;
+}
+
+/**
+ * Execution Engine API
+ * 
+ * Handles step execution with Human-in-the-loop architecture:
+ * - HUMAN steps: Create UserTask, send notification, pause workflow (WAITING_FOR_USER)
+ * - AUTO steps: Execute immediately, continue to next step automatically
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const body: ExecuteStepRequest = await req.json();
+    const { runId, stepId, output, outcome, orgId, userId } = body;
+
+    if (!runId || !stepId || !orgId || !userId) {
+      return NextResponse.json(
+        { error: "Missing required fields: runId, stepId, orgId, userId" },
+        { status: 400 }
+      );
+    }
+
+    const db = getAdminDb();
+
+    // Fetch the run
+    const runDoc = await db.collection("active_runs").doc(runId).get();
+    if (!runDoc.exists) {
+      return NextResponse.json(
+        { error: "Run not found" },
+        { status: 404 }
+      );
+    }
+
+    const run = runDoc.data() as ActiveRun;
+    
+    // Verify organization match
+    if (run.organizationId !== orgId) {
+      return NextResponse.json(
+        { error: "Run does not belong to this organization" },
+        { status: 403 }
+      );
+    }
+
+    // Fetch the procedure
+    const procedureDoc = await db.collection("procedures").doc(run.procedureId).get();
+    if (!procedureDoc.exists) {
+      return NextResponse.json(
+        { error: "Procedure not found" },
+        { status: 404 }
+      );
+    }
+
+    const procedure = procedureDoc.data() as Procedure;
+    const currentStep = procedure.steps.find((s) => s.id === stepId);
+
+    if (!currentStep) {
+      return NextResponse.json(
+        { error: "Step not found in procedure" },
+        { status: 404 }
+      );
+    }
+
+    const stepType = getStepExecutionType(currentStep.action);
+
+    // Build run context for variable resolution (include trigger context)
+    const runContext = (run.logs || []).reduce((acc: any, log, idx) => {
+      const step = procedure.steps[idx];
+      if (step) {
+        const varName = step.config.outputVariableName || `step_${idx + 1}_output`;
+        acc[varName] = log.output;
+        acc[`step_${idx + 1}_output`] = log.output;
+        acc[`step_${idx + 1}`] = { output: log.output };
+      }
+      return acc;
+    }, {});
+    
+    // Add trigger context if available
+    if (run.triggerContext) {
+      runContext.trigger = run.triggerContext;
+    }
+    if (run.initialInput) {
+      runContext.initialInput = run.initialInput;
+    }
+    
+    // Add log entry
+    const newLog = {
+      stepId: currentStep.id,
+      stepTitle: currentStep.title,
+      action: currentStep.action,
+      output: output || {},
+      timestamp: Timestamp.now(),
+      outcome,
+      executedBy: userId,
+      executionType: stepType,
+    };
+
+    const updatedLogs = [...(run.logs || []), newLog];
+
+    // Calculate next step index
+    let nextStepIndex = run.currentStepIndex + 1;
+    let newStatus: ActiveRun["status"] = "IN_PROGRESS";
+
+    // Handle routing logic (if step has routes)
+    if (currentStep.routes) {
+      const routes = currentStep.routes;
+      let targetStepId: string | "COMPLETED" | undefined;
+
+      if (outcome === "SUCCESS" && routes.onSuccessStepId) {
+        targetStepId = routes.onSuccessStepId;
+      } else if ((outcome === "FAILURE" || outcome === "FLAGGED") && routes.onFailureStepId) {
+        targetStepId = routes.onFailureStepId;
+      } else if (routes.conditions && routes.conditions.length > 0) {
+        // Evaluate conditions (simplified - would need context resolution)
+        // For now, use default next step
+        targetStepId = routes.defaultNextStepId;
+      } else if (routes.defaultNextStepId) {
+        targetStepId = routes.defaultNextStepId;
+      }
+
+      if (targetStepId) {
+        if (targetStepId === "COMPLETED") {
+          newStatus = "COMPLETED";
+          nextStepIndex = run.currentStepIndex;
+        } else {
+          const targetStepIndex = procedure.steps.findIndex((s) => s.id === targetStepId);
+          if (targetStepIndex !== -1) {
+            nextStepIndex = targetStepIndex;
+          }
+        }
+      }
+    }
+
+    // Check if workflow is complete
+    if (outcome === "FLAGGED") {
+      newStatus = "FLAGGED";
+      if (!currentStep.routes?.onFailureStepId) {
+        nextStepIndex = run.currentStepIndex;
+      }
+    } else if (nextStepIndex >= procedure.steps.length) {
+      newStatus = "COMPLETED";
+    }
+
+    // CASE A: HUMAN STEP (Interactive) - Pause and wait for user
+    if (stepType === "HUMAN") {
+      // Create UserTask record (if not already exists)
+      const taskId = `task-${runId}-${stepId}`;
+      const taskRef = db.collection("user_tasks").doc(taskId);
+      const taskDoc = await taskRef.get();
+
+      if (!taskDoc.exists) {
+        // Determine assignee
+        const assignment = currentStep.assignment || 
+          (currentStep.assigneeType ? {
+            type: currentStep.assigneeType === "TEAM" ? "TEAM_QUEUE" : 
+                  currentStep.assigneeType === "SPECIFIC_USER" ? "SPECIFIC_USER" : "STARTER",
+            assigneeId: currentStep.assigneeId,
+          } : null);
+
+        let assigneeId: string | null = null;
+        let assigneeType: "USER" | "TEAM" | null = null;
+
+        if (assignment) {
+          if (assignment.type === "STARTER") {
+            assigneeId = run.startedBy || userId;
+            assigneeType = "USER";
+          } else if (assignment.type === "SPECIFIC_USER" && assignment.assigneeId) {
+            assigneeId = assignment.assigneeId;
+            assigneeType = "USER";
+          } else if (assignment.type === "TEAM_QUEUE" && assignment.assigneeId) {
+            assigneeId = assignment.assigneeId;
+            assigneeType = "TEAM";
+          }
+        }
+
+        // Get assignee email
+        let assigneeEmail: string | null = null;
+        if (assigneeType === "USER" && assigneeId) {
+          const userDoc = await db.collection("users").doc(assigneeId).get();
+          if (userDoc.exists) {
+            assigneeEmail = userDoc.data()?.email || null;
+          }
+        }
+
+        // Create UserTask
+        await taskRef.set({
+          runId,
+          stepId,
+          procedureId: run.procedureId,
+          organizationId: orgId,
+          assigneeId,
+          assigneeEmail,
+          assigneeType: assigneeType || "USER",
+          status: "PENDING",
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        });
+
+        // Send notification to assignee
+        if (assigneeId && assigneeType === "USER") {
+          await db.collection("notifications").add({
+            recipientId: assigneeId,
+            triggerBy: {
+              userId: userId,
+              name: "System",
+            },
+            type: "ASSIGNMENT",
+            title: `New task: ${currentStep.title}`,
+            message: `You have been assigned a task in "${run.title || run.procedureTitle}"`,
+            link: `/run/${runId}`,
+            isRead: false,
+            createdAt: Timestamp.now(),
+            runId,
+            stepId,
+          });
+        }
+      }
+
+      // Update run status to WAITING_FOR_USER
+      const updateData: any = {
+        currentStepIndex: nextStepIndex,
+        status: "WAITING_FOR_USER" as ActiveRun["status"],
+        logs: updatedLogs,
+      };
+
+      // Set assignee for next step
+      if (nextStepIndex < procedure.steps.length) {
+        const nextStep = procedure.steps[nextStepIndex];
+        const nextAssignment = nextStep.assignment || 
+          (nextStep.assigneeType ? {
+            type: nextStep.assigneeType === "TEAM" ? "TEAM_QUEUE" : 
+                  nextStep.assigneeType === "SPECIFIC_USER" ? "SPECIFIC_USER" : "STARTER",
+            assigneeId: nextStep.assigneeId,
+          } : null);
+
+        if (nextAssignment) {
+          if (nextAssignment.type === "STARTER") {
+            updateData.currentAssigneeId = run.startedBy || userId;
+            updateData.assigneeType = "USER";
+          } else if (nextAssignment.type === "SPECIFIC_USER" && nextAssignment.assigneeId) {
+            updateData.currentAssigneeId = nextAssignment.assigneeId;
+            updateData.assigneeType = "USER";
+          } else if (nextAssignment.type === "TEAM_QUEUE" && nextAssignment.assigneeId) {
+            updateData.currentAssigneeId = nextAssignment.assigneeId;
+            updateData.assigneeType = "TEAM";
+          }
+        }
+      }
+
+      await db.collection("active_runs").doc(runId).update(updateData);
+
+      return NextResponse.json({
+        success: true,
+        message: "Human step completed. Workflow paused waiting for user.",
+        status: "WAITING_FOR_USER",
+        nextStepIndex,
+        requiresUserAction: true,
+      });
+    }
+
+    // CASE B: AUTO STEP (System) - Execute immediately and continue
+    if (stepType === "AUTO") {
+      // Execute the automated step logic based on action type
+      let executionResult: any = { success: true };
+
+      try {
+        switch (currentStep.action) {
+          case "AI_PARSE": {
+            // Build run context for variable resolution
+            const runContext = (run.logs || []).reduce((acc: any, log, idx) => {
+              const step = procedure.steps[idx];
+              if (step) {
+                const varName = step.config.outputVariableName || `step_${idx + 1}_output`;
+                acc[varName] = log.output;
+                acc[`step_${idx + 1}_output`] = log.output;
+                acc[`step_${idx + 1}`] = { output: log.output };
+              }
+              return acc;
+            }, {});
+            
+            // Add trigger context if available
+            if (run.triggerContext) {
+              runContext.trigger = run.triggerContext;
+            }
+            if (run.initialInput) {
+              runContext.initialInput = run.initialInput;
+            }
+            
+            // Resolve fileUrl from config
+            const resolvedConfig = resolveConfig(
+              currentStep.config,
+              run.logs || [],
+              procedure.steps
+            );
+            
+            // Handle TRIGGER_EVENT fileSourceStepId
+            let fileUrl: string | undefined;
+            if (currentStep.config.fileSourceStepId === "TRIGGER_EVENT") {
+              // Get file from trigger context
+              fileUrl = run.triggerContext?.file || run.triggerContext?.fileUrl || run.initialInput?.fileUrl || run.initialInput?.filePath;
+            } else if (currentStep.config.fileSourceStepId) {
+              // Get file from previous step
+              const sourceStepId = currentStep.config.fileSourceStepId;
+              const sourceStepIndex = procedure.steps.findIndex(s => s.id === sourceStepId);
+              if (sourceStepIndex >= 0 && run.logs[sourceStepIndex]) {
+                const sourceOutput = run.logs[sourceStepIndex].output;
+                fileUrl = sourceOutput?.fileUrl || sourceOutput?.filePath || sourceOutput?.file;
+              }
+            } else if (resolvedConfig.fileUrl) {
+              fileUrl = resolvedConfig.fileUrl;
+            }
+            
+            if (!fileUrl) {
+              throw new Error("File URL not found. Please ensure the file source is configured correctly.");
+            }
+            
+            // Call parse-document API
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+            const parseResponse = await fetch(`${baseUrl}/api/ai/parse-document`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                fileUrl,
+                fieldsToExtract: currentStep.config.fieldsToExtract || [],
+                fileType: currentStep.config.fileType,
+                orgId,
+              }),
+            });
+            
+            if (!parseResponse.ok) {
+              const errorData = await parseResponse.json().catch(() => ({}));
+              throw new Error(errorData.error || errorData.message || "Failed to parse document");
+            }
+            
+            const parseResult = await parseResponse.json();
+            executionResult = {
+              success: true,
+              parsed: true,
+              extractedData: parseResult.extractedData,
+              fileType: parseResult.fileType,
+            };
+            break;
+          }
+
+          case "DB_INSERT": {
+            // Build run context for variable resolution
+            const runContext = (run.logs || []).reduce((acc: any, log, idx) => {
+              const step = procedure.steps[idx];
+              if (step) {
+                const varName = step.config.outputVariableName || `step_${idx + 1}_output`;
+                acc[varName] = log.output;
+                acc[`step_${idx + 1}_output`] = log.output;
+                acc[`step_${idx + 1}`] = { output: log.output };
+              }
+              return acc;
+            }, {});
+            
+            // Resolve data mapping variables
+            const resolvedData = resolveConfig(
+              currentStep.config.data || {},
+              run.logs || [],
+              procedure.steps
+            );
+            
+            // Remove _sources metadata if present
+            const cleanData: Record<string, any> = {};
+            for (const [key, value] of Object.entries(resolvedData)) {
+              if (key !== "_sources") {
+                cleanData[key] = value;
+              }
+            }
+            
+            if (!currentStep.config.collectionName) {
+              throw new Error("Collection name is required for DB_INSERT");
+            }
+            
+            // Find the collection by name
+            const collectionsSnapshot = await db
+              .collection("collections")
+              .where("orgId", "==", orgId)
+              .where("name", "==", currentStep.config.collectionName)
+              .limit(1)
+              .get();
+            
+            if (collectionsSnapshot.empty) {
+              throw new Error(`Collection "${currentStep.config.collectionName}" not found. Please create it first in the Database section.`);
+            }
+            
+            const collectionDoc = collectionsSnapshot.docs[0];
+            const collectionId = collectionDoc.id;
+            
+            // Insert into Firestore records collection
+            const collectionRef = db.collection("records");
+            const newRecord = {
+              collectionId: collectionId,
+              data: cleanData,
+              organizationId: orgId,
+              createdAt: Timestamp.now(),
+            };
+            
+            const recordRef = await collectionRef.add(newRecord);
+            
+            executionResult = {
+              success: true,
+              inserted: true,
+              recordId: recordRef.id,
+              data: cleanData,
+            };
+            break;
+          }
+
+          case "DOC_GENERATE":
+            // Execute document generation
+            try {
+              // 1. Resolve data variables from run context
+              const runContext = run.logs.reduce((acc: any, log, idx) => {
+                const step = procedure.steps[idx];
+                if (step) {
+                  const varName = step.config.outputVariableName || `step_${idx + 1}_output`;
+                  acc[varName] = log.output;
+                  acc[`step_${idx + 1}_output`] = log.output;
+                  acc[`step_${idx + 1}`] = { output: log.output };
+                }
+                return acc;
+              }, {});
+
+              // Resolve variables in data object
+              const resolvedData = resolveConfig(
+                currentStep.config.dataMapping || currentStep.config.data || {},
+                run.logs || [],
+                procedure.steps
+              );
+
+              // Remove _sources metadata if present
+              const cleanData: Record<string, any> = {};
+              for (const [key, value] of Object.entries(resolvedData)) {
+                if (key !== "_sources") {
+                  cleanData[key] = value;
+                }
+              }
+
+              // 2. Call Generator API
+              const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+              const generateResponse = await fetch(`${baseUrl}/api/ai/generate-document`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  templateId: currentStep.config.templateId,
+                  data: cleanData,
+                  orgId,
+                }),
+              });
+
+              if (!generateResponse.ok) {
+                const errorData = await generateResponse.json();
+                throw new Error(errorData.error || errorData.details || "Failed to generate document");
+              }
+
+              const pdfResult = await generateResponse.json();
+              executionResult = {
+                success: true,
+                fileUrl: pdfResult.fileUrl,
+                fileName: pdfResult.fileName,
+              };
+            } catch (docError: any) {
+              console.error("Error executing DOC_GENERATE:", docError);
+              executionResult = {
+                success: false,
+                error: docError.message || "Document generation failed",
+              };
+            }
+            break;
+
+          case "HTTP_REQUEST":
+            // Execute HTTP request (API call)
+            // TODO: Implement HTTP request execution logic
+            executionResult = { success: true, executed: true };
+            break;
+
+          case "SEND_EMAIL":
+            // Execute email sending
+            // TODO: Implement email sending logic
+            executionResult = { success: true, executed: true };
+            break;
+
+          case "GOOGLE_SHEET":
+            // Execute Google Sheet operation
+            // TODO: Implement Google Sheet logic
+            executionResult = { success: true, executed: true };
+            break;
+
+          case "CALCULATE":
+            // Execute calculation
+            // TODO: Implement calculation logic
+            executionResult = { success: true, executed: true };
+            break;
+
+          case "COMPARE":
+            // Execute comparison
+            // TODO: Implement comparison logic
+            executionResult = { success: true, executed: true };
+            break;
+
+          case "VALIDATE":
+            // Execute validation
+            // TODO: Implement validation logic
+            executionResult = { success: true, executed: true };
+            break;
+
+          case "GATEWAY":
+            // Gateway routing is handled in routing logic above
+            executionResult = { success: true, executed: true };
+            break;
+
+          default:
+            executionResult = { success: true };
+        }
+      } catch (execError: any) {
+        console.error(`Error executing AUTO step ${currentStep.action}:`, execError);
+        executionResult = {
+          success: false,
+          error: execError.message || "Execution failed",
+        };
+      }
+
+      // Update log with execution result and output
+      const stepOutput = executionResult.success 
+        ? (executionResult.extractedData || executionResult.data || executionResult.fileUrl || executionResult)
+        : { error: executionResult.error };
+      
+      const finalLog = {
+        ...newLog,
+        output: stepOutput,
+        outcome: executionResult.success ? "SUCCESS" : "FAILURE",
+        executionResult,
+      };
+      const finalLogs = [...updatedLogs.slice(0, -1), finalLog];
+
+      // Update run
+      const updateData: any = {
+        currentStepIndex: nextStepIndex,
+        status: newStatus,
+        logs: finalLogs,
+      };
+
+      if (newStatus === "COMPLETED") {
+        updateData.completedAt = Timestamp.now();
+      }
+
+      // Set assignee for next step (if it's a human step)
+      if (newStatus !== "COMPLETED" && nextStepIndex < procedure.steps.length) {
+        const nextStep = procedure.steps[nextStepIndex];
+        const nextStepType = getStepExecutionType(nextStep.action);
+
+        if (nextStepType === "HUMAN") {
+          const nextAssignment = nextStep.assignment || 
+            (nextStep.assigneeType ? {
+              type: nextStep.assigneeType === "TEAM" ? "TEAM_QUEUE" : 
+                    nextStep.assigneeType === "SPECIFIC_USER" ? "SPECIFIC_USER" : "STARTER",
+              assigneeId: nextStep.assigneeId,
+            } : null);
+
+          if (nextAssignment) {
+            if (nextAssignment.type === "STARTER") {
+              updateData.currentAssigneeId = run.startedBy || userId;
+              updateData.assigneeType = "USER";
+              updateData.status = "WAITING_FOR_USER";
+            } else if (nextAssignment.type === "SPECIFIC_USER" && nextAssignment.assigneeId) {
+              updateData.currentAssigneeId = nextAssignment.assigneeId;
+              updateData.assigneeType = "USER";
+              updateData.status = "WAITING_FOR_USER";
+            } else if (nextAssignment.type === "TEAM_QUEUE" && nextAssignment.assigneeId) {
+              updateData.currentAssigneeId = nextAssignment.assigneeId;
+              updateData.assigneeType = "TEAM";
+              updateData.status = "WAITING_FOR_USER";
+            }
+          }
+        } else {
+          // Next step is also AUTO - continue execution recursively
+          updateData.status = "IN_PROGRESS";
+        }
+      }
+
+      await db.collection("active_runs").doc(runId).update(updateData);
+
+      // If next step is AUTO, recursively execute it
+      if (newStatus !== "COMPLETED" && nextStepIndex < procedure.steps.length) {
+        const nextStep = procedure.steps[nextStepIndex];
+        const nextStepType = getStepExecutionType(nextStep.action);
+
+        if (nextStepType === "AUTO") {
+          // Recursively execute next AUTO step immediately
+          try {
+            // Build a new request body for the next step
+            const nextExecuteBody = {
+              runId,
+              stepId: nextStep.id,
+              output: {},
+              outcome: "SUCCESS" as const,
+              orgId,
+              userId,
+            };
+
+            // Call execute API recursively (internal call)
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+            const nextExecuteResponse = await fetch(`${baseUrl}/api/runs/execute`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(nextExecuteBody),
+            });
+
+            if (nextExecuteResponse.ok) {
+              const nextResult = await nextExecuteResponse.json();
+              // Return the result from the recursive call
+              return NextResponse.json({
+                success: true,
+                message: "Auto steps executed successfully.",
+                status: nextResult.status || updateData.status,
+                nextStepIndex: nextResult.nextStepIndex || nextStepIndex,
+                requiresUserAction: nextResult.requiresUserAction || false,
+                shouldContinue: nextResult.shouldContinue || false,
+                nextStepId: nextResult.nextStepId,
+              });
+            } else {
+              // If recursive execution fails, return current result
+              console.error("Error recursively executing next AUTO step");
+            }
+          } catch (recursiveError) {
+            console.error("Error in recursive AUTO step execution:", recursiveError);
+            // Return current result if recursive execution fails
+          }
+
+          // Fallback: Return success and let frontend handle continuation
+          return NextResponse.json({
+            success: true,
+            message: "Auto step executed. Next step is also automated.",
+            status: updateData.status,
+            nextStepIndex,
+            requiresUserAction: false,
+            shouldContinue: true, // Signal to frontend to continue
+            nextStepId: nextStep.id,
+          });
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Auto step executed successfully.",
+        status: updateData.status,
+        nextStepIndex,
+        requiresUserAction: updateData.status === "WAITING_FOR_USER",
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Step executed",
+      status: newStatus,
+      nextStepIndex,
+    });
+  } catch (error: any) {
+    console.error("Error executing step:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to execute step",
+        details: error.message || "An unexpected error occurred",
+      },
+      { status: 500 }
+    );
+  }
+}
+

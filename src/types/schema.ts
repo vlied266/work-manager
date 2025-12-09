@@ -13,27 +13,23 @@
  * Every step in a Procedure MUST be one of these
  */
 export type AtomicAction =
-  // Information Group
+  // Human Tasks
   | "INPUT"
-  | "FETCH"
-  | "TRANSMIT"
-  | "STORE"
-  | "GOOGLE_SHEET_APPEND"
-  // Logic Group
-  | "TRANSFORM"
-  | "ORGANISE"
-  | "CALCULATE"
-  | "COMPARE"
-  | "VALIDATE"
-  | "GATEWAY"
-  // Physical Group
-  | "MOVE_OBJECT"
-  | "TRANSFORM_OBJECT"
-  | "INSPECT"
-  // Human Group
-  | "GENERATE"
+  | "APPROVAL"      // Renamed from AUTHORIZE
+  | "MANUAL_TASK"   // New generic manual task
   | "NEGOTIATE"
-  | "AUTHORIZE";
+  | "INSPECT"
+  // Automation Tasks
+  | "AI_PARSE"
+  | "DB_INSERT"
+  | "HTTP_REQUEST"  // Renamed from FETCH
+  | "SEND_EMAIL"    // Extracted from TRANSMIT
+  | "GOOGLE_SHEET"  // Renamed from GOOGLE_SHEET_APPEND
+  | "DOC_GENERATE"
+  | "CALCULATE"
+  | "GATEWAY"
+  | "VALIDATE"
+  | "COMPARE";
 
 /**
  * Level 4: Organization (The Organism)
@@ -91,6 +87,19 @@ export interface Procedure {
     type: "USER" | "TEAM";
     id: string;
   }; // Default assignee for this procedure
+  // Workflow Trigger Configuration
+  trigger?: {
+    type: "MANUAL" | "ON_FILE_CREATED" | "WEBHOOK";
+    config?: {
+      folderPath?: string; // e.g., "/uploads/contracts" (for ON_FILE_CREATED)
+      provider?: "google_drive" | "dropbox" | "local"; // File provider (for ON_FILE_CREATED)
+      webhookUrl?: string; // Webhook URL (for WEBHOOK, read-only, auto-generated)
+      webhookSecret?: string; // Webhook secret for verification (for WEBHOOK)
+    };
+  };
+  // Active State: For automated triggers, indicates if the workflow is listening for events
+  // When true, the system will automatically create new runs when trigger events occur
+  isActive?: boolean; // Default: false (only applicable for ON_FILE_CREATED and WEBHOOK triggers)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -116,99 +125,115 @@ export interface AtomicStep {
   // Routing Logic (Non-Linear Flow)
   routes?: {
     defaultNextStepId?: string | "COMPLETED"; // Normal path
-    onSuccessStepId?: string; // e.g., Match found -> Go to Step 5
-    onFailureStepId?: string; // e.g., Mismatch -> Go back to Step 1 (Loop)
+    onSuccessStepId?: string; // e.g., Match found -> Go to Step 5 (for VALIDATE/COMPARE)
+    onFailureStepId?: string; // e.g., Mismatch -> Go back to Step 1 (Loop) (for VALIDATE/COMPARE)
     conditions?: {
-      variable: string; // e.g., "step_1_amount"
+      variable: string; // e.g., "step_1_amount" or "{{step_1.amount}}"
       operator: ">" | "<" | "==" | "!=" | ">=" | "<=" | "contains" | "startsWith" | "endsWith";
       value: any;
-      targetStepId: string;
+      nextStepId: string; // Step ID to jump to if condition is true (renamed from targetStepId)
     }[];
   };
 
   // Polymorphic Config (Changes based on Action)
   config: {
-    // For INPUT/SELECT
-    inputType?: "text" | "number" | "file" | "date" | "table" | "email";
+    // Common fields
+    outputVariableName?: string; // e.g., "invoice_total", "step_1_output"
+
+    // ===== HUMAN TASKS =====
+    
+    // INPUT (Enhanced)
+    inputType?: "text" | "number" | "email" | "date" | "file" | "select" | "checkbox" | "multiline";
     fieldLabel?: string; // Display label for the input field
-    buttonLabel?: string; // For file uploads: "Upload Invoice", etc.
-    allowedExtensions?: string[]; // For file uploads: ["pdf", "xlsx", "jpg"]
+    placeholder?: string;
+    required?: boolean;
+    options?: Array<{ label: string; value: string }>; // For 'select' or 'checkbox' types
+    buttonLabel?: string; // For file uploads
+    allowedExtensions?: string[]; // For file uploads
     tableConfig?: {
       rows: number;
       columns: number;
       headers?: string[];
     };
-    options?: string[];
-    placeholder?: string;
-    required?: boolean;
     validationRegex?: string;
     validationMessage?: string;
-
-    // For COMPARE
-    targetA?: string; // Variable name from previous step (e.g., "step_1_output")
-    targetB?: string; // Variable name from previous step (e.g., "step_2_output")
-    comparisonType?: "exact" | "fuzzy" | "numeric" | "date";
-
-    // For FETCH/TRANSMIT
-    sourceUrl?: string;
-    destinationUrl?: string;
-    method?: "GET" | "POST" | "PUT" | "DELETE";
-    recipientEmail?: string; // For email transmission, can be a variable reference
-
-    // For STORE
-    storageType?: "database" | "file" | "cache" | "google_sheet";
-    storagePath?: string;
-
-    // For Google Integration (used in INPUT, STORE, TRANSMIT)
-    sheetId?: string; // Google Sheet ID
-    fileName?: string; // Google Sheet/Drive file name
-    saveToGoogleDrive?: boolean; // For file uploads: save to Google Drive
-    googleDriveFolderId?: string; // Optional: specific folder in Google Drive
-
-    // For GOOGLE_SHEET_APPEND
-    mapping?: Record<string, string>; // Map workflow variables to sheet columns
-
-    // For TRANSFORM/ORGANISE
-    transformationRule?: string;
-    sortBy?: string;
-    groupBy?: string;
-
-    // For CALCULATE
-    formula?: string;
-    variables?: Record<string, string>;
-
-    // For VALIDATE
-    validationRule?: string;
-    errorMessage?: string;
-    rule?: "GREATER_THAN" | "LESS_THAN" | "EQUAL" | "CONTAINS" | "REGEX";
-    target?: string; // Variable name from previous step (e.g., "step_3_output")
-    value?: any; // Value to compare against
-
-    // For LABOR/PHYSICAL
-    instructions?: string;
-    proofType?: "photo" | "signature" | "checkbox";
-
-    // For GENERATE
-    template?: string;
-    outputFormat?: "text" | "document" | "image";
-
-    // For NEGOTIATE/AUTHORIZE
-    approverId?: string;
-    approvalLevel?: number;
-    requireSignature?: boolean;
-    instruction?: string;
-
-    // Data Flow & Extraction
-    outputVariableName?: string; // e.g., "invoice_total", "step_1_output"
-    extractionRule?: string; // e.g., "Parse CSV Column: Price", "OCR Text", "Extract JSON Field: amount"
+    saveToGoogleDrive?: boolean;
+    googleDriveFolderId?: string;
+    extractionRule?: string;
     extractionConfig?: {
       csvColumn?: string;
       jsonPath?: string;
       ocrLanguage?: string;
     };
 
-    // AI Automation
-    isAiAutomated?: boolean; // If true, this step is executed by AI instead of a user
+    // APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT (shared fields)
+    instruction?: string; // Instructions/guidelines (used by APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT)
+    requireSignature?: boolean; // APPROVAL: Require digital signature
+    actions?: string[]; // APPROVAL: Custom approval actions (default: ["Approve", "Reject"])
+    approvalLevel?: number; // APPROVAL: Optional approval level
+    dueInHours?: number; // MANUAL_TASK: Number of hours from task assignment until due date
+    proofType?: "photo" | "signature" | "checkbox"; // INSPECT: Optional type of proof required
+
+    // ===== AUTOMATION TASKS =====
+
+    // AI_PARSE
+    fileSourceStepId?: string; // Required: The ID of the INPUT step where file was uploaded, or "TRIGGER_EVENT" for trigger-based workflows
+    fieldsToExtract?: string[]; // Required: List of field names to extract (e.g., ["invoiceDate", "amount", "vendor"])
+    fileUrl?: string; // Optional: Direct file URL (alternative to fileSourceStepId)
+    fileType?: "pdf" | "excel" | "image"; // Optional: File type hint
+    // Note: outputVariableName is defined in common fields above
+
+    // DB_INSERT
+    collectionName?: string; // Required: Name of the collection/table to save data to (must match existing collection)
+    data?: Record<string, any>; // Required: JSON object mapping field names to values (supports {{variable}} syntax)
+
+    // HTTP_REQUEST
+    url?: string; // Required: API endpoint URL (supports {{variable}} syntax)
+    method?: "GET" | "POST" | "PUT" | "DELETE"; // Required: HTTP method
+    headers?: Record<string, string>; // Optional: HTTP headers (e.g., Authorization, Content-Type)
+    requestBody?: string; // Optional: JSON body for POST/PUT requests (supports {{variable}} syntax)
+
+    // SEND_EMAIL
+    recipient?: string; // Required: Email address (supports {{variable}} syntax)
+    subject?: string; // Required: Email subject line (supports {{variable}} syntax)
+    emailBody?: string; // Required: HTML email body content (supports {{variable}} syntax)
+    attachments?: string[]; // Optional: File URLs from previous steps (one URL per array element)
+
+    // GOOGLE_SHEET
+    connectionId?: string; // Optional: ID of the Google Sheets connection/credential
+    spreadsheetId?: string; // Required: Google Sheets spreadsheet ID (supports {{variable}} syntax)
+    sheetName?: string; // Required: Name of the sheet/tab within the spreadsheet
+    operation?: "APPEND_ROW" | "UPDATE_ROW"; // Required: Operation type
+    columnMapping?: Record<string, string>; // Required: Maps column letters (A, B, C) or names to values (supports {{variable}} syntax)
+
+    // DOC_GENERATE
+    templateId?: string; // Required: ID of the template record in the 'templates' Firestore collection
+    dataMapping?: Record<string, string>; // Required: Maps variables to template placeholders (supports {{variable}} syntax)
+    outputFormat?: "pdf" | "docx"; // Optional: Output file format (default: "pdf")
+
+    // CALCULATE
+    formula?: string; // Required: Mathematical formula using variables from previous steps (supports {{variable}} syntax)
+
+    // GATEWAY
+    conditions?: Array<{
+      variable: string; // Variable name (e.g., "step_1.amount") or variable reference
+      operator: "eq" | "neq" | "gt" | "lt" | "contains"; // Comparison operator
+      value: string; // Value to compare against (can be variable or literal)
+      nextStepId: string; // Step ID to jump to if condition is true
+    }>;
+    defaultNextStepId?: string; // Step to proceed to if no conditions match (the "else" case)
+
+    // VALIDATE
+    rule?: "GREATER_THAN" | "LESS_THAN" | "EQUAL" | "CONTAINS" | "REGEX"; // Required: Type of validation to perform
+    target?: string; // Required: Variable or value to validate (supports {{variable}} syntax)
+    value?: any; // Required: Expected value to compare against (can be variable or literal)
+    errorMessage?: string; // Optional: Message to display/log if validation fails
+
+    // COMPARE
+    targetA?: string; // Required: First value to compare (supports {{variable}} syntax)
+    targetB?: string; // Required: Second value to compare against (supports {{variable}} syntax)
+    comparisonType?: "exact" | "fuzzy" | "numeric" | "date"; // Required: Type of comparison to perform
+    requireMismatchReason?: boolean; // Optional: When enabled and comparison fails, workflow routes to user input step asking for explanation
   };
 }
 
@@ -251,7 +276,7 @@ export interface ActiveRun {
   procedureId: string;
   procedureTitle: string;
   organizationId: string;
-  status: "IN_PROGRESS" | "COMPLETED" | "BLOCKED" | "FLAGGED" | "OPEN_FOR_CLAIM";
+  status: "IN_PROGRESS" | "COMPLETED" | "BLOCKED" | "FLAGGED" | "OPEN_FOR_CLAIM" | "WAITING_FOR_USER";
   currentStepIndex: number;
   startedAt: Date;
   completedAt?: Date;
@@ -264,6 +289,26 @@ export interface ActiveRun {
   currentAssignee?: string; // Email of current assignee (for easier filtering)
   title?: string; // Alias for procedureTitle
   lastActivity?: Date; // Last update timestamp for sorting in Monitor
+  // Trigger context for automated workflows
+  triggerContext?: {
+    file?: string;
+    fileUrl?: string;
+    filePath?: string;
+  };
+  // Initial input for workflows (from trigger or manual start)
+  initialInput?: {
+    filePath?: string;
+    fileUrl?: string;
+    [key: string]: any;
+  };
+  // Triggered run metadata
+  triggeredBy?: {
+    type: "FILE_UPLOAD" | "WEBHOOK" | "MANUAL";
+    filePath?: string;
+  };
+  // Steps reference (for execution)
+  steps?: AtomicStep[];
+  currentStepId?: string;
 }
 
 export interface RunLog {
@@ -318,7 +363,7 @@ export interface AtomicActionMetadata {
   label: string;
   description: string;
   icon: string; // Lucide icon name
-  group: "Information" | "Logic" | "Physical" | "Human";
+  group: "Human Tasks" | "Automation";
   color: string;
 }
 
@@ -326,161 +371,162 @@ export interface AtomicActionMetadata {
  * Action metadata mapping
  */
 export const ATOMIC_ACTION_METADATA: Record<AtomicAction, AtomicActionMetadata> = {
-  // Information Group
+  // Human Tasks
   INPUT: {
     label: "Input",
-    description: "User enters data (text, number, file, date)",
+    description: "Form input (text, number, email, date, file, select, checkbox)",
     icon: "Type",
-    group: "Information",
+    group: "Human Tasks",
     color: "blue",
   },
-  FETCH: {
-    label: "Fetch",
-    description: "Retrieve data from external source",
-    icon: "Download",
-    group: "Information",
+  APPROVAL: {
+    label: "Approval",
+    description: "Approval or authorization step",
+    icon: "CheckSquare",
+    group: "Human Tasks",
     color: "blue",
   },
-  TRANSMIT: {
-    label: "Transmit",
-    description: "Send data to external destination",
-    icon: "Upload",
-    group: "Information",
+  MANUAL_TASK: {
+    label: "Manual Task",
+    description: "Generic manual task that requires human action",
+    icon: "ClipboardCheck",
+    group: "Human Tasks",
     color: "blue",
   },
-  STORE: {
-    label: "Store",
-    description: "Save data to storage (database, file, cache)",
-    icon: "Database",
-    group: "Information",
+  NEGOTIATE: {
+    label: "Negotiate",
+    description: "Human negotiation or discussion",
+    icon: "MessageSquare",
+    group: "Human Tasks",
     color: "blue",
   },
-  GOOGLE_SHEET_APPEND: {
-    label: "Save to Google Sheet",
-    description: "Append data to a Google Sheet automatically",
-    icon: "FileSpreadsheet",
-    group: "Information",
-    color: "green",
+  INSPECT: {
+    label: "Inspect",
+    description: "Examine an object or location",
+    icon: "Search",
+    group: "Human Tasks",
+    color: "blue",
   },
-  // Logic Group
-  TRANSFORM: {
-    label: "Transform",
-    description: "Convert data from one format to another",
-    icon: "RefreshCw",
-    group: "Logic",
+  // Automation Tasks
+  AI_PARSE: {
+    label: "Read Document",
+    description: "Extract structured data from PDF, Excel, or Image files using AI",
+    icon: "ScanLine",
+    group: "Automation",
     color: "purple",
   },
-  ORGANISE: {
-    label: "Organise",
-    description: "Sort, filter, or group data",
-    icon: "ArrowUpDown",
-    group: "Logic",
+  DB_INSERT: {
+    label: "Save to DB",
+    description: "Save data to a custom collection/table",
+    icon: "Database",
+    group: "Automation",
+    color: "purple",
+  },
+  HTTP_REQUEST: {
+    label: "HTTP Request",
+    description: "Make API calls (GET, POST, PUT, DELETE)",
+    icon: "Globe",
+    group: "Automation",
+    color: "purple",
+  },
+  SEND_EMAIL: {
+    label: "Send Email",
+    description: "Send email with attachments",
+    icon: "Mail",
+    group: "Automation",
+    color: "purple",
+  },
+  GOOGLE_SHEET: {
+    label: "Google Sheet",
+    description: "Append or update rows in Google Sheets",
+    icon: "FileSpreadsheet",
+    group: "Automation",
+    color: "purple",
+  },
+  DOC_GENERATE: {
+    label: "Generate Doc",
+    description: "Generate PDF documents from HTML templates automatically",
+    icon: "FilePenLine",
+    group: "Automation",
     color: "purple",
   },
   CALCULATE: {
     label: "Calculate",
     description: "Apply mathematical formula or computation",
     icon: "Calculator",
-    group: "Logic",
-    color: "purple",
-  },
-  COMPARE: {
-    label: "Compare",
-    description: "Compare two values (reconciliation)",
-    icon: "GitCompare",
-    group: "Logic",
-    color: "purple",
-  },
-  VALIDATE: {
-    label: "Validate",
-    description: "Check data against rules (true/false)",
-    icon: "CheckCircle2",
-    group: "Logic",
+    group: "Automation",
     color: "purple",
   },
   GATEWAY: {
     label: "Gateway",
     description: "Conditional routing based on data (if/then/else)",
     icon: "GitBranch",
-    group: "Logic",
+    group: "Automation",
     color: "purple",
   },
-  // Physical Group
-  MOVE_OBJECT: {
-    label: "Move Object",
-    description: "Physically relocate an object",
-    icon: "Move",
-    group: "Physical",
-    color: "orange",
+  VALIDATE: {
+    label: "Validate",
+    description: "Check data against rules (true/false)",
+    icon: "CheckCircle2",
+    group: "Automation",
+    color: "purple",
   },
-  TRANSFORM_OBJECT: {
-    label: "Transform Object",
-    description: "Physically modify an object",
-    icon: "Wrench",
-    group: "Physical",
-    color: "orange",
-  },
-  INSPECT: {
-    label: "Inspect",
-    description: "Examine an object or location",
-    icon: "Search",
-    group: "Physical",
-    color: "orange",
-  },
-  // Human Group
-  GENERATE: {
-    label: "Generate",
-    description: "Create content (text, document, image)",
-    icon: "Sparkles",
-    group: "Human",
-    color: "green",
-  },
-  NEGOTIATE: {
-    label: "Negotiate",
-    description: "Human negotiation or discussion",
-    icon: "MessageSquare",
-    group: "Human",
-    color: "green",
-  },
-  AUTHORIZE: {
-    label: "Authorize",
-    description: "Approval or authorization step",
-    icon: "CheckSquare",
-    group: "Human",
-    color: "green",
+  COMPARE: {
+    label: "Compare",
+    description: "Compare two values (reconciliation)",
+    icon: "GitCompare",
+    group: "Automation",
+    color: "purple",
   },
 };
 
 /**
  * All 15 atomic actions as an array
+ * Matches the complete toolbox documentation
  */
 export const ATOMIC_ACTIONS: AtomicAction[] = [
+  // Human Tasks (5)
   "INPUT",
-  "FETCH",
-  "TRANSMIT",
-  "STORE",
-  "GOOGLE_SHEET_APPEND",
-  "TRANSFORM",
-  "ORGANISE",
-  "CALCULATE",
-  "COMPARE",
-  "VALIDATE",
-  "GATEWAY",
-  "MOVE_OBJECT",
-  "TRANSFORM_OBJECT",
-  "INSPECT",
-  "GENERATE",
+  "APPROVAL",
+  "MANUAL_TASK",
   "NEGOTIATE",
-  "AUTHORIZE",
+  "INSPECT",
+  // Automation (10)
+  "AI_PARSE",
+  "DB_INSERT",
+  "HTTP_REQUEST",
+  "SEND_EMAIL",
+  "GOOGLE_SHEET",
+  "DOC_GENERATE",
+  "CALCULATE",
+  "GATEWAY",
+  "VALIDATE",
+  "COMPARE",
 ];
 
 /**
  * Group actions by category for UI organization
+ * Organized into Human Tasks (requires human interaction) and Automation (runs automatically)
  */
 export const ATOMIC_ACTIONS_BY_GROUP = {
-  Information: ["INPUT", "FETCH", "TRANSMIT", "STORE", "GOOGLE_SHEET_APPEND"] as AtomicAction[],
-  Logic: ["TRANSFORM", "ORGANISE", "CALCULATE", "COMPARE", "VALIDATE", "GATEWAY"] as AtomicAction[],
-  Physical: ["MOVE_OBJECT", "TRANSFORM_OBJECT", "INSPECT"] as AtomicAction[],
-  Human: ["GENERATE", "NEGOTIATE", "AUTHORIZE"] as AtomicAction[],
+  "Human Tasks": [
+    "INPUT",
+    "APPROVAL",
+    "MANUAL_TASK",
+    "NEGOTIATE",
+    "INSPECT",
+  ] as AtomicAction[],
+  "Automation": [
+    "AI_PARSE",
+    "DB_INSERT",
+    "HTTP_REQUEST",
+    "SEND_EMAIL",
+    "GOOGLE_SHEET",
+    "DOC_GENERATE",
+    "CALCULATE",
+    "GATEWAY",
+    "VALIDATE",
+    "COMPARE",
+  ] as AtomicAction[],
 };
 

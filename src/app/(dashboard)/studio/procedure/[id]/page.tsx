@@ -15,11 +15,12 @@ import { ConfigPanel } from "@/components/design/config-panel";
 import { useRouter } from "next/navigation";
 import { useProcedureValidation } from "@/hooks/use-procedure-validation";
 import { useStudioTour } from "@/components/studio/StudioTour";
-import { HelpCircle, Edit3, Smartphone, List, Network, Play } from "lucide-react";
+import { HelpCircle, Edit3, Smartphone, List, Network, Play, Settings } from "lucide-react";
 import { MobilePreview } from "@/components/studio/mobile-preview";
 import { VisualEditor } from "@/components/studio/VisualEditor";
 import { useOrgId } from "@/hooks/useOrgData";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { TriggerConfigModal } from "@/components/studio/TriggerConfigModal";
 
 interface ProcedureBuilderPageProps {
   params: Promise<{ id: string }>;
@@ -40,6 +41,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
   const [loading, setLoading] = useState(true);
   const [previewMode, setPreviewMode] = useState(false); // false = Edit Mode, true = Preview Mode
   const [viewMode, setViewMode] = useState<"list" | "canvas">("list"); // "list" = List View, "canvas" = Flow View
+  const [isTriggerModalOpen, setIsTriggerModalOpen] = useState(false);
 
 
   // Fetch Procedure if editing
@@ -63,6 +65,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
             description: data.description || "",
             isPublished: false,
             steps: data.steps || [],
+            trigger: data.trigger || undefined, // FIX: Include trigger from stored data
             createdAt: new Date(),
             updatedAt: new Date(),
           };
@@ -71,6 +74,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
           setProcedureDescription(tempProcedure.description);
           setIsPublished(false);
           setLoading(false);
+          console.log("Trigger loaded from AI generation:", tempProcedure.trigger); // Debug log
           return;
         } catch (error) {
           console.error("Error parsing stored procedure data:", error);
@@ -89,6 +93,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
             createdAt: data.createdAt?.toDate() || new Date(),
             updatedAt: data.updatedAt?.toDate() || new Date(),
             steps: data.steps || [],
+            isActive: data.isActive || false, // Default to false if not set
           } as Procedure;
           setProcedure(proc);
           setProcedureTitle(proc.title);
@@ -169,6 +174,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
         description: procedureDescription.trim(),
         isPublished,
         steps: procedure.steps,
+        trigger: procedure.trigger,
         updatedAt: serverTimestamp(),
       });
     } catch (error) {
@@ -176,6 +182,23 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
       alert("Failed to save procedure");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveTrigger = (trigger: Procedure["trigger"]) => {
+    if (!procedure) return;
+    setProcedure({
+      ...procedure,
+      trigger,
+    });
+    // Auto-save if procedure exists in DB
+    if (procedure.id && !procedure.id.startsWith("temp-")) {
+      updateDoc(doc(db, "procedures", procedure.id), {
+        trigger,
+        updatedAt: serverTimestamp(),
+      }).catch((error) => {
+        console.error("Error saving trigger:", error);
+      });
     }
   };
 
@@ -190,12 +213,14 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
       return;
     }
 
-    if (!organizationId || !userId) {
-      alert("Please log in to start a procedure.");
-      return;
-    }
+    // For MANUAL triggers, create a single run immediately
+    if (procedure.trigger?.type === "MANUAL" || !procedure.trigger) {
+      if (!organizationId || !userId) {
+        alert("Please log in to start a procedure.");
+        return;
+      }
 
-    try {
+      try {
       setSaving(true);
 
       // Call the new API
@@ -276,6 +301,59 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
       }
       
       alert(errorMessage);
+      setSaving(false);
+      return;
+      }
+      
+      setSaving(false);
+      return;
+    }
+    
+    // For AUTOMATED triggers, this should not be called (use handleToggleActive instead)
+    alert("Automated workflows should be activated, not run manually.");
+    setSaving(false);
+  };
+
+  const handleToggleActive = async () => {
+    if (!procedure || !procedure.id || procedure.id.startsWith("temp-")) {
+      alert("Please save the procedure first.");
+      return;
+    }
+
+    if (!procedure.trigger || procedure.trigger.type === "MANUAL") {
+      alert("Only automated workflows can be activated.");
+      return;
+    }
+
+    if (!organizationId || !userId) {
+      alert("Please log in to activate a workflow.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const newActiveState = !procedure.isActive;
+
+      // Update procedure isActive state
+      await updateDoc(doc(db, "procedures", procedure.id), {
+        isActive: newActiveState,
+        updatedAt: serverTimestamp(),
+      });
+
+      setProcedure({
+        ...procedure,
+        isActive: newActiveState,
+      });
+
+      alert(
+        newActiveState
+          ? "Workflow activated! It will now listen for trigger events."
+          : "Workflow deactivated. It will no longer respond to trigger events."
+      );
+    } catch (error: any) {
+      console.error("Error toggling active state:", error);
+      alert("Failed to update workflow state. Please try again.");
+    } finally {
       setSaving(false);
     }
   };
@@ -483,6 +561,19 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                 </motion.button>
               )}
 
+              {/* Trigger Settings Button */}
+              {procedure && (
+                <motion.button
+                  onClick={() => setIsTriggerModalOpen(true)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="p-2 rounded-full hover:bg-blue-50 text-blue-600 transition-colors"
+                  title="Trigger Settings"
+                >
+                  <Settings className="h-5 w-5" strokeWidth={1.5} />
+                </motion.button>
+              )}
+
               <div className="h-6 w-[1px] bg-gray-300 mx-1" />
 
               {procedure && procedure.id && !procedure.id.startsWith("temp-") ? (
@@ -503,17 +594,49 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                       <span>Save Changes</span>
                     )}
                   </motion.button>
-                  <motion.button
-                    onClick={handleStartProcedure}
-                    disabled={!procedure || !procedure.steps || procedure.steps.length === 0 || saving}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="rounded-full bg-green-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-                    title={!procedure || !procedure.steps || procedure.steps.length === 0 ? "Add at least one step to start" : "Start Procedure"}
-                  >
-                    <Play className="h-3.5 w-3.5" />
-                    <span>Start Procedure</span>
-                  </motion.button>
+                  {/* Conditional Button: Run vs Activate/Deactivate */}
+                  {procedure.trigger?.type === "ON_FILE_CREATED" || procedure.trigger?.type === "WEBHOOK" ? (
+                    <motion.button
+                      onClick={handleToggleActive}
+                      disabled={!procedure || !procedure.steps || procedure.steps.length === 0 || saving}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className={`rounded-full px-5 py-2 text-sm font-medium text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 ${
+                        procedure.isActive
+                          ? "bg-red-600 hover:bg-red-700"
+                          : "bg-green-600 hover:bg-green-700"
+                      }`}
+                      title={
+                        procedure.isActive
+                          ? "Deactivate workflow (stop listening for events)"
+                          : "Activate workflow (start listening for trigger events)"
+                      }
+                    >
+                      {procedure.isActive ? (
+                        <>
+                          <X className="h-3.5 w-3.5" />
+                          <span>Deactivate</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-3.5 w-3.5" />
+                          <span>Activate</span>
+                        </>
+                      )}
+                    </motion.button>
+                  ) : (
+                    <motion.button
+                      onClick={handleStartProcedure}
+                      disabled={!procedure || !procedure.steps || procedure.steps.length === 0 || saving}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="rounded-full bg-green-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                      title={!procedure || !procedure.steps || procedure.steps.length === 0 ? "Add at least one step to start" : "Start Procedure"}
+                    >
+                      <Play className="h-3.5 w-3.5" />
+                      <span>Run</span>
+                    </motion.button>
+                  )}
                 </>
               ) : (
                 <div className="relative group">
@@ -781,12 +904,21 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                 allSteps={procedure?.steps || []}
                 onUpdate={handleStepUpdate}
                 validationError={selectedStepId ? validationErrorsMap.get(selectedStepId) : null}
+                procedureTrigger={procedure?.trigger}
               />
             </div>
           </div>
           </DesignerDndContext>
         </div>
       </main>
+
+      {/* Trigger Settings Modal */}
+      <TriggerConfigModal
+        isOpen={isTriggerModalOpen}
+        onClose={() => setIsTriggerModalOpen(false)}
+        procedure={procedure}
+        onSave={handleSaveTrigger}
+      />
     </div>
   );
 }

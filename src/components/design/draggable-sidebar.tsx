@@ -29,12 +29,11 @@ function DraggableActionCard({ action }: DraggableActionCardProps) {
       }
     : undefined;
 
-  const iconBgColor = {
-    blue: "bg-blue-500",
-    green: "bg-green-500",
-    yellow: "bg-yellow-500",
-    purple: "bg-purple-500",
-  }[metadata.color] || "bg-slate-500";
+  // Use group-based colors: Human Tasks = Blue, Automation = Purple/Violet
+  const isAutomation = metadata.group === "Automation";
+  const iconBgColor = isAutomation 
+    ? "bg-gradient-to-br from-purple-500 to-violet-600"
+    : "bg-gradient-to-br from-blue-500 to-blue-600";
 
   return (
     <motion.div

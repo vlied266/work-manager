@@ -16,15 +16,27 @@ export default function StudioHubPage() {
   const [magicDescription, setMagicDescription] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { organizationId, organization } = useOrganization();
+  const { organizationId } = useOrganization();
   const [staff, setStaff] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [slackChannels, setSlackChannels] = useState<Array<{ id: string; name: string }>>([]);
   
   // Fetch organization users
   const orgId = useOrgId();
   
-  // Check if AI is available for current plan
-  const isAiAvailable = organization?.plan !== "FREE";
+  // Check if AI is available for current plan (using orgId query)
+  const orgQuery = useOrgQuery("organizations");
+  const [isAiAvailable, setIsAiAvailable] = useState(true);
+  
+  useEffect(() => {
+    if (!orgQuery) return;
+    const unsubscribe = onSnapshot(orgQuery, (snapshot) => {
+      if (!snapshot.empty) {
+        const orgData = snapshot.docs[0].data();
+        setIsAiAvailable(orgData.plan !== "FREE");
+      }
+    });
+    return () => unsubscribe();
+  }, [orgQuery]);
   const usersQuery = useOrgQuery("users");
 
   useEffect(() => {
@@ -127,6 +139,9 @@ export default function StudioHubPage() {
 
       const data = await response.json();
       const steps: AtomicStep[] = data.steps || [];
+      const trigger = data.trigger || undefined;
+      const title = data.title || magicDescription;
+      const description = data.description || `AI-generated procedure: ${magicDescription}`;
 
       if (steps.length === 0) {
         throw new Error("No steps generated. Please try a different description.");
@@ -135,11 +150,12 @@ export default function StudioHubPage() {
       // Create a temporary procedure ID and navigate to the builder
       const tempId = `temp-${Date.now()}`;
       
-      // Store the generated steps in sessionStorage to pre-fill the builder
+      // Store the generated data in sessionStorage to pre-fill the builder
       sessionStorage.setItem(`procedure-${tempId}`, JSON.stringify({
-        title: magicDescription,
-        description: `AI-generated procedure: ${magicDescription}`,
+        title: title,
+        description: description,
         steps: steps,
+        trigger: trigger, // FIX: Include trigger in stored data
       }));
 
       router.push(`/studio/procedure/${tempId}`);

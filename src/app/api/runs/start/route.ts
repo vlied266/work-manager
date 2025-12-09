@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
-import { Procedure, AtomicStep, Organization } from "@/types/schema";
+import { Procedure, AtomicStep, Organization, ActiveRun } from "@/types/schema";
+import { isAutoStep } from "@/lib/constants";
 
 interface StartRunRequest {
   procedureId: string;
@@ -62,6 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Count runs created in current month for this organization
+    // Note: Fetching all runs for org and filtering client-side to avoid index requirement
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfMonthTimestamp = Timestamp.fromDate(startOfMonth);
@@ -69,10 +71,14 @@ export async function POST(req: NextRequest) {
     const monthlyRunsQuery = await db
       .collection("active_runs")
       .where("organizationId", "==", orgId)
-      .where("startedAt", ">=", startOfMonthTimestamp)
       .get();
 
-    const monthlyRunCount = monthlyRunsQuery.size;
+    // Filter client-side by startedAt to avoid needing composite index
+    const monthlyRunCount = monthlyRunsQuery.docs.filter(doc => {
+      const startedAt = doc.data().startedAt;
+      if (!startedAt) return false;
+      return startedAt.toMillis() >= startOfMonthTimestamp.toMillis();
+    }).length;
 
     // Check monthly run limit for FREE plan
     if (subscriptionPlan === "FREE" && monthlyRunCount >= 50) {
@@ -182,11 +188,54 @@ export async function POST(req: NextRequest) {
     const runRef = await db.collection("active_runs").add(runData);
     const runId = runRef.id;
 
-    // 4. Determine redirect action
+    // 4. Check if first step is AUTO - if so, execute it automatically using execution engine
+    const firstStepIsAuto = isAutoStep(firstStep.action);
+    let autoExecuted = false;
+
+    if (firstStepIsAuto) {
+      try {
+        // Use the execution engine to properly execute the AUTO step
+        // This ensures AI_PARSE, DB_INSERT, etc. are actually executed
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const executeResponse = await fetch(`${baseUrl}/api/runs/execute`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            runId: runRef.id,
+            stepId: firstStep.id,
+            output: {},
+            outcome: "SUCCESS",
+            orgId,
+            userId: starterUserId,
+          }),
+        });
+
+        if (executeResponse.ok) {
+          const result = await executeResponse.json();
+          autoExecuted = true;
+          
+          // If should continue (next step is also AUTO), recursively execute
+          if (result.shouldContinue && result.nextStepId) {
+            // The execution engine will handle the next step automatically
+            // We just need to wait a bit and check again
+            console.log("First AUTO step executed, next step will be auto-executed");
+          }
+        } else {
+          const errorData = await executeResponse.json().catch(() => ({}));
+          console.error("Error executing first AUTO step:", errorData);
+          // Continue anyway - the step will be executed when user views the run
+        }
+      } catch (autoExecError) {
+        console.error("Error auto-executing first step:", autoExecError);
+        // Continue anyway - the step will be executed when user views the run
+      }
+    }
+
+    // 5. Determine redirect action
     const isAssignedToStarter = assigneeId === starterUserId && assigneeType === "USER";
     const action = isAssignedToStarter ? "REDIRECT_TO_RUN" : "REDIRECT_TO_MONITOR";
 
-    // 5. Get assignee name for notification (if available)
+    // 6. Get assignee name for notification (if available)
     let assigneeName: string | null = null;
     if (assigneeType === "USER" && assigneeId) {
       try {

@@ -34,8 +34,8 @@ export function resolveConfig(
 
   // Helper to find variable in logs
   const findVariableInLogs = (variableName: string): { log: RunLog; step: AtomicStep } | null => {
-    // Check if it's a step reference like "step_1_output"
-    const stepMatch = variableName.match(/^step_(\d+)_output$/);
+    // Check if it's a step reference like "step_1_output" or "step_1"
+    const stepMatch = variableName.match(/^step_(\d+)(_output)?$/);
     if (stepMatch) {
       const stepIndex = parseInt(stepMatch[1]) - 1;
       if (stepIndex >= 0 && stepIndex < procedureSteps.length) {
@@ -56,6 +56,17 @@ export function resolveConfig(
     return null;
   };
 
+  // Helper to get nested property from an object using dot notation
+  const getNestedValue = (obj: any, path: string): any => {
+    const parts = path.split(".");
+    let current = obj;
+    for (const part of parts) {
+      if (current === null || current === undefined) return undefined;
+      current = current[part];
+    }
+    return current;
+  };
+
   // Helper to resolve a single value
   const resolveValue = (value: any, key: string): any => {
     if (typeof value === "string") {
@@ -63,17 +74,45 @@ export function resolveConfig(
       const fullMatch = value.match(/^\{\{\s*([^}]+)\s*\}\}$/);
       if (fullMatch) {
         const trimmedVar = fullMatch[1].trim();
-        const found = findVariableInLogs(trimmedVar);
         
-        if (found) {
-          // Store source information
-          sources[key] = {
-            stepId: found.step.id,
-            stepTitle: found.step.title,
-            variableName: trimmedVar,
-          };
-          // Return the actual value (preserve type)
-          return found.log.output;
+        // Check if it's a nested property like "step_1.output.email"
+        const nestedMatch = trimmedVar.match(/^(step_\d+)(\.(.+))?$/);
+        if (nestedMatch) {
+          const stepVar = nestedMatch[1]; // e.g., "step_1"
+          const propertyPath = nestedMatch[3]; // e.g., "output.email"
+          
+          const found = findVariableInLogs(stepVar);
+          if (found) {
+            let resolvedValue = found.log.output;
+            
+            // If there's a property path, navigate to it
+            if (propertyPath) {
+              resolvedValue = getNestedValue(resolvedValue, propertyPath);
+            }
+            
+            // Store source information
+            sources[key] = {
+              stepId: found.step.id,
+              stepTitle: found.step.title,
+              variableName: trimmedVar,
+            };
+            
+            return resolvedValue !== undefined ? resolvedValue : value; // Keep placeholder if property not found
+          }
+        } else {
+          // Try regular variable lookup
+          const found = findVariableInLogs(trimmedVar);
+          
+          if (found) {
+            // Store source information
+            sources[key] = {
+              stepId: found.step.id,
+              stepTitle: found.step.title,
+              variableName: trimmedVar,
+            };
+            // Return the actual value (preserve type)
+            return found.log.output;
+          }
         }
         
         // Variable not found
@@ -94,13 +133,38 @@ export function resolveConfig(
         }
         
         const trimmedVar = match[1].trim();
-        const found = findVariableInLogs(trimmedVar);
         
-        if (found) {
-          const output = found.log.output;
-          const outputStr = typeof output === "object" && output !== null
-            ? JSON.stringify(output)
-            : String(output ?? "");
+        // Check if it's a nested property like "step_1.output.email"
+        const nestedMatch = trimmedVar.match(/^(step_\d+)(\.(.+))?$/);
+        let resolvedVarValue: any = undefined;
+        
+        if (nestedMatch) {
+          const stepVar = nestedMatch[1]; // e.g., "step_1"
+          const propertyPath = nestedMatch[3]; // e.g., "output.email"
+          
+          const found = findVariableInLogs(stepVar);
+          if (found) {
+            let output = found.log.output;
+            
+            // If there's a property path, navigate to it
+            if (propertyPath) {
+              output = getNestedValue(output, propertyPath);
+            }
+            
+            resolvedVarValue = output;
+          }
+        } else {
+          // Try regular variable lookup
+          const found = findVariableInLogs(trimmedVar);
+          if (found) {
+            resolvedVarValue = found.log.output;
+          }
+        }
+        
+        if (resolvedVarValue !== undefined) {
+          const outputStr = typeof resolvedVarValue === "object" && resolvedVarValue !== null
+            ? JSON.stringify(resolvedVarValue)
+            : String(resolvedVarValue ?? "");
           parts.push({ text: outputStr, isVariable: true, variable: trimmedVar });
         } else {
           parts.push({ text: match[0], isVariable: false }); // Keep placeholder

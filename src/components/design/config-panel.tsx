@@ -10,22 +10,639 @@ import { Users, User, ShieldCheck, Upload, CheckCircle2, Calculator, Sparkles, A
 import { MagicInput } from "@/components/studio/magic-input";
 import { GoogleSheetConfig } from "@/components/studio/GoogleSheetConfig";
 import { useOrgId, useOrgQuery } from "@/hooks/useOrgData";
+import { isHumanStep } from "@/lib/constants";
+import { KeyValueBuilder } from "./key-value-builder";
+
+// Helper function to get available variables
+function getAvailableVariables(allSteps: AtomicStep[], currentStepId: string) {
+  const currentStepIndex = allSteps.findIndex((s) => s.id === currentStepId);
+  const previousSteps = allSteps.slice(0, currentStepIndex);
+  
+  return previousSteps.map((s, idx) => ({
+    id: s.id,
+    label: `Step ${idx + 1}: ${s.title}`,
+    type: s.action,
+    variableName: s.config.outputVariableName || `step_${idx + 1}_output`,
+  }));
+}
+
+// Render Basic tab content (critical fields)
+function renderActionConfigBasic(
+  step: AtomicStep,
+  availableVariablesLegacy: { value: string; label: string }[],
+  onUpdate: (updates: Partial<AtomicStep>) => void,
+  allSteps: AtomicStep[],
+  collections: Array<{ id: string; name: string }> = [],
+  procedureTrigger?: { type: "MANUAL" | "ON_FILE_CREATED" | "WEBHOOK"; config?: any } | undefined
+) {
+  const { action, config } = step;
+  const availableVariables = getAvailableVariables(allSteps, step.id);
+
+  switch (action) {
+    case "INPUT":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Question Text <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={config.fieldLabel || ""}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, fieldLabel: e.target.value } })
+              }
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+              placeholder="e.g., Enter the oven temperature"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Input Type <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={config.inputType || "text"}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, inputType: e.target.value as any } })
+              }
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+            >
+              <option value="text">Text</option>
+              <option value="number">Number</option>
+              <option value="date">Date</option>
+              <option value="select">Dropdown (Select)</option>
+              <option value="checkbox">Checkbox</option>
+              <option value="multiline">Multiline Text</option>
+              <option value="file">File Upload</option>
+            </select>
+          </div>
+
+          {/* Conditional: Show options only for select/checkbox */}
+          {(config.inputType === "select" || config.inputType === "checkbox") && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Options <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                value={config.options ? config.options.map(o => typeof o === "string" ? o : o.label).join("\n") : ""}
+                onChange={(e) => {
+                  const optionStrings = e.target.value.split("\n").filter(o => o.trim());
+                  const options: Array<{ label: string; value: string }> | undefined = optionStrings.length > 0 
+                    ? optionStrings.map(o => ({ label: o, value: o }))
+                    : undefined;
+                  onUpdate({ config: { ...config, options } });
+                }}
+                rows={4}
+                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                placeholder="Option 1&#10;Option 2&#10;Option 3"
+              />
+              <p className="mt-1 text-xs text-slate-500">Enter one option per line</p>
+            </div>
+          )}
+
+          {/* Conditional: Show allowedExtensions only for file */}
+          {config.inputType === "file" && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Allowed File Types
+              </label>
+              <input
+                type="text"
+                value={config.allowedExtensions ? config.allowedExtensions.join(", ") : ""}
+                onChange={(e) => {
+                  const extensions = e.target.value.split(",").map(e => e.trim()).filter(e => e);
+                  onUpdate({ config: { ...config, allowedExtensions: extensions.length > 0 ? extensions : undefined } });
+                }}
+                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                placeholder="e.g., pdf, jpg, png, docx"
+              />
+              <p className="mt-1 text-xs text-slate-500">Comma-separated file extensions (e.g., pdf, jpg, png)</p>
+            </div>
+          )}
+        </div>
+      );
+
+    case "DB_INSERT":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Collection Name <span className="text-rose-500">*</span>
+            </label>
+            {collections.length > 0 ? (
+              <select
+                value={config.collectionName || ""}
+                onChange={(e) =>
+                  onUpdate({ config: { ...config, collectionName: e.target.value || undefined } })
+                }
+                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+              >
+                <option value="">Select a collection...</option>
+                {collections.map((col) => (
+                  <option key={col.id} value={col.name}>
+                    {col.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={config.collectionName || ""}
+                onChange={(e) =>
+                  onUpdate({ config: { ...config, collectionName: e.target.value || undefined } })
+                }
+                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                placeholder="e.g., Deals, Employees, Orders"
+              />
+            )}
+            <p className="mt-1 text-xs text-slate-500">
+              {collections.length > 0 
+                ? "Select an existing collection"
+                : "Type the collection name (must match an existing collection)"}
+            </p>
+          </div>
+
+          {/* Show KeyValueBuilder only after collection is selected */}
+          {config.collectionName && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Data Mapping <span className="text-rose-500">*</span>
+              </label>
+              <KeyValueBuilder
+                value={config.data}
+                onChange={(value) => onUpdate({ config: { ...config, data: value } })}
+                keyPlaceholder="Field name (e.g., amount)"
+                valuePlaceholder="Value (e.g., {{step_1.amount}})"
+                availableVariables={availableVariables.map(v => ({
+                  variableName: v.variableName,
+                  label: v.label,
+                }))}
+              />
+            </div>
+          )}
+        </div>
+      );
+
+    case "AI_PARSE":
+      // Check if this is the first step and if there's an automated trigger
+      const isFirstStep = allSteps.findIndex((s) => s.id === step.id) === 0;
+      const hasAutomatedTrigger = procedureTrigger && (procedureTrigger.type === "ON_FILE_CREATED" || procedureTrigger.type === "WEBHOOK");
+      
+      // Build source options: Always include TRIGGER_EVENT if it's the first step and has automated trigger
+      const sourceOptions: Array<{ label: string; value: string }> = [];
+      
+      if (isFirstStep && hasAutomatedTrigger) {
+        sourceOptions.push({ label: "⚡️ Start Trigger (Automated File)", value: "TRIGGER_EVENT" });
+      }
+      
+      // Add previous INPUT steps with file type
+      const currentStepIndex = allSteps.findIndex((s) => s.id === step.id);
+      const previousFileInputSteps = allSteps
+        .filter((s) => {
+          const stepIndex = allSteps.findIndex((st) => st.id === s.id);
+          return s.action === "INPUT" && s.config.inputType === "file" && stepIndex < currentStepIndex;
+        })
+        .map((s) => ({ label: s.title, value: s.id }));
+      
+      sourceOptions.push(...previousFileInputSteps);
+      
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              File Source Step <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={config.fileSourceStepId || ""}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, fileSourceStepId: e.target.value || undefined } })
+              }
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+            >
+              <option value="">Select a source...</option>
+              {sourceOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              {isFirstStep && hasAutomatedTrigger
+                ? "Select the trigger event for automated workflows, or a previous INPUT step for manual uploads"
+                : "Select the INPUT step where the file was uploaded"}
+            </p>
+          </div>
+        </div>
+      );
+
+    case "HTTP_REQUEST":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              URL <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={config.url || ""}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, url: e.target.value } })
+              }
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+              placeholder="https://api.example.com/endpoint"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Method <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={config.method || "GET"}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, method: e.target.value as any } })
+              }
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+            >
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="DELETE">DELETE</option>
+              <option value="PATCH">PATCH</option>
+            </select>
+          </div>
+        </div>
+      );
+
+    case "SEND_EMAIL":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Recipient <span className="text-rose-500">*</span>
+            </label>
+            <MagicInput
+              value={config.recipient || ""}
+              onChange={(value) =>
+                onUpdate({ config: { ...config, recipient: value || undefined } })
+              }
+              placeholder="email@example.com or {{step_1.email}}"
+              availableVariables={availableVariables}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Subject <span className="text-rose-500">*</span>
+            </label>
+            <MagicInput
+              value={config.subject || ""}
+              onChange={(value) =>
+                onUpdate({ config: { ...config, subject: value || undefined } })
+              }
+              placeholder="Email subject or {{step_1.title}}"
+              availableVariables={availableVariables}
+            />
+          </div>
+        </div>
+      );
+
+    case "GOOGLE_SHEET":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Spreadsheet ID <span className="text-rose-500">*</span>
+            </label>
+            <MagicInput
+              value={config.spreadsheetId || ""}
+              onChange={(value) =>
+                onUpdate({ config: { ...config, spreadsheetId: value || undefined } })
+              }
+              placeholder="Spreadsheet ID or {{step_1.sheetId}}"
+              availableVariables={availableVariables}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Sheet Name <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={config.sheetName || ""}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, sheetName: e.target.value || undefined } })
+              }
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+              placeholder="e.g., Sheet1, Data"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Operation <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={config.operation || "APPEND_ROW"}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, operation: e.target.value as any } })
+              }
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+            >
+              <option value="APPEND_ROW">Append Row</option>
+              <option value="UPDATE_ROW">Update Row</option>
+            </select>
+          </div>
+        </div>
+      );
+
+    case "DOC_GENERATE":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Template ID <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={config.templateId || ""}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, templateId: e.target.value || undefined } })
+              }
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+              placeholder="Template ID"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Output Format
+            </label>
+            <select
+              value={config.outputFormat || "pdf"}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, outputFormat: e.target.value as any } })
+              }
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+            >
+              <option value="pdf">PDF</option>
+              <option value="docx">DOCX</option>
+            </select>
+          </div>
+        </div>
+      );
+
+    case "APPROVAL":
+    case "MANUAL_TASK":
+    case "NEGOTIATE":
+    case "INSPECT":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Instruction <span className="text-rose-500">*</span>
+            </label>
+            <textarea
+              value={config.instruction || ""}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, instruction: e.target.value } })
+              }
+              rows={6}
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
+              placeholder="Enter detailed instructions..."
+            />
+          </div>
+        </div>
+      );
+
+    default:
+      return null;
+  }
+}
+
+// Render Settings tab content (advanced fields)
+function renderActionConfigSettings(
+  step: AtomicStep,
+  availableVariablesLegacy: { value: string; label: string }[],
+  onUpdate: (updates: Partial<AtomicStep>) => void,
+  allSteps: AtomicStep[],
+  collections: Array<{ id: string; name: string }> = []
+) {
+  const { action, config } = step;
+  const availableVariables = getAvailableVariables(allSteps, step.id);
+
+  switch (action) {
+    case "INPUT":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Placeholder Text
+            </label>
+            <input
+              type="text"
+              value={config.placeholder || ""}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, placeholder: e.target.value || undefined } })
+              }
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+              placeholder="Enter placeholder text"
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-xl border-2 border-slate-200 bg-slate-50">
+            <div>
+              <label className="text-sm font-semibold text-slate-900 block mb-0.5">
+                Required Field
+              </label>
+              <p className="text-xs text-slate-600">
+                Users must fill this field before proceeding
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={config.required || false}
+                onChange={(e) =>
+                  onUpdate({ config: { ...config, required: e.target.checked } })
+                }
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              />
+            </label>
+          </div>
+        </div>
+      );
+
+    case "DB_INSERT":
+      // Data mapping is shown in Basic tab after collection selection
+      return null;
+
+    case "HTTP_REQUEST":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Headers
+            </label>
+            <KeyValueBuilder
+              value={config.headers}
+              onChange={(value) => onUpdate({ config: { ...config, headers: value } })}
+              keyPlaceholder="Header name (e.g., Authorization)"
+              valuePlaceholder="Header value (e.g., Bearer {{step_1.token}})"
+              availableVariables={availableVariables.map(v => ({
+                variableName: v.variableName,
+                label: v.label,
+              }))}
+              allowEmpty={true}
+            />
+          </div>
+
+          {/* Conditional: Show body only for POST/PUT */}
+          {(config.method === "POST" || config.method === "PUT") && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Request Body
+              </label>
+              <textarea
+                value={config.requestBody || ""}
+                onChange={(e) =>
+                  onUpdate({ config: { ...config, requestBody: e.target.value || undefined } })
+                }
+                rows={6}
+                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                placeholder='{"key": "value"} or {{step_1.data}}'
+              />
+            </div>
+          )}
+        </div>
+      );
+
+    case "SEND_EMAIL":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Email Body <span className="text-rose-500">*</span>
+            </label>
+            <MagicInput
+              value={config.emailBody || ""}
+              onChange={(value) =>
+                onUpdate({ config: { ...config, emailBody: value || undefined } })
+              }
+              placeholder="Email body text or HTML with {{step_1.content}}"
+              availableVariables={availableVariables}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Attachments (Optional)
+            </label>
+            <input
+              type="text"
+              value={config.attachments ? config.attachments.join(", ") : ""}
+              onChange={(e) => {
+                const attachments = e.target.value.split(",").map(a => a.trim()).filter(a => a);
+                onUpdate({ config: { ...config, attachments: attachments.length > 0 ? attachments : undefined } });
+              }}
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+              placeholder="URL1, URL2 or {{step_1.fileUrl}}"
+            />
+            <p className="mt-1 text-xs text-slate-500">Comma-separated file URLs or variables</p>
+          </div>
+        </div>
+      );
+
+    case "GOOGLE_SHEET":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Column Mapping <span className="text-rose-500">*</span>
+            </label>
+            <KeyValueBuilder
+              value={config.columnMapping}
+              onChange={(value) => onUpdate({ config: { ...config, columnMapping: value } })}
+              keyPlaceholder="Column (e.g., A, B, C)"
+              valuePlaceholder="Value (e.g., {{step_1.name}})"
+              availableVariables={availableVariables.map(v => ({
+                variableName: v.variableName,
+                label: v.label,
+              }))}
+            />
+          </div>
+        </div>
+      );
+
+    case "DOC_GENERATE":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Data Mapping <span className="text-rose-500">*</span>
+            </label>
+            <KeyValueBuilder
+              value={config.dataMapping}
+              onChange={(value) => onUpdate({ config: { ...config, dataMapping: value } })}
+              keyPlaceholder="Variable name (e.g., clientName)"
+              valuePlaceholder="Value (e.g., {{step_1.name}})"
+              availableVariables={availableVariables.map(v => ({
+                variableName: v.variableName,
+                label: v.label,
+              }))}
+            />
+          </div>
+        </div>
+      );
+
+    case "AI_PARSE":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Fields to Extract <span className="text-rose-500">*</span>
+            </label>
+            <textarea
+              value={config.fieldsToExtract ? config.fieldsToExtract.join("\n") : ""}
+              onChange={(e) => {
+                const fields = e.target.value.split("\n").filter(f => f.trim());
+                onUpdate({ config: { ...config, fieldsToExtract: fields.length > 0 ? fields : undefined } });
+              }}
+              rows={6}
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+              placeholder="invoiceDate&#10;amount&#10;vendor&#10;invoiceNumber"
+            />
+            <p className="mt-1 text-xs text-slate-500">Enter one field name per line</p>
+          </div>
+        </div>
+      );
+
+    default:
+      return null;
+  }
+}
 
 interface ConfigPanelProps {
   step: AtomicStep | null;
   allSteps: AtomicStep[];
   onUpdate: (updates: Partial<AtomicStep>) => void;
   validationError?: string | null;
+  procedureTrigger?: { type: "MANUAL" | "ON_FILE_CREATED" | "WEBHOOK"; config?: any } | undefined;
 }
 
-export function ConfigPanel({ step, allSteps, onUpdate, validationError }: ConfigPanelProps) {
+export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedureTrigger }: ConfigPanelProps) {
   const [teams, setTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
+  const [activeTab, setActiveTab] = useState<"basic" | "settings" | "logic">("basic");
   
   // Get organization ID from context
   const organizationId = useOrgId();
   const teamsQuery = useOrgQuery("teams");
   const usersQuery = useOrgQuery("users");
+  const collectionsQuery = useOrgQuery("collections");
 
   // Fetch teams and users for assignment
   useEffect(() => {
@@ -89,6 +706,32 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
     };
   }, [usersQuery, organizationId]);
 
+  // Fetch collections for DB_INSERT collection picker
+  useEffect(() => {
+    if (!collectionsQuery) return;
+
+    const unsubscribeCollections = onSnapshot(
+      collectionsQuery,
+      (snapshot) => {
+        const collectionsData = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.name || doc.id,
+          };
+        });
+        setCollections(collectionsData);
+      },
+      (error) => {
+        console.error("Error fetching collections:", error);
+      }
+    );
+
+    return () => {
+      unsubscribeCollections();
+    };
+  }, [collectionsQuery]);
+
   // Auto-detect assignment from assignee field (from AI @mentions)
   useEffect(() => {
     if (!step || !users.length) return;
@@ -101,7 +744,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
     // Only auto-configure if assignee exists but assignment is not fully configured
     if (hasAssignee && (!hasAssignmentType || !hasAssigneeId)) {
       // Try to find the user by email or name
-      const assigneeValue = step.assignee.trim();
+      const assigneeValue = (step.assignee || "").trim();
       
       // Try to match by email first
       let matchedUser = users.find(
@@ -167,8 +810,10 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
   }
 
 
-  const metadata = ATOMIC_ACTION_METADATA[step.action];
-  const IconComponent = (LucideIcons as any)[metadata.icon] || LucideIcons.Type;
+  const metadata = (step.action && step.action in ATOMIC_ACTION_METADATA) 
+    ? ATOMIC_ACTION_METADATA[step.action as AtomicAction] 
+    : null;
+  const IconComponent = metadata ? ((LucideIcons as any)[metadata.icon] || LucideIcons.Type) : LucideIcons.Type;
 
   // Get available variable names from previous steps
   const currentStepIndex = allSteps.findIndex((s) => s.id === step.id);
@@ -210,21 +855,75 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
         
         <div>
           <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight mb-1">{step.title}</h2>
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{metadata.label}</p>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{metadata?.label || step.action || "Unknown"}</p>
+        </div>
+      </div>
+
+      {/* Tabs Navigation */}
+      <div className="border-b border-slate-200 -mx-8 px-8 mb-6">
+        <div className="flex gap-1">
+          <button
+            onClick={() => setActiveTab("basic")}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+              activeTab === "basic"
+                ? "text-blue-600"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Basic
+            {activeTab === "basic" && (
+              <motion.div
+                layoutId="activeTab"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+              />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+              activeTab === "settings"
+                ? "text-blue-600"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Settings
+            {activeTab === "settings" && (
+              <motion.div
+                layoutId="activeTab"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+              />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab("logic")}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+              activeTab === "logic"
+                ? "text-blue-600"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Logic
+            {activeTab === "logic" && (
+              <motion.div
+                layoutId="activeTab"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+              />
+            )}
+          </button>
         </div>
       </div>
 
       <div className="relative space-y-8">
-        {/* Basic Info - Grouped */}
-        <div className="space-y-4">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
-            Basic Information
-          </h3>
-          
-          <div className="space-y-5">
+        {/* Tab 1: Basic */}
+        {activeTab === "basic" && (
+          <div className="space-y-6">
+            {/* Step Title */}
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Step Title
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Step Title <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -235,8 +934,163 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
               />
             </div>
 
+            {/* Responsibility Section 👤 - Only show for Human Steps */}
+            {step && isHumanStep(step.action) && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-slate-900">Responsibility</h3>
+                <div className="rounded-xl bg-slate-50/50 p-5 space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                      Assignment Type
+                    </label>
+                    <select
+                      value={
+                        step.assignment?.type || 
+                        (step.assigneeType === "TEAM" ? "TEAM_QUEUE" : 
+                         step.assigneeType === "SPECIFIC_USER" ? "SPECIFIC_USER" : 
+                         (step.assignee && step.assignee.trim() !== "" && !step.assignment?.type && !step.assigneeType) ? "SPECIFIC_USER" : "STARTER")
+                      }
+                      onChange={(e) => {
+                        const assignmentType = e.target.value as "STARTER" | "SPECIFIC_USER" | "TEAM_QUEUE";
+                        onUpdate({
+                          assignment: {
+                            type: assignmentType,
+                            assigneeId: assignmentType === "STARTER" ? undefined : step.assignment?.assigneeId || step.assigneeId,
+                          },
+                          assigneeType: assignmentType === "TEAM_QUEUE" ? "TEAM" : assignmentType === "SPECIFIC_USER" ? "SPECIFIC_USER" : "STARTER",
+                          assigneeId: assignmentType === "STARTER" ? undefined : step.assignment?.assigneeId || step.assigneeId,
+                        });
+                      }}
+                      className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    >
+                      <option value="STARTER">Process Starter (The person who clicked Run)</option>
+                      <option value="SPECIFIC_USER">Specific User</option>
+                      <option value="TEAM_QUEUE">Team Queue (Any member can pick it up)</option>
+                    </select>
+                  </div>
+
+                  {(step.assignment?.type === "TEAM_QUEUE" || step.assigneeType === "TEAM") && (
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                        Select Team
+                      </label>
+                      <select
+                        value={step.assignment?.assigneeId || step.assigneeId || ""}
+                        onChange={(e) =>
+                          onUpdate({
+                            assignment: {
+                              type: "TEAM_QUEUE",
+                              assigneeId: e.target.value || undefined,
+                            },
+                            assigneeType: "TEAM",
+                            assigneeId: e.target.value || undefined,
+                          })
+                        }
+                        className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      >
+                        <option value="">Select a team</option>
+                        {teams.map((team) => (
+                          <option key={team.id} value={team.id}>
+                            {team.name}
+                          </option>
+                        ))}
+                      </select>
+                      {teams.length === 0 && (
+                        <p className="mt-1 text-xs text-slate-500">
+                          No teams available. Create teams in Settings.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {(step.assignment?.type === "SPECIFIC_USER" || step.assigneeType === "SPECIFIC_USER" || (step.assignee && step.assignee.trim() !== "")) && (
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                        Select User
+                      </label>
+                      <select
+                        value={(() => {
+                          const currentId = step.assignment?.assigneeId || step.assigneeId;
+                          if (currentId) return currentId;
+                          
+                          if (step.assignee && step.assignee.trim() !== "") {
+                            const assigneeValue = step.assignee.trim();
+                            const byEmail = users.find(
+                              (u) => u.email?.toLowerCase() === assigneeValue.toLowerCase()
+                            );
+                            if (byEmail) return byEmail.uid || byEmail.id;
+                            
+                            const byName = users.find(
+                              (u) => u.displayName?.toLowerCase().includes(assigneeValue.toLowerCase()) ||
+                                     assigneeValue.toLowerCase().includes(u.displayName?.toLowerCase() || "")
+                            );
+                            if (byName) return byName.uid || byName.id;
+                            
+                            const namePart = assigneeValue.replace(/^@/, "").toLowerCase();
+                            const byPartial = users.find(
+                              (u) => u.displayName?.toLowerCase().split(" ").some(part => part.startsWith(namePart)) ||
+                                     u.email?.toLowerCase().split("@")[0] === namePart
+                            );
+                            if (byPartial) return byPartial.uid || byPartial.id;
+                          }
+                          
+                          return "";
+                        })()}
+                        onChange={(e) =>
+                          onUpdate({
+                            assignment: {
+                              type: "SPECIFIC_USER",
+                              assigneeId: e.target.value || undefined,
+                            },
+                            assigneeType: "SPECIFIC_USER",
+                            assigneeId: e.target.value || undefined,
+                          })
+                        }
+                        className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      >
+                        <option value="">Select a user</option>
+                        {users.map((user) => (
+                          <option key={user.id} value={user.uid || user.id}>
+                            {user.displayName} ({user.email})
+                          </option>
+                        ))}
+                      </select>
+                      {users.length === 0 && (
+                        <p className="mt-1 text-xs text-slate-500">
+                          No users available. Invite users in Settings.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {((step.assignment?.type && step.assignment.type !== "STARTER" && step.assignment.assigneeId) ||
+                    (step.assigneeType && step.assigneeType !== "STARTER" && step.assigneeId)) && (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-blue-600" />
+                        <p className="text-xs font-medium text-blue-900">
+                          {step.assignment?.type === "TEAM_QUEUE" || step.assigneeType === "TEAM"
+                            ? `Assigned to team: ${teams.find((t) => t.id === (step.assignment?.assigneeId || step.assigneeId))?.name || "Unknown"}`
+                            : `Assigned to user: ${users.find((u) => (u.uid || u.id) === (step.assignment?.assigneeId || step.assigneeId))?.displayName || step.assignment?.assigneeId || step.assigneeId}`}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Action-specific Basic Configuration */}
+            {renderActionConfigBasic(step, availableVariablesLegacy, onUpdate, allSteps, collections, procedureTrigger)}
+          </div>
+        )}
+
+        {/* Tab 2: Settings */}
+        {activeTab === "settings" && (
+          <div className="space-y-6">
+            {/* Output Variable Name */}
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Output Variable Name
               </label>
               <input
@@ -251,1338 +1105,46 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError }: Confi
                 placeholder="e.g., invoice_total"
               />
               <p className="mt-2 text-xs text-slate-500">
-                Variable name for referencing this step's data later
+                Variable name for referencing this step's data later. Auto-generated if left blank.
               </p>
             </div>
-          </div>
-        </div>
 
-        {/* Responsibility Section 👤 */}
-        <div className="space-y-4">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
-            Responsibility
-          </h3>
-          <div className="rounded-xl bg-slate-50/50 p-5 space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Assignment Type
-              </label>
-              <select
-                value={
-                  step.assignment?.type || 
-                  (step.assigneeType === "TEAM" ? "TEAM_QUEUE" : 
-                   step.assigneeType === "SPECIFIC_USER" ? "SPECIFIC_USER" : 
-                   (step.assignee && step.assignee.trim() !== "" && !step.assignment?.type && !step.assigneeType) ? "SPECIFIC_USER" : "STARTER")
-                }
-                onChange={(e) => {
-                  const assignmentType = e.target.value as "STARTER" | "SPECIFIC_USER" | "TEAM_QUEUE";
-                  onUpdate({
-                    assignment: {
-                      type: assignmentType,
-                      assigneeId: assignmentType === "STARTER" ? undefined : step.assignment?.assigneeId || step.assigneeId,
-                    },
-                    // Legacy support
-                    assigneeType: assignmentType === "TEAM_QUEUE" ? "TEAM" : assignmentType === "SPECIFIC_USER" ? "SPECIFIC_USER" : "STARTER",
-                    assigneeId: assignmentType === "STARTER" ? undefined : step.assignment?.assigneeId || step.assigneeId,
-                  });
-                }}
-                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-              >
-                <option value="STARTER">Process Starter (The person who clicked Run)</option>
-                <option value="SPECIFIC_USER">Specific User</option>
-                <option value="TEAM_QUEUE">Team Queue (Any member can pick it up)</option>
-              </select>
-            </div>
-
-            {(step.assignment?.type === "TEAM_QUEUE" || step.assigneeType === "TEAM") && (
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                  Select Team
-                </label>
-                <select
-                  value={step.assignment?.assigneeId || step.assigneeId || ""}
-                  onChange={(e) =>
-                    onUpdate({
-                      assignment: {
-                        type: "TEAM_QUEUE",
-                        assigneeId: e.target.value || undefined,
-                      },
-                      assigneeType: "TEAM",
-                      assigneeId: e.target.value || undefined,
-                    })
-                  }
-                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-                >
-                  <option value="">Select a team</option>
-                  {teams.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.name}
-                    </option>
-                  ))}
-                </select>
-                {teams.length === 0 && (
-                  <p className="mt-1 text-xs text-slate-500">
-                    No teams available. Create teams in Settings.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {(step.assignment?.type === "SPECIFIC_USER" || step.assigneeType === "SPECIFIC_USER" || (step.assignee && step.assignee.trim() !== "")) && (
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                  Select User
-                </label>
-                <select
-                  value={(() => {
-                    // First try assignment.assigneeId or assigneeId
-                    const currentId = step.assignment?.assigneeId || step.assigneeId;
-                    if (currentId) return currentId;
-                    
-                    // If assignee field exists but no ID, try to find user by email/name
-                    if (step.assignee && step.assignee.trim() !== "") {
-                      const assigneeValue = step.assignee.trim();
-                      
-                      // Try to match by email
-                      const byEmail = users.find(
-                        (u) => u.email?.toLowerCase() === assigneeValue.toLowerCase()
-                      );
-                      if (byEmail) return byEmail.uid || byEmail.id;
-                      
-                      // Try to match by displayName
-                      const byName = users.find(
-                        (u) => u.displayName?.toLowerCase().includes(assigneeValue.toLowerCase()) ||
-                               assigneeValue.toLowerCase().includes(u.displayName?.toLowerCase() || "")
-                      );
-                      if (byName) return byName.uid || byName.id;
-                      
-                      // Try partial name matching (e.g., "@Jack" matches "Jack Smith")
-                      const namePart = assigneeValue.replace(/^@/, "").toLowerCase();
-                      const byPartial = users.find(
-                        (u) => u.displayName?.toLowerCase().split(" ").some(part => part.startsWith(namePart)) ||
-                               u.email?.toLowerCase().split("@")[0] === namePart
-                      );
-                      if (byPartial) return byPartial.uid || byPartial.id;
-                    }
-                    
-                    return "";
-                  })()}
-                  onChange={(e) =>
-                    onUpdate({
-                      assignment: {
-                        type: "SPECIFIC_USER",
-                        assigneeId: e.target.value || undefined,
-                      },
-                      assigneeType: "SPECIFIC_USER",
-                      assigneeId: e.target.value || undefined,
-                    })
-                  }
-                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-                >
-                  <option value="">Select a user</option>
-                  {users.map((user) => (
-                    <option key={user.id} value={user.uid || user.id}>
-                      {user.displayName} ({user.email})
-                    </option>
-                  ))}
-                </select>
-                {users.length === 0 && (
-                  <p className="mt-1 text-xs text-slate-500">
-                    No users available. Invite users in Settings.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {((step.assignment?.type && step.assignment.type !== "STARTER" && step.assignment.assigneeId) ||
-              (step.assigneeType && step.assigneeType !== "STARTER" && step.assigneeId)) && (
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-blue-600" />
-                  <p className="text-xs font-medium text-blue-900">
-                    {step.assignment?.type === "TEAM_QUEUE" || step.assigneeType === "TEAM"
-                      ? `Assigned to team: ${teams.find((t) => t.id === (step.assignment?.assigneeId || step.assigneeId))?.name || "Unknown"}`
-                      : `Assigned to user: ${users.find((u) => (u.uid || u.id) === (step.assignment?.assigneeId || step.assigneeId))?.displayName || step.assignment?.assigneeId || step.assigneeId}`}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Evidence Requirement Section 📎 */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
-            Evidence
-          </h3>
-          <div className="rounded-xl bg-slate-50/50 p-5">
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={step.requiresEvidence || false}
-                onChange={(e) => onUpdate({ requiresEvidence: e.target.checked })}
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-              />
-              <div className="flex-1">
-                <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900">
-                  Require Evidence Upload
-                </span>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Users must upload a file (PDF, Image, Doc) before completing this task
-                </p>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        {/* AI Automation Toggle */}
-        {(step.action === "GENERATE" || step.action === "TRANSFORM" || step.action === "ORGANISE" || step.action === "CALCULATE") && (
-          <div className="space-y-4">
-            <div className="rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Sparkles className="h-5 w-5 text-purple-600" />
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-900">AI Automation</h3>
-                    <p className="text-xs text-slate-600">Let AI complete this task automatically</p>
-                  </div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+            {/* Evidence Requirement */}
+            {step && isHumanStep(step.action) && (
+              <div className="rounded-xl bg-slate-50/50 p-5">
+                <label className="flex items-center gap-3 cursor-pointer group">
                   <input
                     type="checkbox"
-                    checked={step.config.isAiAutomated || false}
-                    onChange={(e) =>
-                      onUpdate({ config: { ...step.config, isAiAutomated: e.target.checked } })
-                    }
-                    className="sr-only peer"
+                    checked={step.requiresEvidence || false}
+                    onChange={(e) => onUpdate({ requiresEvidence: e.target.checked })}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
                   />
-                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900">
+                      Require Evidence Upload
+                    </span>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Users must upload a file (PDF, Image, Doc) before completing this task
+                    </p>
+                  </div>
                 </label>
               </div>
-            </div>
+            )}
+
+            {/* Action-specific Settings Configuration */}
+            {renderActionConfigSettings(step, availableVariablesLegacy, onUpdate, allSteps, collections)}
           </div>
         )}
 
-        {/* Action-specific Configuration - Natural Language */}
-        <div className="space-y-4">
-          {renderActionConfig(step, availableVariablesLegacy, onUpdate, allSteps)}
-        </div>
-
-        {/* Flow Logic (Routing) */}
-        <div className="space-y-4 mt-6 pt-6 border-t border-white/20">
-          <h3 className="text-sm font-semibold text-slate-900">Flow Logic</h3>
-          {renderFlowLogic(step, allSteps, onUpdate)}
-        </div>
+        {/* Tab 3: Logic */}
+        {activeTab === "logic" && (
+          <div className="space-y-6">
+            {renderFlowLogic(step, allSteps, onUpdate)}
+          </div>
+        )}
       </div>
     </motion.div>
   );
-}
-
-function renderActionConfig(
-  step: AtomicStep,
-  availableVariablesLegacy: { value: string; label: string }[],
-  onUpdate: (updates: Partial<AtomicStep>) => void,
-  allSteps: AtomicStep[]
-) {
-  const { action, config } = step;
-  
-  // Get available variables in the new format
-  const currentStepIndex = allSteps.findIndex((s) => s.id === step.id);
-  const previousSteps = allSteps.slice(0, currentStepIndex);
-  
-  const availableVariables = previousSteps.map((s, idx) => ({
-    id: s.id,
-    label: `Step ${idx + 1}: ${s.title}`,
-    type: s.action,
-    variableName: s.config.outputVariableName || `step_${idx + 1}_output`,
-  }));
-
-  switch (action) {
-    case "INPUT":
-      return (
-        <div className="space-y-6">
-          {/* Natural Language Header */}
-          <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white p-5">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100">
-                <LucideIcons.MessageSquare className="h-5 w-5 text-blue-600" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">What information do you need?</h3>
-            </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Tell us what question to ask the operator. They'll see this on their mobile device.
-            </p>
-          </div>
-
-          {/* Question Text */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Question text <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={config.fieldLabel || ""}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, fieldLabel: e.target.value } })
-              }
-              className="w-full rounded-xl border-0 bg-white/50 shadow-inner px-4 py-3 text-sm font-medium text-slate-800 focus:ring-1 focus:ring-black/5 focus:bg-white/70 transition-all"
-              placeholder="e.g., Enter the oven temperature"
-            />
-            <p className="mt-2 text-xs text-slate-500 flex items-center gap-1">
-              <LucideIcons.Info className="h-3 w-3" />
-              This is exactly what the operator will see on their screen
-            </p>
-          </div>
-
-          {/* Data Type - Natural Language */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              What type of answer? <span className="text-rose-500">*</span>
-            </label>
-            <select
-              value={config.inputType || "text"}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, inputType: e.target.value as any } })
-              }
-              className="w-full rounded-xl border-0 bg-white/50 shadow-inner px-4 py-3 text-sm font-medium text-slate-800 focus:ring-1 focus:ring-black/5 focus:bg-white/70 transition-all"
-            >
-              <option value="text">Text (words or sentences)</option>
-              <option value="number">Number (e.g., 350, 12.5)</option>
-              <option value="email">Email address</option>
-              <option value="date">Date</option>
-              <option value="file">File Upload</option>
-              <option value="table">Table (multiple rows)</option>
-            </select>
-            <p className="mt-2 text-xs text-slate-500 flex items-center gap-1">
-              <LucideIcons.Info className="h-3 w-3" />
-              Choose how the operator should answer your question
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">
-              Placeholder
-            </label>
-            <input
-              type="text"
-              value={config.placeholder || ""}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, placeholder: e.target.value } })
-              }
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-              placeholder="Enter placeholder text"
-            />
-          </div>
-
-          {/* Required Toggle */}
-          <div className="flex items-center justify-between p-4 rounded-xl border-2 border-slate-200 bg-slate-50">
-            <div>
-              <label className="text-sm font-semibold text-slate-900 block mb-0.5">
-                Required Field
-              </label>
-              <p className="text-xs text-slate-600">
-                Users must fill this field before proceeding
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={config.required || false}
-                onChange={(e) =>
-                  onUpdate({ config: { ...config, required: e.target.checked } })
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-
-          {config.inputType === "table" && (
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-3">
-              <p className="text-xs font-semibold text-blue-900">Table Configuration</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                    Rows
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="50"
-                    value={config.tableConfig?.rows || 3}
-                    onChange={(e) =>
-                      onUpdate({
-                        config: {
-                          ...config,
-                          tableConfig: {
-                            ...config.tableConfig,
-                            rows: parseInt(e.target.value) || 3,
-                            columns: config.tableConfig?.columns || 3,
-                            headers: config.tableConfig?.headers || [],
-                          },
-                        },
-                      })
-                    }
-                    className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                    Columns
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="20"
-                    value={config.tableConfig?.columns || 3}
-                    onChange={(e) => {
-                      const newColumns = parseInt(e.target.value) || 3;
-                      const currentHeaders = config.tableConfig?.headers || [];
-                      const newHeaders = Array(newColumns)
-                        .fill("")
-                        .map((_, idx) => currentHeaders[idx] || "");
-                      onUpdate({
-                        config: {
-                          ...config,
-                          tableConfig: {
-                            ...config.tableConfig,
-                            columns: newColumns,
-                            rows: config.tableConfig?.rows || 3,
-                            headers: newHeaders,
-                          },
-                        },
-                      });
-                    }}
-                    className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                  Headers (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  value={config.tableConfig?.headers?.join(", ") || ""}
-                  onChange={(e) => {
-                    const headers = e.target.value
-                      .split(",")
-                      .map((h) => h.trim())
-                      .filter((h) => h.length > 0);
-                    onUpdate({
-                      config: {
-                        ...config,
-                        tableConfig: {
-                          ...config.tableConfig,
-                          headers,
-                          rows: config.tableConfig?.rows || 3,
-                          columns: config.tableConfig?.columns || 3,
-                        },
-                      },
-                    });
-                  }}
-                  placeholder="e.g., Name, Email, Phone"
-                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-                />
-                <p className="mt-1 text-xs text-slate-500">
-                  Enter column headers separated by commas
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* File Upload Specific Config */}
-          {config.inputType === "file" && (
-            <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white p-5 space-y-4">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100">
-                  <LucideIcons.Upload className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">What file is required?</h3>
-                  <p className="text-xs text-slate-600">Configure the upload button and allowed file types</p>
-                </div>
-              </div>
-              
-              {/* Button Label - Natural Language */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-900 mb-2">
-                  Button Label <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={config.buttonLabel || ""}
-                  onChange={(e) =>
-                    onUpdate({ config: { ...config, buttonLabel: e.target.value } })
-                  }
-                  className="w-full rounded-xl border-0 bg-white/50 shadow-inner px-4 py-3 text-sm font-medium text-slate-800 focus:ring-1 focus:ring-black/5 focus:bg-white/70 transition-all"
-                  placeholder="e.g., Upload Invoice"
-                />
-                <p className="mt-2 text-xs text-slate-500 flex items-center gap-1">
-                  <LucideIcons.Info className="h-3 w-3" />
-                  This text appears on the upload button
-                </p>
-              </div>
-
-              {/* Allowed File Types */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-900 mb-2">
-                  Allowed File Types
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {["PDF", "Excel", "Word", "Image", "CSV", "JSON"].map((type) => {
-                    const ext = type.toLowerCase();
-                    const isSelected = config.allowedExtensions?.includes(ext) || false;
-                    return (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => {
-                          const current = config.allowedExtensions || [];
-                          const updated = isSelected
-                            ? current.filter((e) => e !== ext)
-                            : [...current, ext];
-                          onUpdate({ config: { ...config, allowedExtensions: updated } });
-                        }}
-                        className={`rounded-lg border-2 px-3 py-2 text-xs font-medium transition-all ${
-                          isSelected
-                            ? "border-blue-500 bg-blue-100 text-blue-900"
-                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
-                        }`}
-                      >
-                        {type}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="mt-2 text-xs text-slate-500">
-                  Select which file types users can upload
-                </p>
-              </div>
-
-              {/* Data Extraction */}
-              <div className="pt-4 border-t border-blue-200">
-                <label className="block text-xs font-semibold text-slate-900 mb-2">
-                  Extract Data From File
-                </label>
-                <select
-                  value={config.extractionRule || ""}
-                  onChange={(e) =>
-                    onUpdate({
-                      config: { ...config, extractionRule: e.target.value || undefined },
-                    })
-                  }
-                  className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                >
-                  <option value="">No extraction (store file only)</option>
-                  <option value="Parse CSV">Parse CSV - Extract all data</option>
-                  <option value="Extract CSV Column">Extract CSV Column</option>
-                  <option value="OCR Text">OCR Text (from images)</option>
-                </select>
-                {config.extractionRule === "Extract CSV Column" && (
-                  <div className="mt-3">
-                    <input
-                      type="text"
-                      value={config.extractionConfig?.csvColumn || ""}
-                      onChange={(e) =>
-                        onUpdate({
-                          config: {
-                            ...config,
-                            extractionConfig: {
-                              ...config.extractionConfig,
-                              csvColumn: e.target.value || undefined,
-                            },
-                          },
-                        })
-                      }
-                      placeholder="e.g., Price, Amount, Total"
-                      className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Google Drive Integration for File Upload */}
-              <div className="pt-4 border-t border-blue-200">
-                <label className="block text-xs font-semibold text-slate-900 mb-2">
-                  Save to Google Drive (Optional)
-                </label>
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={config.saveToGoogleDrive || false}
-                      onChange={(e) =>
-                        onUpdate({
-                          config: {
-                            ...config,
-                            saveToGoogleDrive: e.target.checked,
-                            googleDriveFolderId: e.target.checked ? config.googleDriveFolderId : undefined,
-                          },
-                        })
-                      }
-                      className="h-4 w-4 rounded border-slate-300 text-green-600 focus:ring-2 focus:ring-green-500/20 cursor-pointer"
-                    />
-                    <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900">
-                      Upload file to Google Drive automatically
-                    </span>
-                  </label>
-                  {config.saveToGoogleDrive && (
-                    <div className="pl-6">
-                      <p className="text-xs text-slate-600">
-                        The uploaded file will be automatically saved to your Google Drive
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">
-              Validation Regex (optional)
-            </label>
-            <input
-              type="text"
-              value={config.validationRegex || ""}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, validationRegex: e.target.value || undefined } })
-              }
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-mono text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-              placeholder="^[A-Z0-9]+$"
-            />
-          </div>
-        </div>
-      );
-
-    case "COMPARE":
-      return (
-        <div className="space-y-6">
-          {/* Natural Language Header */}
-          <div className="rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white p-5">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100">
-                <LucideIcons.GitCompare className="h-5 w-5 text-purple-600" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">The Logic Builder</h3>
-            </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Create a rule that checks if two values match. The workflow will continue based on the result.
-            </p>
-          </div>
-
-          {/* Sentence Builder UI */}
-          <div className="space-y-4">
-            <div className="rounded-lg border-2 border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-semibold text-slate-900 mb-4">Check if:</p>
-              
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex-1 min-w-[120px]">
-                  <MagicInput
-                    value={config.targetA || ""}
-                    onChange={(value) =>
-                      onUpdate({ config: { ...config, targetA: value || undefined } })
-                    }
-                    placeholder="First value..."
-                    availableVariables={availableVariables}
-                    label=""
-                    helpText=""
-                  />
-                </div>
-                
-                <span className="text-sm font-semibold text-slate-700">is</span>
-                
-                <select
-                  value={config.comparisonType || "exact"}
-                  onChange={(e) =>
-                    onUpdate({ config: { ...config, comparisonType: e.target.value as any } })
-                  }
-                  className="rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
-                >
-                  <option value="exact">Equal To</option>
-                  <option value="numeric">Greater Than</option>
-                  <option value="numeric">Less Than</option>
-                  <option value="fuzzy">Similar To</option>
-                </select>
-                
-                <div className="flex-1 min-w-[120px]">
-                  <MagicInput
-                    value={config.targetB || ""}
-                    onChange={(value) =>
-                      onUpdate({ config: { ...config, targetB: value || undefined } })
-                    }
-                    placeholder="Second value..."
-                    availableVariables={availableVariables}
-                    label=""
-                    helpText=""
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Force Explanation Toggle */}
-            <div className="flex items-center justify-between p-4 rounded-xl border-2 border-slate-200 bg-slate-50">
-              <div>
-                <label className="text-sm font-semibold text-slate-900 block mb-1">
-                  If it fails, force user to explain?
-                </label>
-                <p className="text-xs text-slate-600">
-                  When the comparison fails, ask the operator why
-                </p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={config.requireMismatchReason || false}
-                  onChange={(e) =>
-                    onUpdate({ config: { ...config, requireMismatchReason: e.target.checked } })
-                  }
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-              </label>
-            </div>
-          </div>
-        </div>
-      );
-
-    case "GENERATE":
-      return (
-        <div className="space-y-4">
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-            <p className="text-xs font-semibold text-blue-900 mb-1">💡 Generate Content</p>
-            <p className="text-xs text-blue-700">
-              Configure how content should be generated (e.g., documents, reports, emails)
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">
-              Template
-            </label>
-            <textarea
-              value={config.template || ""}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, template: e.target.value || undefined } })
-              }
-              rows={6}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-              placeholder="Enter template content...&#10;&#10;You can use variables from previous steps:&#10;{{step_1_output}} or {{invoice_total}}&#10;&#10;Example:&#10;Dear {{customer_name}},&#10;Your invoice for {{invoice_amount}} is ready."
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              Use double curly braces for variables: {"{{variable_name}}"}
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">
-              Output Format
-            </label>
-            <select
-              value={config.outputFormat || "text"}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, outputFormat: e.target.value as any } })
-              }
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-            >
-              <option value="text">Plain Text</option>
-              <option value="document">Document (PDF/DOCX)</option>
-              <option value="image">Image</option>
-            </select>
-            <p className="mt-1 text-xs text-slate-500">
-              Select the format for the generated content
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">
-              Instructions (optional)
-            </label>
-            <textarea
-              value={config.instructions || ""}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, instructions: e.target.value || undefined } })
-              }
-              rows={3}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-              placeholder="Additional instructions for content generation..."
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              Provide additional context or instructions for the generation process
-            </p>
-          </div>
-
-          {availableVariables.length > 0 && (
-            <div className="rounded-lg border border-green-200 bg-green-50 p-3">
-              <p className="text-xs font-semibold text-green-900 mb-2">Available Variables</p>
-              <div className="space-y-1">
-                {availableVariables.map((v) => (
-                  <div key={v.value} className="text-xs text-green-700 font-mono">
-                    {"{{" + v.value + "}}"}
-                  </div>
-                ))}
-              </div>
-              <p className="mt-2 text-xs text-green-600">
-                Copy these variable names into your template
-              </p>
-            </div>
-          )}
-        </div>
-      );
-
-    case "GATEWAY":
-      return (
-        <div className="space-y-4">
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-            <p className="text-xs font-semibold text-blue-900 mb-1">💡 Gateway Logic</p>
-            <p className="text-xs text-blue-700">
-              Define conditions to route the flow to different steps
-            </p>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">
-              Default Next Step (Else)
-            </label>
-            <select
-              value={config.gatewayDefaultStepId || ""}
-              onChange={(e) =>
-                onUpdate({
-                  config: { ...config, gatewayDefaultStepId: e.target.value || undefined },
-                })
-              }
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-            >
-              <option value="">Select step...</option>
-              <option value="COMPLETED">Complete Process</option>
-              {allSteps
-                .filter((s) => s.id !== step.id)
-                .map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.title}
-                  </option>
-                ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-2">
-              Conditions
-            </label>
-            {(config.gatewayConditions || []).map((condition, idx) => (
-              <div key={idx} className="mb-3 p-3 rounded-lg border border-slate-200 bg-slate-50">
-                <div className="grid grid-cols-3 gap-2 mb-2">
-                  <select
-                    value={condition.variable}
-                    onChange={(e) => {
-                      const newConditions = [...(config.gatewayConditions || [])];
-                      newConditions[idx] = { ...condition, variable: e.target.value };
-                      onUpdate({ config: { ...config, gatewayConditions: newConditions } });
-                    }}
-                    className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
-                  >
-                    <option value="">Variable...</option>
-                    {availableVariables.map((v) => (
-                      <option key={v.value} value={v.value}>
-                        {v.label}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={condition.operator}
-                    onChange={(e) => {
-                      const newConditions = [...(config.gatewayConditions || [])];
-                      newConditions[idx] = { ...condition, operator: e.target.value as any };
-                      onUpdate({ config: { ...config, gatewayConditions: newConditions } });
-                    }}
-                    className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
-                  >
-                    <option value=">">Greater Than</option>
-                    <option value="<">Less Than</option>
-                    <option value="==">Equal</option>
-                    <option value="!=">Not Equal</option>
-                    <option value=">=">Greater or Equal</option>
-                    <option value="<=">Less or Equal</option>
-                    <option value="contains">Contains</option>
-                    <option value="startsWith">Starts With</option>
-                    <option value="endsWith">Ends With</option>
-                  </select>
-                  <input
-                    type="text"
-                    value={condition.value || ""}
-                    onChange={(e) => {
-                      const newConditions = [...(config.gatewayConditions || [])];
-                      newConditions[idx] = { ...condition, value: e.target.value };
-                      onUpdate({ config: { ...config, gatewayConditions: newConditions } });
-                    }}
-                    placeholder="Value"
-                    className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs"
-                  />
-                </div>
-                <select
-                  value={condition.targetStepId}
-                  onChange={(e) => {
-                    const newConditions = [...(config.gatewayConditions || [])];
-                    newConditions[idx] = { ...condition, targetStepId: e.target.value };
-                    onUpdate({ config: { ...config, gatewayConditions: newConditions } });
-                  }}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs mb-2"
-                >
-                  <option value="">Then go to...</option>
-                  {allSteps
-                    .filter((s) => s.id !== step.id)
-                    .map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.title}
-                      </option>
-                    ))}
-                </select>
-                <button
-                  onClick={() => {
-                    const newConditions = (config.gatewayConditions || []).filter(
-                      (_, i) => i !== idx
-                    );
-                    onUpdate({ config: { ...config, gatewayConditions: newConditions } });
-                  }}
-                  className="text-xs text-rose-600 hover:text-rose-700"
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-            <button
-              onClick={() => {
-                const newConditions = [
-                  ...(config.gatewayConditions || []),
-                  { variable: "", operator: "==" as const, value: "", targetStepId: "" },
-                ];
-                onUpdate({ config: { ...config, gatewayConditions: newConditions } });
-              }}
-              className="text-xs text-blue-600 hover:text-blue-700"
-            >
-              + Add Condition
-            </button>
-          </div>
-        </div>
-      );
-
-    case "AUTHORIZE":
-      return (
-        <div className="space-y-4">
-          <div className="rounded-xl border-2 border-green-200 bg-gradient-to-br from-green-50 to-white p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <LucideIcons.ShieldCheck className="h-4 w-4 text-green-600" />
-              <p className="text-sm font-semibold text-green-900">Approval Configuration</p>
-            </div>
-            <p className="text-xs text-green-700 leading-relaxed">
-              Configure approval requirements and instructions for the approver
-            </p>
-          </div>
-
-          {/* Instructions Textarea - Natural Language */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2 flex items-center gap-2">
-              What should the approver review? <span className="text-rose-500">*</span>
-              <div className="group relative">
-                <Info className="h-4 w-4 text-slate-400 cursor-help" />
-                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 rounded-lg bg-slate-900 text-white text-xs p-3 shadow-xl z-50">
-                  <p>Tell the approver exactly what to check. Be specific: "Verify that the invoice amount matches the purchase order."</p>
-                  <div className="absolute -bottom-1 left-4 h-2 w-2 rotate-45 bg-slate-900" />
-                </div>
-              </div>
-            </label>
-            <textarea
-              value={config.instruction || config.instructions || ""}
-              onChange={(e) =>
-                onUpdate({
-                  config: {
-                    ...config,
-                    instruction: e.target.value,
-                    instructions: e.target.value,
-                  },
-                })
-              }
-              rows={6}
-              className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all resize-none"
-              placeholder="Enter detailed instructions for the approver...&#10;&#10;Example:&#10;Please review the invoice details and verify that:&#10;1. Amount matches the purchase order&#10;2. Vendor information is correct&#10;3. All required documents are attached"
-            />
-            <p className="mt-2 text-xs text-slate-500 flex items-center gap-1">
-              <Info className="h-3 w-3" />
-              This is exactly what the approver will see on their screen
-            </p>
-          </div>
-
-          {/* Require Signature Toggle */}
-          <div className="flex items-center justify-between p-4 rounded-xl border-2 border-slate-200 bg-slate-50">
-            <div>
-              <label className="text-sm font-semibold text-slate-900 block mb-0.5">
-                Require Digital Signature
-              </label>
-              <p className="text-xs text-slate-600">
-                Approver must provide a digital signature to complete this step
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={config.requireSignature || false}
-                onChange={(e) =>
-                  onUpdate({ config: { ...config, requireSignature: e.target.checked } })
-                }
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-            </label>
-          </div>
-
-          {/* Approval Level (Optional) */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-900 mb-2">
-              Approval Level (Optional)
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="10"
-              value={config.approvalLevel || ""}
-              onChange={(e) =>
-                onUpdate({
-                  config: {
-                    ...config,
-                    approvalLevel: e.target.value ? parseInt(e.target.value) : undefined,
-                  },
-                })
-              }
-              className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
-              placeholder="e.g., 1, 2, 3"
-            />
-            <p className="mt-1.5 text-xs text-slate-500">
-              Set approval hierarchy level (1 = first approver, 2 = second, etc.)
-            </p>
-          </div>
-        </div>
-      );
-
-    case "VALIDATE":
-      return (
-        <div className="space-y-6">
-          {/* Natural Language Header */}
-          <div className="rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white p-5">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100">
-                <LucideIcons.CheckCircle2 className="h-5 w-5 text-purple-600" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">Check if data follows a rule</h3>
-            </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Create a validation rule. If the data doesn't match, the workflow can stop or ask for correction.
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-900 mb-2">
-              Validation Rule
-            </label>
-            <select
-              value={config.rule || "EQUAL"}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, rule: e.target.value as any } })
-              }
-              className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
-            >
-              <option value="GREATER_THAN">Greater Than</option>
-              <option value="LESS_THAN">Less Than</option>
-              <option value="EQUAL">Equal</option>
-              <option value="CONTAINS">Contains</option>
-              <option value="REGEX">Regex Pattern</option>
-            </select>
-          </div>
-
-          <MagicInput
-            value={config.target || ""}
-            onChange={(value) =>
-              onUpdate({ config: { ...config, target: value || undefined } })
-            }
-            placeholder="e.g., step_1_output, invoice_amount"
-            availableVariables={availableVariables}
-            label="Value to Check"
-            helpText="Select variable from previous step or enter manually"
-          />
-
-          <MagicInput
-            value={config.value ? String(config.value) : ""}
-            onChange={(value) =>
-              onUpdate({ config: { ...config, value: value || undefined } })
-            }
-            placeholder="e.g., 100, 'approved', {{step_2_status}}"
-            availableVariables={availableVariables}
-            label="Expected Value"
-            helpText="The value to compare against (can be a variable or literal)"
-          />
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-900 mb-2">
-              Error Message
-            </label>
-            <input
-              type="text"
-              value={config.errorMessage || ""}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, errorMessage: e.target.value || undefined } })
-              }
-              className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
-              placeholder="e.g., Validation failed: Amount is too high"
-            />
-          </div>
-        </div>
-      );
-
-    case "CALCULATE":
-      return (
-        <div className="space-y-4">
-          <div className="rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <LucideIcons.Calculator className="h-4 w-4 text-purple-600" />
-              <p className="text-sm font-semibold text-purple-900">Calculation Configuration</p>
-            </div>
-            <p className="text-xs text-purple-700 leading-relaxed">
-              Define mathematical formulas using variables from previous steps
-            </p>
-          </div>
-
-          <MagicInput
-            value={config.formula || ""}
-            onChange={(value) =>
-              onUpdate({ config: { ...config, formula: value || undefined } })
-            }
-            placeholder="e.g., {{step_1_amount}} * 1.1, {{step_2_total}} + {{step_3_tax}}"
-            availableVariables={availableVariables}
-            label="Formula *"
-            helpText="Use variables from previous steps in your formula (e.g., {{step_1_output}} * 2)"
-          />
-
-          {availableVariables.length > 0 && (
-            <div className="rounded-lg border border-purple-200 bg-purple-50 p-3">
-              <p className="text-xs font-semibold text-purple-900 mb-2">Available Variables</p>
-              <div className="space-y-1">
-                {availableVariables.map((v) => (
-                  <div key={v.id} className="text-xs text-purple-700 font-mono">
-                    {"{{" + v.variableName + "}}"}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      );
-
-    case "TRANSMIT":
-      return (
-        <div className="space-y-4">
-          <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <LucideIcons.Upload className="h-4 w-4 text-blue-600" />
-              <p className="text-sm font-semibold text-blue-900">Transmission Configuration</p>
-            </div>
-            <p className="text-xs text-blue-700 leading-relaxed">
-              Configure how data should be sent to external destinations
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-900 mb-2">
-              HTTP Method
-            </label>
-            <select
-              value={config.method || "POST"}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, method: e.target.value as any } })
-              }
-              className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-            >
-              <option value="GET">GET</option>
-              <option value="POST">POST</option>
-              <option value="PUT">PUT</option>
-              <option value="DELETE">DELETE</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-900 mb-2">
-              Destination URL
-            </label>
-            <input
-              type="text"
-              value={config.destinationUrl || ""}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, destinationUrl: e.target.value || undefined } })
-              }
-              className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-              placeholder="e.g., https://api.example.com/webhook"
-            />
-          </div>
-
-          <MagicInput
-            value={config.recipientEmail || ""}
-            onChange={(value) =>
-              onUpdate({ config: { ...config, recipientEmail: value || undefined } })
-            }
-            placeholder="e.g., user@example.com, {{step_1_email}}"
-            availableVariables={availableVariables}
-            label="Recipient Email (Optional)"
-            helpText="Email address or variable from previous step (e.g., {{step_1_customer_email}})"
-          />
-
-          {/* Google Sheet Integration */}
-          <div className="pt-4 border-t border-blue-200">
-            <div className="rounded-xl border-2 border-green-200 bg-gradient-to-br from-green-50 to-white p-4 space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <LucideIcons.FileSpreadsheet className="h-4 w-4 text-green-600" />
-                <p className="text-sm font-semibold text-green-900">Save to Google Sheet (Optional)</p>
-              </div>
-              <p className="text-xs text-green-700 leading-relaxed">
-                Optionally save the transmitted data to a Google Sheet
-              </p>
-              <GoogleSheetConfig
-                sheetId={config.sheetId}
-                fileName={config.fileName}
-                onUpdate={(data) =>
-                  onUpdate({
-                    config: {
-                      ...config,
-                      sheetId: data.sheetId,
-                      fileName: data.fileName,
-                    },
-                  })
-                }
-              />
-            </div>
-          </div>
-        </div>
-      );
-
-    case "STORE":
-      return (
-        <div className="space-y-4">
-          <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <LucideIcons.Database className="h-4 w-4 text-blue-600" />
-              <p className="text-sm font-semibold text-blue-900">Storage Configuration</p>
-            </div>
-            <p className="text-xs text-blue-700 leading-relaxed">
-              Configure where and how data should be stored
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-900 mb-2">
-              Storage Type
-            </label>
-            <select
-              value={config.storageType || "database"}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, storageType: e.target.value as any } })
-              }
-              className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-            >
-              <option value="database">Database</option>
-              <option value="file">File System</option>
-              <option value="cache">Cache</option>
-              <option value="google_sheet">Google Sheet</option>
-            </select>
-          </div>
-
-          {config.storageType !== "google_sheet" && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-900 mb-2">
-                Storage Path
-              </label>
-              <input
-                type="text"
-                value={config.storagePath || ""}
-                onChange={(e) =>
-                  onUpdate({ config: { ...config, storagePath: e.target.value || undefined } })
-                }
-                className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                placeholder="e.g., /data/invoices, /cache/temp"
-              />
-            </div>
-          )}
-
-          {config.storageType === "google_sheet" && (
-            <div className="rounded-xl border-2 border-green-200 bg-gradient-to-br from-green-50 to-white p-4">
-              <GoogleSheetConfig
-                sheetId={config.sheetId}
-                fileName={config.fileName}
-                onUpdate={(data) =>
-                  onUpdate({
-                    config: {
-                      ...config,
-                      sheetId: data.sheetId,
-                      fileName: data.fileName,
-                    },
-                  })
-                }
-              />
-            </div>
-          )}
-        </div>
-      );
-
-    case "GOOGLE_SHEET_APPEND":
-      return (
-        <div className="space-y-4">
-          <div className="rounded-xl border-2 border-green-200 bg-gradient-to-br from-green-50 to-white p-5">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100">
-                <LucideIcons.FileSpreadsheet className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Google Sheet Configuration</h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Configure which Google Sheet to append data to
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <GoogleSheetConfig
-            sheetId={config.sheetId}
-            fileName={config.fileName}
-            mapping={config.mapping}
-            onUpdate={(data) =>
-              onUpdate({
-                config: {
-                  ...config,
-                  sheetId: data.sheetId,
-                  fileName: data.fileName,
-                  mapping: data.mapping || config.mapping,
-                },
-              })
-            }
-          />
-
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-            <p className="text-xs text-blue-700">
-              <strong>Note:</strong> This is a system task that runs automatically. 
-              Data from previous steps will be appended to the selected sheet when this step executes.
-            </p>
-          </div>
-        </div>
-      );
-
-    default:
-      return (
-        <div className="rounded-xl border-2 border-slate-200 bg-slate-50 p-6 text-center">
-          <LucideIcons.Settings className="h-8 w-8 text-slate-400 mx-auto mb-3" />
-          <p className="text-sm font-medium text-slate-700 mb-1">
-            Configuration Coming Soon
-          </p>
-          <p className="text-xs text-slate-500">
-            Configuration options for {ATOMIC_ACTION_METADATA[action].label} will be available soon.
-          </p>
-        </div>
-      );
-  }
 }
 
 function renderFlowLogic(
@@ -1723,11 +1285,14 @@ function renderFlowLogic(
               />
             </div>
             <select
-              value={condition.targetStepId}
+              value={(condition as any).nextStepId || (condition as any).targetStepId || ""}
               onChange={(e) => {
                 const newConditions = [...(routes.conditions || [])];
-                newConditions[idx] = { ...condition, targetStepId: e.target.value };
-                onUpdate({ routes: { ...routes, conditions: newConditions } });
+                const updatedCondition: any = { ...condition };
+                delete updatedCondition.targetStepId;
+                updatedCondition.nextStepId = e.target.value;
+                newConditions[idx] = updatedCondition;
+                onUpdate({ routes: { ...routes, conditions: newConditions as any } });
               }}
               className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs mb-2"
             >
@@ -1751,9 +1316,9 @@ function renderFlowLogic(
         ))}
         <button
           onClick={() => {
-            const newConditions = [
+            const newConditions: any[] = [
               ...(routes.conditions || []),
-              { variable: "", operator: "==" as const, value: "", targetStepId: "" },
+              { variable: "", operator: "eq" as const, value: "", nextStepId: "" },
             ];
             onUpdate({ routes: { ...routes, conditions: newConditions } });
           }}

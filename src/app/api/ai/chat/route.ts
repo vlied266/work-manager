@@ -190,13 +190,14 @@ export async function POST(req: NextRequest) {
 
     console.log("🔍 [API] Is App Route:", isAppRoute);
 
-    const persona = getPersonaFromPath(pathToUse);
-    console.log("🔍 [API] Selected persona role:", persona.role);
+    const basePersona = getPersonaFromPath(pathToUse);
+    console.log("🔍 [API] Selected persona role:", basePersona.role);
     console.log("🔍 [API] ==================================");
 
     // Check plan access for Atomic Insight (Data Analyst Persona)
     let hasAccessToAtomicInsight = false;
     let organizationPlan: "FREE" | "PRO" | "ENTERPRISE" = "FREE";
+    let finalPersona = basePersona;
     
     if (isAppRoute && userId) {
       try {
@@ -220,7 +221,7 @@ export async function POST(req: NextRequest) {
               if (!hasAccessToAtomicInsight) {
                 console.log("⚠️ [API] FREE plan detected - restricting to Basic AI Support");
                 // Override persona for FREE plan users
-                persona = {
+                finalPersona = {
                   role: "Customer Support & Sales Agent",
                   systemPrompt: `You are the Atomic Work Guide, a friendly and knowledgeable customer support agent. You can help with:
 - General questions about workflows
@@ -260,7 +261,7 @@ Note: Advanced data analysis and Atomic Insight features are available on Pro an
     }
 
     // Build system prompt
-    let systemPrompt = persona.systemPrompt;
+    let systemPrompt = finalPersona.systemPrompt;
 
     if (appContext) {
       systemPrompt += `\n\nCURRENT SYSTEM DATA (JSON):
