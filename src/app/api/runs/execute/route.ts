@@ -310,9 +310,22 @@ export async function POST(req: NextRequest) {
             let fileId: string | undefined; // Google Drive file ID if available
             
             if (currentStep.config.fileSourceStepId === "TRIGGER_EVENT") {
-              // Get file from trigger context
-              fileUrl = run.triggerContext?.file || run.triggerContext?.fileUrl || run.initialInput?.fileUrl || run.initialInput?.filePath;
+              // Get file from trigger context - prioritize fileUrl over filePath
+              fileUrl = run.triggerContext?.fileUrl || run.initialInput?.fileUrl || run.triggerContext?.file || run.initialInput?.filePath;
               fileId = run.triggerContext?.fileId || run.initialInput?.fileId;
+              
+              // If fileUrl is still a path (starts with /), log warning
+              if (fileUrl && fileUrl.startsWith('/') && !fileUrl.startsWith('http')) {
+                console.warn(`[AI_PARSE] fileUrl is a path, not a URL: ${fileUrl}. Using fileId to construct URL.`);
+                // If we have fileId, construct proper Google Drive URL
+                if (fileId) {
+                  fileUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                  console.log(`[AI_PARSE] Constructed fileUrl from fileId: ${fileUrl}`);
+                } else {
+                  console.error(`[AI_PARSE] Cannot construct URL: fileUrl is a path and fileId is missing.`);
+                  throw new Error(`File URL is invalid. Expected a full URL but got a path: ${fileUrl}. Please ensure the trigger context includes a valid fileUrl or fileId.`);
+                }
+              }
             } else if (currentStep.config.fileSourceStepId) {
               // Get file from previous step
               const sourceStepId = currentStep.config.fileSourceStepId;
