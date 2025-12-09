@@ -5,9 +5,10 @@ import { onSnapshot, query, where, collection, updateDoc, doc, serverTimestamp }
 import { db } from "@/lib/firebase";
 import { Procedure } from "@/types/schema";
 import { formatDistanceToNow } from "date-fns";
-import { Cloud, Folder, Power, PowerOff, Clock } from "lucide-react";
+import { Cloud, Folder, Power, PowerOff, Clock, ExternalLink, Pencil } from "lucide-react";
 import { motion } from "framer-motion";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import Link from "next/link";
 
 interface ActiveWatcher extends Procedure {
   lastPolledAt?: Date | string;
@@ -218,24 +219,36 @@ export default function ActiveWatchersList() {
                     </div>
                   </div>
 
-                  {/* Right: Deactivate Button */}
-                  <button
-                    onClick={() => handleDeactivate(watcher.id)}
-                    disabled={deactivating === watcher.id}
-                    className="flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-sm border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 hover:border-slate-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {deactivating === watcher.id ? (
-                      <>
-                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
-                        <span>Deactivating...</span>
-                      </>
-                    ) : (
-                      <>
-                        <PowerOff className="h-4 w-4" />
-                        <span>Deactivate</span>
-                      </>
-                    )}
-                  </button>
+                  {/* Right: Action Buttons */}
+                  <div className="flex items-center gap-2">
+                    {/* Edit/View Button */}
+                    <Link
+                      href={`/studio/procedure/${watcher.id}`}
+                      className="flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-sm border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 hover:border-slate-300 hover:shadow-md"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      <span>Edit</span>
+                    </Link>
+
+                    {/* Deactivate Button */}
+                    <button
+                      onClick={() => handleDeactivate(watcher.id)}
+                      disabled={deactivating === watcher.id}
+                      className="flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-sm border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 hover:border-slate-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {deactivating === watcher.id ? (
+                        <>
+                          <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+                          <span>Deactivating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <PowerOff className="h-4 w-4" />
+                          <span>Deactivate</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             ))}
