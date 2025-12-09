@@ -9,7 +9,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "tsx scripts/seed-financial-data.ts"
+    "seed": "tsx scripts/seed-financial-data.ts",
+    "publish:triggers": "tsx scripts/publish-triggered-procedures.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.79",
