@@ -786,9 +786,9 @@ export async function POST(req: NextRequest) {
     let systemPrompt = DEFAULT_ENGLISH_PROMPT;
     try {
       const promptDoc = await getDoc(doc(db, "system_configs", "ai_prompts"));
-      if (promptDoc.exists) {
+      if (promptDoc.exists()) {
         const data = promptDoc.data();
-        if (data.prompt_text && typeof data.prompt_text === "string") {
+        if (data?.prompt_text && typeof data.prompt_text === "string") {
           systemPrompt = data.prompt_text;
         }
       }
