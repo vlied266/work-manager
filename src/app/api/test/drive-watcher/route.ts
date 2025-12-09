@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
               await new Promise((resolve) => setTimeout(resolve, 2000));
 
               const runDoc = await db.collection("active_runs").doc(runId).get();
-              if (runDoc.exists()) {
+              if (runDoc && runDoc.exists && typeof runDoc.exists === 'function' ? runDoc.exists() : runDoc.exists) {
                 const runData = runDoc.data();
                 result.runStatus = runData?.status;
                 result.currentStepIndex = runData?.currentStepIndex;
@@ -138,6 +138,8 @@ export async function GET(request: NextRequest) {
                 result.logs.push(
                   `Run ${runId}: Status=${runData?.status}, Step=${runData?.currentStepIndex}, Logs=${runData?.logs?.length || 0}`
                 );
+              } else {
+                result.logs.push(`Run ${runId}: Not found or not accessible`);
               }
             }
           }

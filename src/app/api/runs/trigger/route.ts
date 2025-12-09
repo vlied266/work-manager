@@ -180,7 +180,7 @@ async function createTriggeredRun(
   if (assigneeType === "USER" && assigneeId) {
     try {
       const userDoc = await db.collection("users").doc(assigneeId).get();
-      if (userDoc.exists) {
+      if (userDoc.exists()) {
         const userData = userDoc.data();
         assigneeEmail = userData?.email || null;
       }
