@@ -158,6 +158,7 @@ export async function GET(request: NextRequest) {
 
       try {
         // Initialize Google Drive API
+        const { google } = await import("googleapis");
         const auth = new google.auth.GoogleAuth({
           credentials: {
             client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
