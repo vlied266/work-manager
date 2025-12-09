@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
             procedureData,
             filePath,
             fileUrl,
-            fileId
+            fileId || undefined
           );
           runsCreated.push(runId);
 
