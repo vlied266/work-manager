@@ -71,7 +71,8 @@ export async function POST(req: NextRequest) {
             db,
             procedureDoc.id,
             procedureData,
-            filePath
+            filePath,
+            fileUrl
           );
           runsCreated.push(runId);
         } catch (error: any) {
@@ -117,7 +118,8 @@ async function createTriggeredRun(
   db: any,
   procedureId: string,
   procedure: Procedure,
-  filePath: string
+  filePath: string,
+  fileUrl?: string
 ): Promise<string> {
   const steps = procedure.steps || [];
   
@@ -193,12 +195,12 @@ async function createTriggeredRun(
     // Inject file path as input for the first step (if it's an INPUT step)
     initialInput: {
       filePath: filePath,
-      fileUrl: filePath, // Assuming filePath can be used as URL
+      fileUrl: fileUrl || filePath, // Use provided fileUrl or fallback to filePath
     },
     // Store trigger context for variable resolution (for TRIGGER_EVENT)
     triggerContext: {
       file: filePath,
-      fileUrl: filePath,
+      fileUrl: fileUrl || filePath, // Use provided fileUrl or fallback to filePath
       filePath: filePath,
     },
   };
