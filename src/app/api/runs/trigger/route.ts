@@ -35,6 +35,9 @@ export async function POST(req: NextRequest) {
     // Extract folder path from file path
     // e.g., "/uploads/contracts/invoice-123.pdf" -> "/uploads/contracts"
     const folderPath = extractFolderPath(filePath);
+    
+    console.log(`[Trigger] POST request received: filePath="${filePath}", orgId="${orgId}", fileUrl="${fileUrl}", fileId="${fileId}"`);
+    console.log(`[Trigger] Extracted folder path: "${folderPath}"`);
 
     // Find all active Procedures with ON_FILE_CREATED trigger matching this folder
     // Only procedures that are both published AND active (isActive === true)
