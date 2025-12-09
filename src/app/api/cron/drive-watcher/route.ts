@@ -256,6 +256,7 @@ export async function GET(request: NextRequest) {
               const result = await triggerResponse.json();
               runsCreated.push(...(result.runsCreated || []));
               console.log(`[Cron] Triggered ${result.runsCreated?.length || 0} workflow(s) for file: ${file.name}`);
+              console.log(`[Cron] Run IDs created:`, result.runsCreated);
 
               // Update cache
               await db.collection("file_watcher_cache").add({
@@ -270,8 +271,13 @@ export async function GET(request: NextRequest) {
               });
             } else {
               const errorData = await triggerResponse.json().catch(() => ({}));
-              errors.push(`Failed to trigger workflow for ${file.name}: ${errorData.error || 'Unknown error'}`);
-              console.error(`[Cron] Failed to trigger workflow for ${file.name}:`, errorData);
+              const errorMessage = errorData.error || errorData.details || 'Unknown error';
+              errors.push(`Failed to trigger workflow for ${file.name}: ${errorMessage}`);
+              console.error(`[Cron] Failed to trigger workflow for ${file.name}:`, {
+                status: triggerResponse.status,
+                error: errorMessage,
+                fullError: errorData,
+              });
             }
           } catch (err: any) {
             errors.push(`Error processing file ${file.name}: ${err.message}`);

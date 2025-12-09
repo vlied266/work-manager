@@ -75,6 +75,34 @@ export async function POST(req: NextRequest) {
             fileUrl
           );
           runsCreated.push(runId);
+
+          // Auto-execute the first step if it's an automated step
+          const firstStep = procedureData.steps?.[0];
+          if (firstStep && isAutoStep(firstStep.action)) {
+            try {
+              const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://theatomicwork.com";
+              const executeResponse = await fetch(`${baseUrl}/api/runs/execute`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  runId,
+                  stepId: firstStep.id,
+                  orgId: procedureData.organizationId,
+                  userId: "system", // System-triggered execution
+                  outcome: "SUCCESS", // Will be determined by execution logic
+                }),
+              });
+
+              if (!executeResponse.ok) {
+                const errorData = await executeResponse.json().catch(() => ({}));
+                console.error(`Failed to auto-execute first step for run ${runId}:`, errorData);
+              } else {
+                console.log(`[Trigger] Auto-executed first step (${firstStep.action}) for run ${runId}`);
+              }
+            } catch (err: any) {
+              console.error(`Error auto-executing first step for run ${runId}:`, err);
+            }
+          }
         } catch (error: any) {
           console.error(`Error creating run for procedure ${procedureDoc.id}:`, error);
           // Continue with other procedures even if one fails
