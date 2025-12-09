@@ -8,6 +8,7 @@ interface TriggerRunRequest {
   filePath: string; // e.g., "/uploads/contracts/invoice-123.pdf"
   orgId?: string; // Optional: filter by organization
   fileUrl?: string; // Optional: direct file URL for testing
+  fileId?: string; // Optional: Google Drive file ID for API access
 }
 
 /**
@@ -73,7 +74,8 @@ export async function POST(req: NextRequest) {
             procedureDoc.id,
             procedureData,
             filePath,
-            fileUrl
+            fileUrl,
+            fileId
           );
           runsCreated.push(runId);
 
@@ -225,12 +227,14 @@ async function createTriggeredRun(
     initialInput: {
       filePath: filePath,
       fileUrl: fileUrl || filePath, // Use provided fileUrl or fallback to filePath
+      fileId: fileId, // Google Drive file ID if available
     },
     // Store trigger context for variable resolution (for TRIGGER_EVENT)
     triggerContext: {
       file: filePath,
       fileUrl: fileUrl || filePath, // Use provided fileUrl or fallback to filePath
       filePath: filePath,
+      fileId: fileId, // Google Drive file ID if available
     },
   };
 

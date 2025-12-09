@@ -248,7 +248,7 @@ export async function GET(request: NextRequest) {
               // For other files, get download URL from Drive API
               const fileMetadata = await drive.files.get({ 
                 fileId: file.id!, 
-                fields: 'webContentLink,webViewLink,id' 
+                fields: 'webContentLink,webViewLink,id,mimeType' 
               });
               fileUrl = fileMetadata.data.webContentLink || fileMetadata.data.webViewLink || `https://drive.google.com/file/d/${file.id}/view`;
             }
@@ -257,6 +257,9 @@ export async function GET(request: NextRequest) {
             // Fallback to export link
             fileUrl = `https://drive.google.com/uc?export=download&id=${file.id}`;
           }
+          
+          // Store fileId in trigger context for later use
+          const fileId = file.id;
 
           console.log(`[Cron] New file detected: ${file.name}, triggering workflows...`);
 
@@ -268,6 +271,7 @@ export async function GET(request: NextRequest) {
                 filePath: filePath,
                 orgId: orgId,
                 fileUrl: fileUrl,
+                fileId: fileId, // Pass fileId for Google Drive API access
               }),
             });
 

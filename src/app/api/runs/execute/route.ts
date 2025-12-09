@@ -307,9 +307,12 @@ export async function POST(req: NextRequest) {
             
             // Handle TRIGGER_EVENT fileSourceStepId
             let fileUrl: string | undefined;
+            let fileId: string | undefined; // Google Drive file ID if available
+            
             if (currentStep.config.fileSourceStepId === "TRIGGER_EVENT") {
               // Get file from trigger context
               fileUrl = run.triggerContext?.file || run.triggerContext?.fileUrl || run.initialInput?.fileUrl || run.initialInput?.filePath;
+              fileId = run.triggerContext?.fileId || run.initialInput?.fileId;
             } else if (currentStep.config.fileSourceStepId) {
               // Get file from previous step
               const sourceStepId = currentStep.config.fileSourceStepId;
@@ -317,16 +320,61 @@ export async function POST(req: NextRequest) {
               if (sourceStepIndex >= 0 && run.logs[sourceStepIndex]) {
                 const sourceOutput = run.logs[sourceStepIndex].output;
                 fileUrl = sourceOutput?.fileUrl || sourceOutput?.filePath || sourceOutput?.file;
+                fileId = sourceOutput?.fileId;
               }
             } else if (resolvedConfig.fileUrl) {
               fileUrl = resolvedConfig.fileUrl;
+              fileId = resolvedConfig.fileId;
             }
             
-            if (!fileUrl) {
+            if (!fileUrl && !fileId) {
               console.error("[AI_PARSE] File URL not found. Trigger context:", run.triggerContext);
               console.error("[AI_PARSE] Initial input:", run.initialInput);
               console.error("[AI_PARSE] Step config:", currentStep.config);
               throw new Error("File URL not found. Please ensure the file source is configured correctly.");
+            }
+            
+            // If we have a Google Drive file ID, try to get download URL
+            if (fileId && fileUrl?.includes('drive.google.com')) {
+              try {
+                const { google } = await import("googleapis");
+                const oauth2Client = new google.auth.OAuth2(
+                  process.env.GOOGLE_CLIENT_ID,
+                  process.env.GOOGLE_CLIENT_SECRET,
+                  process.env.GOOGLE_REDIRECT_URI || 'https://theatomicwork.com'
+                );
+                
+                if (process.env.GOOGLE_REFRESH_TOKEN) {
+                  oauth2Client.setCredentials({
+                    refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+                  });
+                  
+                  const drive = google.drive({ version: 'v3', auth: oauth2Client });
+                  
+                  // Get file metadata to check mimeType
+                  const fileMetadata = await drive.files.get({ 
+                    fileId: fileId, 
+                    fields: 'mimeType,webContentLink' 
+                  });
+                  
+                  // For PDFs, use export link
+                  if (fileMetadata.data.mimeType === 'application/pdf') {
+                    fileUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                  } else {
+                    // For other files, get download URL
+                    const downloadResponse = await drive.files.get(
+                      { fileId: fileId, alt: 'media' },
+                      { responseType: 'stream' }
+                    );
+                    // Use webContentLink if available, otherwise use export link
+                    fileUrl = fileMetadata.data.webContentLink || `https://drive.google.com/uc?export=download&id=${fileId}`;
+                  }
+                  
+                  console.log(`[AI_PARSE] Resolved Google Drive file URL: ${fileUrl}`);
+                }
+              } catch (driveError: any) {
+                console.warn(`[AI_PARSE] Failed to get Google Drive download URL: ${driveError.message}. Using original URL.`);
+              }
             }
             
             console.log(`[AI_PARSE] Parsing document from URL: ${fileUrl}`);
