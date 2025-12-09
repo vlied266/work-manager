@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         filePath,
         orgId,
+        fileUrl: metadata?.fileUrl || metadata?.url, // Support fileUrl from metadata
       }),
     });
 
