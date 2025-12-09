@@ -206,10 +206,15 @@ async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<str
   try {
     let buffer: Buffer;
     
-    // If we have a Google Drive file ID, use Google Drive API for direct download
-    if (fileId && fileUrl.includes('drive.google.com')) {
+    // CRITICAL: If fileId exists, ALWAYS use Google Drive API - IGNORE fileUrl completely
+    if (fileId) {
+      console.log(`[PDF Parser] fileId detected: ${fileId}. Using Google Drive API for direct download (IGNORING fileUrl: ${fileUrl})`);
+      
+      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REFRESH_TOKEN) {
+        throw new Error("Google Drive API credentials not configured. GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN are required.");
+      }
+      
       try {
-        console.log(`[PDF Parser] Using Google Drive API to download file: ${fileId}`);
         const { google } = await import("googleapis");
         const oauth2Client = new google.auth.OAuth2(
           process.env.GOOGLE_CLIENT_ID,
@@ -217,64 +222,35 @@ async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<str
           process.env.GOOGLE_REDIRECT_URI || 'https://theatomicwork.com'
         );
         
-        if (process.env.GOOGLE_REFRESH_TOKEN) {
-          oauth2Client.setCredentials({
-            refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
-          });
-          
-          const drive = google.drive({ version: 'v3', auth: oauth2Client });
-          
-          // Get file as stream
-          const fileStream = await drive.files.get(
-            { fileId: fileId, alt: 'media' },
-            { responseType: 'stream' }
-          );
-          
-          // Convert stream to buffer
-          const chunks: Buffer[] = [];
-          for await (const chunk of fileStream.data) {
-            chunks.push(Buffer.from(chunk));
-          }
-          buffer = Buffer.concat(chunks);
-          
-          if (buffer.length === 0) {
-            throw new Error(`PDF file is empty. File ID: ${fileId}`);
-          }
-          
-          console.log(`[PDF Parser] File size: ${buffer.length} bytes (from Google Drive API)`);
-        } else {
-          throw new Error("GOOGLE_REFRESH_TOKEN not configured");
-        }
-      } catch (driveError: any) {
-        console.warn(`[PDF Parser] Google Drive API failed: ${driveError.message}. Falling back to direct URL fetch.`);
-        // Fallback to direct fetch
-        const response = await fetch(fileUrl);
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => "");
-          console.error(`[PDF Parser] Failed to fetch PDF: ${response.status} ${response.statusText}`, errorText.substring(0, 200));
-          throw new Error(`Failed to fetch PDF: ${response.status} ${response.statusText}. URL: ${fileUrl}`);
-        }
+        oauth2Client.setCredentials({
+          refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+        });
         
-        const contentType = response.headers.get("content-type");
-        console.log(`[PDF Parser] Content-Type: ${contentType}`);
+        const drive = google.drive({ version: 'v3', auth: oauth2Client });
         
-        // Check if response is HTML (Google Drive download page)
-        if (contentType?.includes('text/html')) {
-          throw new Error(`Received HTML instead of PDF. This usually means the file requires authentication. File ID: ${fileId || 'unknown'}`);
-        }
+        console.log(`[PDF Parser] Downloading file ${fileId} using Google Drive API...`);
         
-        const arrayBuffer = await response.arrayBuffer();
-        buffer = Buffer.from(arrayBuffer);
+        // Download file using Google Drive API with arraybuffer response
+        const fileResponse = await drive.files.get(
+          { fileId: fileId, alt: 'media' },
+          { responseType: 'arraybuffer' }
+        );
+        
+        // Convert arraybuffer to Buffer
+        buffer = Buffer.from(fileResponse.data as ArrayBuffer);
         
         if (buffer.length === 0) {
-          throw new Error(`PDF file is empty. URL: ${fileUrl}`);
+          throw new Error(`PDF file is empty. File ID: ${fileId}`);
         }
         
-        console.log(`[PDF Parser] File size: ${buffer.length} bytes`);
+        console.log(`[PDF Parser] Successfully downloaded ${buffer.length} bytes from Google Drive API`);
+      } catch (driveError: any) {
+        console.error(`[PDF Parser] Google Drive API download failed:`, driveError);
+        throw new Error(`Failed to download file from Google Drive API: ${driveError.message}. File ID: ${fileId}`);
       }
     } else {
-      // Direct fetch for non-Google Drive files
-      console.log(`[PDF Parser] Attempting to fetch PDF from: ${fileUrl}`);
+      // ONLY use fetch() if fileId is NOT available
+      console.log(`[PDF Parser] No fileId provided. Falling back to direct URL fetch: ${fileUrl}`);
       const response = await fetch(fileUrl);
       if (!response.ok) {
         const errorText = await response.text().catch(() => "");
@@ -284,6 +260,11 @@ async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<str
       
       const contentType = response.headers.get("content-type");
       console.log(`[PDF Parser] Content-Type: ${contentType}`);
+      
+      // Check if response is HTML (Google Drive download page)
+      if (contentType?.includes('text/html')) {
+        throw new Error(`Received HTML instead of PDF. This usually means the file requires authentication. Please provide fileId for Google Drive files.`);
+      }
       
       const arrayBuffer = await response.arrayBuffer();
       buffer = Buffer.from(arrayBuffer);
