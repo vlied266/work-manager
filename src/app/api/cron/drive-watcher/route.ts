@@ -149,12 +149,29 @@ export async function GET(request: NextRequest) {
     //   }
     // }
 
-    // Placeholder: Log what would be checked
+    // For now, we'll update lastPolledAt and provide a way to manually test
+    // TODO: Implement real Google Drive API integration
+    
     for (const [key, procs] of folderWatchers.entries()) {
       const [orgId, folderPath] = key.split(":");
       console.log(
-        `[Cron] Would check folder: ${folderPath} (${procs.length} active workflow(s) for org ${orgId})`
+        `[Cron] Checking folder: ${folderPath} (${procs.length} active workflow(s) for org ${orgId})`
       );
+
+      // Update lastPolledAt for all procedures watching this folder
+      for (const proc of procs) {
+        try {
+          await db.collection("procedures").doc(proc.id).update({
+            lastPolledAt: Timestamp.now(),
+          });
+        } catch (err) {
+          console.error(`Error updating lastPolledAt for procedure ${proc.id}:`, err);
+        }
+      }
+
+      // NOTE: Real Google Drive integration would go here
+      // For now, this is a placeholder that only updates the timestamp
+      // To test manually, use: POST /api/webhooks/simulation with { eventType: "file_upload", filePath: "/Resumes/test.pdf", orgId: "..." }
     }
 
     return NextResponse.json({
@@ -165,7 +182,7 @@ export async function GET(request: NextRequest) {
       runsCreated: runsCreated.length,
       errors: errors.length > 0 ? errors : undefined,
       timestamp: new Date().toISOString(),
-      note: "This is a placeholder implementation. Connect to Google Drive API to enable real file watching. Use /api/runs/trigger endpoint to create new runs when files are detected.",
+      note: "This is a placeholder implementation. To test manually, use POST /api/webhooks/simulation with { eventType: 'file_upload', filePath: '/Resumes/test.pdf', orgId: 'your-org-id' }",
     });
   } catch (error: any) {
     console.error("Error in drive watcher cron job:", error);

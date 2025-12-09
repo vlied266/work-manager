@@ -6,6 +6,7 @@ import { Procedure, AtomicStep } from "@/types/schema";
 interface TriggerRunRequest {
   filePath: string; // e.g., "/uploads/contracts/invoice-123.pdf"
   orgId?: string; // Optional: filter by organization
+  fileUrl?: string; // Optional: direct file URL for testing
 }
 
 /**
