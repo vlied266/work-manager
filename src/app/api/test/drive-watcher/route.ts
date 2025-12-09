@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
               await new Promise((resolve) => setTimeout(resolve, 2000));
 
               const runDoc = await db.collection("active_runs").doc(runId).get();
-              if (runDoc && runDoc.exists && typeof runDoc.exists === 'function' ? runDoc.exists() : runDoc.exists) {
+              if (runDoc.exists) {
                 const runData = runDoc.data();
                 result.runStatus = runData?.status;
                 result.currentStepIndex = runData?.currentStepIndex;
