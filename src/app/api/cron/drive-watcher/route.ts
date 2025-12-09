@@ -285,22 +285,32 @@ export async function GET(request: NextRequest) {
             await db.collection("procedures").doc(proc.id).update({
               lastPolledAt: Timestamp.now(),
             });
+            console.log(`[Cron] Updated lastPolledAt for procedure ${proc.id}`);
           } catch (err) {
             console.error(`Error updating lastPolledAt for procedure ${proc.id}:`, err);
+            errors.push(`Error updating lastPolledAt for procedure ${proc.id}: ${err}`);
           }
         }
       } catch (err: any) {
         console.error(`[Cron] Error processing folder ${folderPath}:`, err);
+        console.error(`[Cron] Error details:`, {
+          message: err.message,
+          stack: err.stack,
+          folderPath,
+          orgId,
+        });
         errors.push(`Error processing folder ${folderPath}: ${err.message}`);
         
-        // Still update lastPolledAt even if there was an error
+        // Still update lastPolledAt even if there was an error (so UI shows it was checked)
         for (const proc of procs) {
           try {
             await db.collection("procedures").doc(proc.id).update({
               lastPolledAt: Timestamp.now(),
             });
-          } catch (updateErr) {
+            console.log(`[Cron] Updated lastPolledAt for procedure ${proc.id} (after error)`);
+          } catch (updateErr: any) {
             console.error(`Error updating lastPolledAt for procedure ${proc.id}:`, updateErr);
+            errors.push(`Error updating lastPolledAt for procedure ${proc.id}: ${updateErr.message}`);
           }
         }
       }
