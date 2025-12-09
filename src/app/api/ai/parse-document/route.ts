@@ -202,7 +202,7 @@ function detectFileType(fileUrl: string): "pdf" | "excel" | "image" {
 /**
  * Extract text from PDF file
  */
-async function extractTextFromPDF(fileUrl: string): Promise<string> {
+async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<string> {
   try {
     console.log(`[PDF Parser] Attempting to fetch PDF from: ${fileUrl}`);
     
