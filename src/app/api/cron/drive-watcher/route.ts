@@ -158,18 +158,26 @@ export async function GET(request: NextRequest) {
       );
 
       try {
-        // Initialize Google Drive API
+        // Initialize Google Drive API using OAuth 2.0 credentials
         const { google } = await import("googleapis");
-        const auth = new google.auth.GoogleAuth({
-          credentials: {
-            client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-            private_key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-            project_id: process.env.GOOGLE_PROJECT_ID,
-          },
-          scopes: ['https://www.googleapis.com/auth/drive.readonly'],
-        });
+        
+        // Use OAuth 2.0 credentials (Client ID, Secret, Refresh Token)
+        const oauth2Client = new google.auth.OAuth2(
+          process.env.GOOGLE_CLIENT_ID,
+          process.env.GOOGLE_CLIENT_SECRET,
+          process.env.GOOGLE_REDIRECT_URI || 'https://theatomicwork.com'
+        );
 
-        const drive = google.drive({ version: 'v3', auth });
+        // Set the refresh token
+        if (process.env.GOOGLE_REFRESH_TOKEN) {
+          oauth2Client.setCredentials({
+            refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+          });
+        } else {
+          throw new Error("GOOGLE_REFRESH_TOKEN environment variable is not set");
+        }
+
+        const drive = google.drive({ version: 'v3', auth: oauth2Client });
 
         // Get cached files from Firestore
         const cacheSnapshot = await db
