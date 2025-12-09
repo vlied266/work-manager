@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     const orgDoc = await import("firebase/firestore").then((m) =>
       m.getDoc(m.doc(db, "organizations", orgId))
     );
-    const orgName = orgDoc.exists() ? orgDoc.data().name : "Your Organization";
+    const orgName = orgDoc.exists ? orgDoc.data()?.name : "Your Organization";
 
     // Save invitation to Firestore
     const invitationRef = await addDoc(collection(db, "invitations"), {
