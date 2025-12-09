@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
     console.log(`[Trigger] File path: ${filePath}, Extracted folder path: ${folderPath}`);
 
     if (proceduresSnapshot.empty) {
+      console.log(`[Trigger] ⚠️ No active procedures found`);
       return NextResponse.json({
         success: true,
         message: `No workflows found for folder: ${folderPath}`,
@@ -64,6 +65,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    console.log(`[Trigger] Processing ${proceduresSnapshot.size} procedures...`);
     const runsCreated: string[] = [];
 
     // For each matching procedure, create a new run
@@ -217,7 +219,8 @@ async function createTriggeredRun(
   procedureId: string,
   procedure: Procedure,
   filePath: string,
-  fileUrl?: string
+  fileUrl?: string,
+  fileId?: string
 ): Promise<string> {
   const steps = procedure.steps || [];
   
