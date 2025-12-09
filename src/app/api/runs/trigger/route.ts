@@ -58,10 +58,37 @@ export async function POST(req: NextRequest) {
 
     if (proceduresSnapshot.empty) {
       console.log(`[Trigger] ⚠️ No active procedures found`);
+      
+      // Debug: Check all procedures for this org to see why they don't match
+      const allProceduresQuery = db
+        .collection("procedures")
+        .where("organizationId", "==", orgId);
+      
+      const allProceduresSnapshot = await allProceduresQuery.get();
+      console.log(`[Trigger] 🔍 Debug: Found ${allProceduresSnapshot.size} total procedures for org ${orgId}`);
+      
+      const debugProcedures = allProceduresSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          title: data.title,
+          isPublished: data.isPublished,
+          isActive: data.isActive,
+          triggerType: data.trigger?.type,
+          triggerFolderPath: data.trigger?.config?.folderPath,
+        };
+      });
+      
+      console.log(`[Trigger] 🔍 Debug procedures:`, JSON.stringify(debugProcedures, null, 2));
+      
       return NextResponse.json({
         success: true,
         message: `No workflows found for folder: ${folderPath}`,
         runsCreated: 0,
+        debug: {
+          totalProcedures: allProceduresSnapshot.size,
+          procedures: debugProcedures,
+        },
       });
     }
 
