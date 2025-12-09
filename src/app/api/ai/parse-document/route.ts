@@ -27,7 +27,7 @@ const ExtractedDataSchema = z.record(z.string(), z.any());
 export async function POST(req: NextRequest) {
   try {
     const body: ParseDocumentRequest = await req.json();
-    const { fileUrl, fieldsToExtract, fileType, orgId } = body;
+    const { fileUrl, fieldsToExtract, fileType, orgId, fileId } = body;
 
     if (!fileUrl || !fieldsToExtract || fieldsToExtract.length === 0) {
       return NextResponse.json(
