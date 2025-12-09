@@ -93,10 +93,11 @@ export async function POST(req: NextRequest) {
       const normalizedConfigPath = configFolderPath ? normalizePath(configFolderPath) : '';
       const fileFolder = normalizePath(extractFolderFromPath(filePath));
       
-      console.log(`[Trigger] Comparing: fileFolder="${fileFolder}", configPath="${normalizedConfigPath}"`);
+      console.log(`[Trigger] Comparing: fileFolder="${fileFolder}", configPath="${normalizedConfigPath}", filePath="${filePath}", configFolderPath="${configFolderPath}"`);
       
+      // Use the same matching logic as test endpoint
       const doesMatch = configFolderPath && (
-        // Folder extracted from file path matches config folder path (normalized)
+        // Folder extracted from file path matches config folder path (normalized) - MOST RELIABLE
         fileFolder === normalizedConfigPath ||
         // File path starts with folder path (normalized)
         normalizedFilePath.startsWith(normalizedConfigPath + '/') ||
@@ -110,6 +111,15 @@ export async function POST(req: NextRequest) {
       );
 
       console.log(`[Trigger] Match result: ${doesMatch ? '✅ MATCH' : '❌ NO MATCH'}`);
+      console.log(`[Trigger] Match breakdown:`, {
+        exactMatch: fileFolder === normalizedConfigPath,
+        startsWithNormalized: normalizedFilePath.startsWith(normalizedConfigPath + '/'),
+        startsWithOriginal: filePath.startsWith(configFolderPath + '/'),
+        startsWithSlash: filePath.startsWith('/' + configFolderPath + '/'),
+        startsWithNoSlash: filePath.startsWith(configFolderPath),
+        startsWithSlashNoSlash: filePath.startsWith('/' + configFolderPath),
+        driveIdMatch: configFolderPath?.match(/^[a-zA-Z0-9_-]+$/) && filePath.includes(configFolderPath || ''),
+      });
 
       if (doesMatch) {
         console.log(`[Trigger] ✅ Matching procedure: ${procedureData.title}, folderPath: ${configFolderPath}, filePath: ${filePath}`);
