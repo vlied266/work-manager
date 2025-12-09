@@ -13,6 +13,7 @@ import { motion } from "framer-motion";
 import { useOrgQuery } from "@/hooks/useOrgData";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { Target } from "lucide-react";
+import ActiveWatchersList from "@/components/dashboard/active-watchers-list";
 
 // Prevent SSR/prerendering - this page requires client-side auth
 export const dynamic = 'force-dynamic';
@@ -308,6 +309,9 @@ export default function DashboardPage() {
           </div>
         </motion.div>
       </div>
+
+      {/* Active Watchers Widget */}
+      <ActiveWatchersList />
 
       {/* Filters and Search - iOS Segmented Control Style */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
