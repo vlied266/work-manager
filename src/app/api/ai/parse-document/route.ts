@@ -204,27 +204,96 @@ function detectFileType(fileUrl: string): "pdf" | "excel" | "image" {
  */
 async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<string> {
   try {
-    console.log(`[PDF Parser] Attempting to fetch PDF from: ${fileUrl}`);
+    let buffer: Buffer;
     
-    // Fetch the PDF file
-    const response = await fetch(fileUrl);
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "");
-      console.error(`[PDF Parser] Failed to fetch PDF: ${response.status} ${response.statusText}`, errorText.substring(0, 200));
-      throw new Error(`Failed to fetch PDF: ${response.status} ${response.statusText}. URL: ${fileUrl}`);
+    // If we have a Google Drive file ID, use Google Drive API for direct download
+    if (fileId && fileUrl.includes('drive.google.com')) {
+      try {
+        console.log(`[PDF Parser] Using Google Drive API to download file: ${fileId}`);
+        const { google } = await import("googleapis");
+        const oauth2Client = new google.auth.OAuth2(
+          process.env.GOOGLE_CLIENT_ID,
+          process.env.GOOGLE_CLIENT_SECRET,
+          process.env.GOOGLE_REDIRECT_URI || 'https://theatomicwork.com'
+        );
+        
+        if (process.env.GOOGLE_REFRESH_TOKEN) {
+          oauth2Client.setCredentials({
+            refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+          });
+          
+          const drive = google.drive({ version: 'v3', auth: oauth2Client });
+          
+          // Get file as stream
+          const fileStream = await drive.files.get(
+            { fileId: fileId, alt: 'media' },
+            { responseType: 'stream' }
+          );
+          
+          // Convert stream to buffer
+          const chunks: Buffer[] = [];
+          for await (const chunk of fileStream.data) {
+            chunks.push(Buffer.from(chunk));
+          }
+          buffer = Buffer.concat(chunks);
+          
+          if (buffer.length === 0) {
+            throw new Error(`PDF file is empty. File ID: ${fileId}`);
+          }
+          
+          console.log(`[PDF Parser] File size: ${buffer.length} bytes (from Google Drive API)`);
+        } else {
+          throw new Error("GOOGLE_REFRESH_TOKEN not configured");
+        }
+      } catch (driveError: any) {
+        console.warn(`[PDF Parser] Google Drive API failed: ${driveError.message}. Falling back to direct URL fetch.`);
+        // Fallback to direct fetch
+        const response = await fetch(fileUrl);
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => "");
+          console.error(`[PDF Parser] Failed to fetch PDF: ${response.status} ${response.statusText}`, errorText.substring(0, 200));
+          throw new Error(`Failed to fetch PDF: ${response.status} ${response.statusText}. URL: ${fileUrl}`);
+        }
+        
+        const contentType = response.headers.get("content-type");
+        console.log(`[PDF Parser] Content-Type: ${contentType}`);
+        
+        // Check if response is HTML (Google Drive download page)
+        if (contentType?.includes('text/html')) {
+          throw new Error(`Received HTML instead of PDF. This usually means the file requires authentication. File ID: ${fileId || 'unknown'}`);
+        }
+        
+        const arrayBuffer = await response.arrayBuffer();
+        buffer = Buffer.from(arrayBuffer);
+        
+        if (buffer.length === 0) {
+          throw new Error(`PDF file is empty. URL: ${fileUrl}`);
+        }
+        
+        console.log(`[PDF Parser] File size: ${buffer.length} bytes`);
+      }
+    } else {
+      // Direct fetch for non-Google Drive files
+      console.log(`[PDF Parser] Attempting to fetch PDF from: ${fileUrl}`);
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
+        console.error(`[PDF Parser] Failed to fetch PDF: ${response.status} ${response.statusText}`, errorText.substring(0, 200));
+        throw new Error(`Failed to fetch PDF: ${response.status} ${response.statusText}. URL: ${fileUrl}`);
+      }
+      
+      const contentType = response.headers.get("content-type");
+      console.log(`[PDF Parser] Content-Type: ${contentType}`);
+      
+      const arrayBuffer = await response.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+      
+      if (buffer.length === 0) {
+        throw new Error(`PDF file is empty. URL: ${fileUrl}`);
+      }
+      
+      console.log(`[PDF Parser] File size: ${buffer.length} bytes`);
     }
-    
-    const contentType = response.headers.get("content-type");
-    console.log(`[PDF Parser] Content-Type: ${contentType}`);
-    
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    
-    if (buffer.length === 0) {
-      throw new Error(`PDF file is empty. URL: ${fileUrl}`);
-    }
-    
-    console.log(`[PDF Parser] File size: ${buffer.length} bytes`);
 
     // Try to use pdf-parse if available, otherwise use a fallback
     try {
@@ -235,7 +304,9 @@ async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<str
       
       if (extractedText.length === 0) {
         console.warn("[PDF Parser] Warning: PDF appears to be empty or image-based. Trying Vision API fallback...");
-        return await extractTextFromImage(fileUrl);
+        // For image-based PDFs, we need to convert to image first
+        // For now, throw an error to indicate the PDF is not parseable
+        throw new Error("PDF appears to be image-based or empty. Cannot extract text using pdf-parse.");
       }
       
       return extractedText;
@@ -243,7 +314,9 @@ async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<str
       // Fallback: Use OpenAI Vision API to extract text from PDF
       // Note: This is a workaround if pdf-parse is not installed or PDF is image-based
       console.warn(`[PDF Parser] pdf-parse error: ${pdfParseError.message}. Using Vision API fallback...`);
-      return await extractTextFromImage(fileUrl);
+      // Note: Vision API requires image format, so we can't use it directly for PDF
+      // Instead, we should throw an error or use a different approach
+      throw new Error(`Failed to parse PDF: ${pdfParseError.message}. The PDF may be image-based or corrupted.`);
     }
   } catch (error: any) {
     console.error(`[PDF Parser] Error extracting text from PDF:`, error);
