@@ -145,8 +145,11 @@ export async function GET(request: NextRequest) {
           }
         } else {
           const errorData = await triggerResponse.json().catch(() => ({}));
-          result.errors.push(`Trigger failed: ${errorData.error || errorData.details || "Unknown error"}`);
+          const errorMessage = errorData.error || errorData.details || `HTTP ${triggerResponse.status}: ${triggerResponse.statusText}`;
+          result.errors.push(`Trigger failed: ${errorMessage}`);
           result.status = "failed";
+          result.logs.push(`Trigger response status: ${triggerResponse.status}`);
+          result.logs.push(`Error details: ${JSON.stringify(errorData)}`);
         }
       } catch (err: any) {
         result.errors.push(`Error: ${err.message}`);
