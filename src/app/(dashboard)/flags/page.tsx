@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { onSnapshot, query, where, collection, orderBy } from "firebase/firestore";
+import { onSnapshot, query, where, collection, orderBy, getDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ActiveRun, Procedure } from "@/types/schema";
 import { AlertTriangle, Clock, User, ArrowRight, CheckCircle2, XCircle } from "lucide-react";
@@ -19,18 +19,16 @@ export default function FlagsPage() {
   const [procedures, setProcedures] = useState<Record<string, Procedure>>({});
   const [loading, setLoading] = useState(true);
 
-  // Use organization-scoped query hook
-  const runsQuery = useOrgQuery("active_runs");
-
   useEffect(() => {
-    if (!runsQuery) {
+    if (!organizationId) {
       setLoading(false);
       return;
     }
 
     // Query for flagged runs only
     const flaggedQuery = query(
-      runsQuery,
+      collection(db, "active_runs"),
+      where("organizationId", "==", organizationId),
       where("status", "==", "FLAGGED"),
       orderBy("startedAt", "desc")
     );
@@ -59,10 +57,7 @@ export default function FlagsPage() {
         const procMap: Record<string, Procedure> = {};
         for (const procId of procIds) {
           try {
-            const procDoc = await snapshot.ref.firestore
-              .collection("procedures")
-              .doc(procId)
-              .get();
+            const procDoc = await getDoc(doc(db, "procedures", procId));
             if (procDoc.exists()) {
               const data = procDoc.data();
               procMap[procId] = {
@@ -87,7 +82,7 @@ export default function FlagsPage() {
     );
 
     return () => unsubscribe();
-  }, [runsQuery]);
+  }, [organizationId]);
 
   const formatTimeAgo = (date: Date) => {
     const now = new Date();
