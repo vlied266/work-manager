@@ -8,7 +8,7 @@
  *   tsx scripts/publish-triggered-procedures.ts org-zwB7DeYcuSNo2VQihTU7AbC2zw92
  */
 
-import { getAdminDb } from "../../src/lib/firebase-admin";
+import { getAdminDb } from "../src/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 
 async function publishTriggeredProcedures(orgId: string) {
