@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { openai } from "@ai-sdk/openai";
-import { generateObject } from "ai";
+import { generateObject, generateText } from "ai";
 import { z } from "zod";
 
 /**
@@ -287,9 +287,11 @@ async function extractDataFromExcel(fileUrl: string): Promise<any[]> {
  */
 async function extractTextFromImage(fileUrl: string): Promise<string> {
   try {
+    console.log(`[Image Parser] Extracting text from image: ${fileUrl}`);
+    
     // Use OpenAI Vision API to extract text from image
-    const visionResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const { text } = await generateText({
+      model: openai("gpt-4o"),
       messages: [
         {
           role: "user",
@@ -299,19 +301,19 @@ async function extractTextFromImage(fileUrl: string): Promise<string> {
               text: "Extract all text content from this image. Return the text exactly as it appears, preserving structure and formatting where possible.",
             },
             {
-              type: "image_url",
-              image_url: {
-                url: fileUrl,
-              },
+              type: "image",
+              image: fileUrl,
             },
           ],
         },
       ],
-      max_tokens: 4000,
+      maxTokens: 4000,
     });
 
-    return visionResponse.choices[0]?.message?.content || "";
+    console.log(`[Image Parser] Extracted ${text.length} characters from image`);
+    return text || "";
   } catch (error: any) {
+    console.error(`[Image Parser] Error extracting text from image:`, error);
     throw new Error(`Failed to extract text from image: ${error.message}`);
   }
 }
