@@ -124,9 +124,24 @@ export async function POST(req: NextRequest) {
       });
 
       if (doesMatch) {
-        console.log(`[Trigger] ✅ Matching procedure: ${procedureData.title}, folderPath: ${configFolderPath}, filePath: ${filePath}`);
+        matchCount++;
+        console.log(`[Trigger] ✅ Matching procedure #${matchCount}: ${procedureData.title}, folderPath: ${configFolderPath}, filePath: ${filePath}`);
+        console.log(`[Trigger] Procedure details:`, {
+          id: procedureDoc.id,
+          title: procedureData.title,
+          stepsCount: procedureData.steps?.length || 0,
+          organizationId: procedureData.organizationId,
+          isActive: procedureData.isActive,
+          isPublished: procedureData.isPublished,
+        });
         try {
-          console.log(`[Trigger] Creating run for procedure: ${procedureData.title}...`);
+          console.log(`[Trigger] 🚀 Starting createTriggeredRun for procedure: ${procedureData.title}...`);
+          console.log(`[Trigger] Parameters:`, {
+            procedureId: procedureDoc.id,
+            filePath,
+            fileUrl,
+            fileId: fileId || undefined,
+          });
           
           // Create a new run for this procedure
           const runId = await createTriggeredRun(
@@ -140,6 +155,7 @@ export async function POST(req: NextRequest) {
           
           console.log(`[Trigger] ✅ Run created successfully: ${runId}`);
           runsCreated.push(runId);
+          console.log(`[Trigger] Total runs created so far: ${runsCreated.length}`);
 
           // Auto-execute the first step if it's an automated step
           const firstStep = procedureData.steps?.[0];
@@ -182,11 +198,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    console.log(`[Trigger] 📊 Summary: ${proceduresSnapshot.size} procedures checked, ${matchCount} matched, ${runsCreated.length} runs created, ${errorCount} errors`);
+    
     return NextResponse.json({
       success: true,
       message: `Created ${runsCreated.length} workflow run(s) for file: ${filePath}`,
       runsCreated,
       folderPath,
+      summary: {
+        proceduresChecked: proceduresSnapshot.size,
+        matchesFound: matchCount,
+        runsCreated: runsCreated.length,
+        errors: errorCount,
+      },
     });
   } catch (error: any) {
     console.error("Error triggering workflows:", error);
