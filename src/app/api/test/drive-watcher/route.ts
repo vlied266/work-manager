@@ -25,7 +25,18 @@ export async function GET(request: NextRequest) {
     const db = getAdminDb();
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://theatomicwork.com";
 
-    // Step 1: Find active procedures
+    // Step 1: Find ALL procedures for debugging
+    const allProceduresSnapshot = await db
+      .collection("procedures")
+      .where("organizationId", "==", orgId)
+      .get();
+
+    const allProcedures = allProceduresSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as any[];
+
+    // Step 2: Find active procedures with triggers
     const activeProceduresSnapshot = await db
       .collection("procedures")
       .where("organizationId", "==", orgId)
@@ -35,10 +46,37 @@ export async function GET(request: NextRequest) {
       .get();
 
     if (activeProceduresSnapshot.empty) {
+      // Return detailed debugging info
+      const proceduresWithTriggers = allProcedures.filter(p => p.trigger?.type === "ON_FILE_CREATED");
+      const activeProcedures = allProcedures.filter(p => p.isActive === true);
+      const publishedProcedures = allProcedures.filter(p => p.isPublished === true);
+
       return NextResponse.json({
         success: false,
         message: "No active file watcher workflows found",
         checkedProcedures: 0,
+        debug: {
+          totalProcedures: allProcedures.length,
+          proceduresWithTriggers: proceduresWithTriggers.length,
+          activeProcedures: activeProcedures.length,
+          publishedProcedures: publishedProcedures.length,
+          proceduresWithTriggersDetails: proceduresWithTriggers.map(p => ({
+            id: p.id,
+            title: p.title,
+            isActive: p.isActive,
+            isPublished: p.isPublished,
+            triggerType: p.trigger?.type,
+            folderPath: p.trigger?.config?.folderPath,
+          })),
+          allProceduresDetails: allProcedures.map(p => ({
+            id: p.id,
+            title: p.title,
+            isActive: p.isActive,
+            isPublished: p.isPublished,
+            triggerType: p.trigger?.type,
+            folderPath: p.trigger?.config?.folderPath,
+          })),
+        },
       });
     }
 
