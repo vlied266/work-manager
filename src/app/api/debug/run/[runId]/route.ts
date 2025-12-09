@@ -47,28 +47,40 @@ export async function GET(
       
       // Try multiple ways to find extracted data
       let extractedData = null;
-      if (log.output?.extractedData) {
-        extractedData = log.output.extractedData;
-      } else if (log.executionResult?.extractedData) {
-        extractedData = log.executionResult.extractedData;
-      } else if (log.output && typeof log.output === 'object' && 'extractedData' in log.output) {
-        extractedData = log.output.extractedData;
-      } else if (log.output && step?.action === 'AI_PARSE') {
-        // If output is the extracted data itself
-        extractedData = log.output;
+      if (step?.action === 'AI_PARSE') {
+        // For AI_PARSE, output is directly the extractedData (see execute route line 582)
+        if (log.output && typeof log.output === 'object' && !Array.isArray(log.output)) {
+          // Check if output itself is the extracted data object
+          if (log.output.Name || log.output.Email || log.output.name || log.output.email) {
+            extractedData = log.output;
+          } else if (log.output.extractedData) {
+            extractedData = log.output.extractedData;
+          } else {
+            // Output might be the extracted data directly
+            extractedData = log.output;
+          }
+        } else if (log.executionResult?.extractedData) {
+          extractedData = log.executionResult.extractedData;
+        }
       }
       
       // Try multiple ways to find inserted data
       let insertedData = null;
-      if (log.output?.data) {
-        insertedData = log.output.data;
-      } else if (log.executionResult?.data) {
-        insertedData = log.executionResult.data;
-      } else if (log.output && typeof log.output === 'object' && 'data' in log.output) {
-        insertedData = log.output.data;
-      } else if (log.output && step?.action === 'DB_INSERT') {
-        // If output is the inserted data itself
-        insertedData = log.output;
+      if (step?.action === 'DB_INSERT') {
+        // For DB_INSERT, output is directly the data (see execute route line 582)
+        if (log.output && typeof log.output === 'object' && !Array.isArray(log.output)) {
+          // Check if output itself is the inserted data object
+          if (log.output.Name || log.output.Email || log.output.name || log.output.email) {
+            insertedData = log.output;
+          } else if (log.output.data) {
+            insertedData = log.output.data;
+          } else {
+            // Output might be the inserted data directly
+            insertedData = log.output;
+          }
+        } else if (log.executionResult?.data) {
+          insertedData = log.executionResult.data;
+        }
       }
       
       return {
