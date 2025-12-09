@@ -237,7 +237,26 @@ export async function GET(request: NextRequest) {
 
           // New file detected! Trigger workflows
           const filePath = `${folderPath}/${file.name}`;
-          const fileUrl = file.webContentLink || file.webViewLink || `https://drive.google.com/file/d/${file.id}/view`;
+          
+          // Get download URL from Drive API (more reliable than webContentLink)
+          let fileUrl: string;
+          try {
+            // For PDFs, use export link which doesn't require authentication
+            if (file.mimeType === 'application/pdf') {
+              fileUrl = `https://drive.google.com/uc?export=download&id=${file.id}`;
+            } else {
+              // For other files, get download URL from Drive API
+              const fileMetadata = await drive.files.get({ 
+                fileId: file.id!, 
+                fields: 'webContentLink,webViewLink,id' 
+              });
+              fileUrl = fileMetadata.data.webContentLink || fileMetadata.data.webViewLink || `https://drive.google.com/file/d/${file.id}/view`;
+            }
+          } catch (urlError: any) {
+            console.warn(`[Cron] Failed to get download URL for file ${file.name}:`, urlError.message);
+            // Fallback to export link
+            fileUrl = `https://drive.google.com/uc?export=download&id=${file.id}`;
+          }
 
           console.log(`[Cron] New file detected: ${file.name}, triggering workflows...`);
 
