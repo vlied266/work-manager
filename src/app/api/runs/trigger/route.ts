@@ -21,7 +21,7 @@ interface TriggerRunRequest {
 export async function POST(req: NextRequest) {
   try {
     const body: TriggerRunRequest = await req.json();
-    const { filePath, orgId, fileUrl } = body;
+    const { filePath, orgId, fileUrl, fileId } = body;
 
     if (!filePath) {
       return NextResponse.json(
