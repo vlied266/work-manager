@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
           });
           
           // Create a new run for this procedure
+          console.log(`[Trigger] 🚀 Calling createTriggeredRun...`);
           const runId = await createTriggeredRun(
             db,
             procedureDoc.id,
@@ -155,9 +156,15 @@ export async function POST(req: NextRequest) {
             fileId || undefined
           );
           
-          console.log(`[Trigger] ✅ Run created successfully: ${runId}`);
-          runsCreated.push(runId);
-          console.log(`[Trigger] Total runs created so far: ${runsCreated.length}`);
+          console.log(`[Trigger] ✅ createTriggeredRun returned runId: ${runId}`);
+          
+          if (runId) {
+            console.log(`[Trigger] ✅ Run created successfully: ${runId}`);
+            runsCreated.push(runId);
+            console.log(`[Trigger] Total runs created so far: ${runsCreated.length}`);
+          } else {
+            console.error(`[Trigger] ❌ createTriggeredRun returned null/undefined runId!`);
+          }
 
           // Auto-execute the first step if it's an automated step
           const firstStep = procedureData.steps?.[0];
