@@ -50,6 +50,9 @@ export async function POST(req: NextRequest) {
 
     const proceduresSnapshot = await proceduresQuery.get();
 
+    console.log(`[Trigger] Found ${proceduresSnapshot.size} active procedures for org ${orgId}`);
+    console.log(`[Trigger] File path: ${filePath}, Extracted folder path: ${folderPath}`);
+
     if (proceduresSnapshot.empty) {
       return NextResponse.json({
         success: true,
@@ -66,6 +69,9 @@ export async function POST(req: NextRequest) {
       const triggerConfig = procedureData.trigger?.config;
       const configFolderPath = triggerConfig?.folderPath;
 
+      console.log(`[Trigger] Checking procedure: ${procedureData.title}`);
+      console.log(`[Trigger] Config folderPath: ${configFolderPath}, File path: ${filePath}`);
+
       // Normalize folder paths for comparison
       const normalizePath = (path: string) => {
         // Remove leading/trailing slashes and normalize
@@ -73,11 +79,14 @@ export async function POST(req: NextRequest) {
       };
 
       // Check if the folder path matches (flexible matching)
+      const normalizedFilePath = normalizePath(filePath);
+      const normalizedConfigPath = configFolderPath ? normalizePath(configFolderPath) : '';
+      
       const doesMatch = configFolderPath && (
         // Exact match (normalized)
-        normalizePath(filePath) === normalizePath(configFolderPath) ||
+        normalizedFilePath === normalizedConfigPath ||
         // File path starts with folder path (normalized)
-        normalizePath(filePath).startsWith(normalizePath(configFolderPath) + '/') ||
+        normalizedFilePath.startsWith(normalizedConfigPath + '/') ||
         // File path starts with folder path (original, with slashes)
         filePath.startsWith(configFolderPath) ||
         filePath.startsWith('/' + configFolderPath) ||
@@ -87,8 +96,10 @@ export async function POST(req: NextRequest) {
         (configFolderPath.match(/^[a-zA-Z0-9_-]+$/) && filePath.includes(configFolderPath))
       );
 
+      console.log(`[Trigger] Match result: ${doesMatch ? '✅ MATCH' : '❌ NO MATCH'}`);
+
       if (doesMatch) {
-        console.log(`[Trigger] Matching procedure: ${procedureData.title}, folderPath: ${configFolderPath}, filePath: ${filePath}`);
+        console.log(`[Trigger] ✅ Matching procedure: ${procedureData.title}, folderPath: ${configFolderPath}, filePath: ${filePath}`);
         try {
           // Create a new run for this procedure
           const runId = await createTriggeredRun(
