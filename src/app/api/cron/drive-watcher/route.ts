@@ -149,29 +149,151 @@ export async function GET(request: NextRequest) {
     //   }
     // }
 
-    // For now, we'll update lastPolledAt and provide a way to manually test
-    // TODO: Implement real Google Drive API integration
-    
+    // REAL IMPLEMENTATION: Connect to Google Drive and check for new files
     for (const [key, procs] of folderWatchers.entries()) {
       const [orgId, folderPath] = key.split(":");
       console.log(
         `[Cron] Checking folder: ${folderPath} (${procs.length} active workflow(s) for org ${orgId})`
       );
 
-      // Update lastPolledAt for all procedures watching this folder
-      for (const proc of procs) {
-        try {
-          await db.collection("procedures").doc(proc.id).update({
-            lastPolledAt: Timestamp.now(),
+      try {
+        // Initialize Google Drive API
+        const auth = new google.auth.GoogleAuth({
+          credentials: {
+            client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+            private_key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+            project_id: process.env.GOOGLE_PROJECT_ID,
+          },
+          scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+        });
+
+        const drive = google.drive({ version: 'v3', auth });
+
+        // Get cached files from Firestore
+        const cacheSnapshot = await db
+          .collection("file_watcher_cache")
+          .where("organizationId", "==", orgId)
+          .where("folderPath", "==", folderPath)
+          .get();
+
+        const cachedFileIds = new Set(cacheSnapshot.docs.map(d => d.data().fileId));
+
+        // Resolve folder ID from folder path
+        // If folderPath is already a folder ID (starts with alphanumeric), use it directly
+        // Otherwise, search for folder by name
+        let folderId: string | null = null;
+        
+        if (folderPath.match(/^[a-zA-Z0-9_-]+$/)) {
+          // Looks like a folder ID
+          folderId = folderPath;
+        } else {
+          // Search for folder by name
+          const folderName = folderPath.startsWith('/') ? folderPath.slice(1) : folderPath;
+          const folderSearch = await drive.files.list({
+            q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+            fields: 'files(id, name)',
+            pageSize: 1,
           });
-        } catch (err) {
-          console.error(`Error updating lastPolledAt for procedure ${proc.id}:`, err);
+
+          if (folderSearch.data.files && folderSearch.data.files.length > 0) {
+            folderId = folderSearch.data.files[0].id!;
+          } else {
+            console.warn(`[Cron] Folder not found: ${folderPath}`);
+            continue;
+          }
+        }
+
+        // List files in the folder (created in the last 24 hours to avoid processing old files)
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const filesResponse = await drive.files.list({
+          q: `'${folderId}' in parents and createdTime > '${oneDayAgo}' and trashed=false and mimeType != 'application/vnd.google-apps.folder'`,
+          fields: 'files(id, name, createdTime, webContentLink, webViewLink, mimeType)',
+          orderBy: 'createdTime desc',
+          pageSize: 50,
+        });
+
+        const files = filesResponse.data.files || [];
+        console.log(`[Cron] Found ${files.length} files in folder ${folderPath}`);
+
+        // Process new files
+        for (const file of files) {
+          if (!file.id) continue;
+
+          // Skip if already cached
+          if (cachedFileIds.has(file.id)) {
+            console.log(`[Cron] File ${file.name} already processed, skipping`);
+            continue;
+          }
+
+          // New file detected! Trigger workflows
+          const filePath = `${folderPath}/${file.name}`;
+          const fileUrl = file.webContentLink || file.webViewLink || `https://drive.google.com/file/d/${file.id}/view`;
+
+          console.log(`[Cron] New file detected: ${file.name}, triggering workflows...`);
+
+          try {
+            const triggerResponse = await fetch(`${baseUrl}/api/runs/trigger`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                filePath: filePath,
+                orgId: orgId,
+                fileUrl: fileUrl,
+              }),
+            });
+
+            if (triggerResponse.ok) {
+              const result = await triggerResponse.json();
+              runsCreated.push(...(result.runsCreated || []));
+              console.log(`[Cron] Triggered ${result.runsCreated?.length || 0} workflow(s) for file: ${file.name}`);
+
+              // Update cache
+              await db.collection("file_watcher_cache").add({
+                organizationId: orgId,
+                folderPath: folderPath,
+                fileId: file.id,
+                fileName: file.name,
+                filePath: filePath,
+                fileUrl: fileUrl,
+                detectedAt: Timestamp.now(),
+                createdTime: file.createdTime,
+              });
+            } else {
+              const errorData = await triggerResponse.json().catch(() => ({}));
+              errors.push(`Failed to trigger workflow for ${file.name}: ${errorData.error || 'Unknown error'}`);
+              console.error(`[Cron] Failed to trigger workflow for ${file.name}:`, errorData);
+            }
+          } catch (err: any) {
+            errors.push(`Error processing file ${file.name}: ${err.message}`);
+            console.error(`[Cron] Error processing file ${file.name}:`, err);
+          }
+        }
+
+        // Update lastPolledAt for all procedures watching this folder
+        for (const proc of procs) {
+          try {
+            await db.collection("procedures").doc(proc.id).update({
+              lastPolledAt: Timestamp.now(),
+            });
+          } catch (err) {
+            console.error(`Error updating lastPolledAt for procedure ${proc.id}:`, err);
+          }
+        }
+      } catch (err: any) {
+        console.error(`[Cron] Error processing folder ${folderPath}:`, err);
+        errors.push(`Error processing folder ${folderPath}: ${err.message}`);
+        
+        // Still update lastPolledAt even if there was an error
+        for (const proc of procs) {
+          try {
+            await db.collection("procedures").doc(proc.id).update({
+              lastPolledAt: Timestamp.now(),
+            });
+          } catch (updateErr) {
+            console.error(`Error updating lastPolledAt for procedure ${proc.id}:`, updateErr);
+          }
         }
       }
-
-      // NOTE: Real Google Drive integration would go here
-      // For now, this is a placeholder that only updates the timestamp
-      // To test manually, use: POST /api/webhooks/simulation with { eventType: "file_upload", filePath: "/Resumes/test.pdf", orgId: "..." }
     }
 
     return NextResponse.json({
