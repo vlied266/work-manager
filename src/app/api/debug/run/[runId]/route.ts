@@ -44,6 +44,33 @@ export async function GET(
     // Format logs with step details
     const formattedLogs = (run?.logs || []).map((log: any, index: number) => {
       const step = procedure?.steps?.[index];
+      
+      // Try multiple ways to find extracted data
+      let extractedData = null;
+      if (log.output?.extractedData) {
+        extractedData = log.output.extractedData;
+      } else if (log.executionResult?.extractedData) {
+        extractedData = log.executionResult.extractedData;
+      } else if (log.output && typeof log.output === 'object' && 'extractedData' in log.output) {
+        extractedData = log.output.extractedData;
+      } else if (log.output && step?.action === 'AI_PARSE') {
+        // If output is the extracted data itself
+        extractedData = log.output;
+      }
+      
+      // Try multiple ways to find inserted data
+      let insertedData = null;
+      if (log.output?.data) {
+        insertedData = log.output.data;
+      } else if (log.executionResult?.data) {
+        insertedData = log.executionResult.data;
+      } else if (log.output && typeof log.output === 'object' && 'data' in log.output) {
+        insertedData = log.output.data;
+      } else if (log.output && step?.action === 'DB_INSERT') {
+        // If output is the inserted data itself
+        insertedData = log.output;
+      }
+      
       return {
         index,
         stepId: log.stepId,
@@ -56,9 +83,12 @@ export async function GET(
         outcome: log.outcome,
         executionResult: log.executionResult,
         // Show extracted data if it's AI_PARSE
-        extractedData: log.output?.extractedData || log.executionResult?.extractedData,
+        extractedData: extractedData,
         // Show resolved data if it's DB_INSERT
-        insertedData: log.output?.data || log.executionResult?.data,
+        insertedData: insertedData,
+        // Raw output for debugging
+        rawOutput: log.output,
+        rawExecutionResult: log.executionResult,
       };
     });
 
