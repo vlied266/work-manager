@@ -67,6 +67,8 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Trigger] Processing ${proceduresSnapshot.size} procedures...`);
     const runsCreated: string[] = [];
+    let matchCount = 0;
+    let errorCount = 0;
 
     // For each matching procedure, create a new run
     for (const procedureDoc of proceduresSnapshot.docs) {
