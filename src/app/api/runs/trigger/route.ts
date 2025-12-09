@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 import { Procedure, AtomicStep } from "@/types/schema";
+import { isAutoStep } from "@/lib/constants";
 
 interface TriggerRunRequest {
   filePath: string; // e.g., "/uploads/contracts/invoice-123.pdf"
