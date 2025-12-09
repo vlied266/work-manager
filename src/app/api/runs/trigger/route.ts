@@ -114,6 +114,8 @@ export async function POST(req: NextRequest) {
       if (doesMatch) {
         console.log(`[Trigger] ✅ Matching procedure: ${procedureData.title}, folderPath: ${configFolderPath}, filePath: ${filePath}`);
         try {
+          console.log(`[Trigger] Creating run for procedure: ${procedureData.title}...`);
+          
           // Create a new run for this procedure
           const runId = await createTriggeredRun(
             db,
@@ -123,11 +125,14 @@ export async function POST(req: NextRequest) {
             fileUrl,
             fileId || undefined
           );
+          
+          console.log(`[Trigger] ✅ Run created successfully: ${runId}`);
           runsCreated.push(runId);
 
           // Auto-execute the first step if it's an automated step
           const firstStep = procedureData.steps?.[0];
           if (firstStep && isAutoStep(firstStep.action)) {
+            console.log(`[Trigger] Auto-executing first step: ${firstStep.action} (${firstStep.id})`);
             try {
               const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://theatomicwork.com";
               const executeResponse = await fetch(`${baseUrl}/api/runs/execute`, {
@@ -144,18 +149,24 @@ export async function POST(req: NextRequest) {
 
               if (!executeResponse.ok) {
                 const errorData = await executeResponse.json().catch(() => ({}));
-                console.error(`Failed to auto-execute first step for run ${runId}:`, errorData);
+                console.error(`[Trigger] ❌ Failed to auto-execute first step for run ${runId}:`, errorData);
               } else {
-                console.log(`[Trigger] Auto-executed first step (${firstStep.action}) for run ${runId}`);
+                const executeResult = await executeResponse.json().catch(() => ({}));
+                console.log(`[Trigger] ✅ Auto-executed first step (${firstStep.action}) for run ${runId}:`, executeResult);
               }
             } catch (err: any) {
-              console.error(`Error auto-executing first step for run ${runId}:`, err);
+              console.error(`[Trigger] ❌ Error auto-executing first step for run ${runId}:`, err.message || err);
             }
+          } else {
+            console.log(`[Trigger] First step is not AUTO (${firstStep?.action || 'N/A'}), skipping auto-execution`);
           }
         } catch (error: any) {
-          console.error(`Error creating run for procedure ${procedureDoc.id}:`, error);
+          console.error(`[Trigger] ❌ Error creating run for procedure ${procedureDoc.id} (${procedureData.title}):`, error.message || error);
+          console.error(`[Trigger] Error stack:`, error.stack);
           // Continue with other procedures even if one fails
         }
+      } else {
+        console.log(`[Trigger] ❌ No match for procedure: ${procedureData.title}, folderPath: ${configFolderPath}, filePath: ${filePath}`);
       }
     }
 
