@@ -4,6 +4,7 @@
 // These polyfills mock the required browser APIs to prevent crashes
 
 // 1. Fix "r is not a function" (Missing Promise.withResolvers)
+// This must be defined on Promise prototype, not just as a static method
 if (typeof Promise.withResolvers === 'undefined') {
   // @ts-ignore
   Promise.withResolvers = function () {
@@ -14,6 +15,14 @@ if (typeof Promise.withResolvers === 'undefined') {
     });
     return { promise, resolve, reject };
   };
+}
+
+// Also ensure it's available on the global Promise object
+if (typeof global !== 'undefined' && typeof global.Promise !== 'undefined') {
+  if (typeof global.Promise.withResolvers === 'undefined') {
+    // @ts-ignore
+    global.Promise.withResolvers = Promise.withResolvers;
+  }
 }
 
 // 2. Fix Canvas/DOM Dependencies
