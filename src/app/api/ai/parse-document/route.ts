@@ -3,6 +3,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
 import OpenAI from "openai";
+import { PDFDocument, PDFName, PDFRawStream } from "pdf-lib";
 
 /**
  * AI Document Parser API
@@ -143,31 +144,66 @@ export async function POST(req: NextRequest) {
     let extractedData: any = null;
     let imageBuffer: Buffer | null = null; // For images and scanned PDFs, we'll pass the buffer directly
     let pdfBuffer: Buffer | null = null; // For PDFs, we need the buffer for Vision API fallback
+    let extractedImageFromPdf: Buffer | null = null; // Extracted image from scanned PDF
     let useVisionForPdf = false; // Flag to indicate if we should use Vision API for PDF
 
     // Step 1: Extract content based on file type
     switch (detectedFileType) {
       case "pdf": {
-        // Try pdf2json first
+        // Strategy: Try text extraction first, then fallback to image extraction for scanned PDFs
+        console.log("[PDF Parser] Detected PDF. Checking for text...");
+        
         try {
           const pdfResult = await extractTextFromPDF(fileUrl, fileId);
           extractedText = pdfResult.text || "";
           pdfBuffer = pdfResult.buffer || null;
           
-          // Check if text is too short (likely a scanned PDF)
-          if (!extractedText || extractedText.trim().length < 50) {
-            console.warn(`[PDF Parser] PDF has no selectable text (${extractedText?.length || 0} chars). Likely scanned. Using Vision API...`);
-            useVisionForPdf = true;
-          } else {
-            console.log(`[PDF Parser] Successfully extracted ${extractedText.length} characters. Using text-based extraction.`);
+          // Strategy A: Use Text (Preferred) - if we have substantial text
+          if (extractedText && extractedText.trim().length > 50) {
+            console.log(`[PDF Parser] Text found (${extractedText.length} chars). Using Text Mode.`);
+            // Will use text-based extraction in Step 2
+          } 
+          // Strategy B: Fallback to Vision (Scanned PDF) - extract image from PDF
+          else {
+            console.log(`[PDF Parser] No text found (${extractedText?.length || 0} chars). Likely scanned. Extracting image from PDF...`);
+            
+            if (pdfBuffer) {
+              // Try to extract the first image from the PDF
+              const extractedImg = await extractFirstImageFromPDF(pdfBuffer);
+              
+              if (extractedImg) {
+                console.log(`[PDF Parser] Successfully extracted image from PDF (${extractedImg.length} bytes). Using Vision API...`);
+                // Store the extracted image for Vision API
+                extractedImageFromPdf = extractedImg;
+                useVisionForPdf = true;
+                pdfBuffer = null; // Clear PDF buffer since we're using extracted image
+              } else {
+                console.warn(`[PDF Parser] Could not extract image from PDF. Using PDF buffer directly with Vision API...`);
+                // Fallback: Use the PDF buffer directly with Vision API
+                useVisionForPdf = true;
+              }
+            } else {
+              console.warn(`[PDF Parser] No buffer available for image extraction.`);
+              useVisionForPdf = true;
+            }
           }
         } catch (pdfError: any) {
           console.error(`[PDF Parser] PDF text extraction failed:`, pdfError.message);
-          // If we have the buffer, use Vision API as fallback
+          // If we have the buffer, try to extract image
           if (pdfError.buffer) {
             pdfBuffer = pdfError.buffer;
-            useVisionForPdf = true;
-            console.log(`[PDF Parser] Falling back to Vision API for field extraction...`);
+            console.log(`[PDF Parser] Attempting to extract image from PDF as fallback...`);
+            
+            const extractedImg = await extractFirstImageFromPDF(pdfBuffer);
+            if (extractedImg) {
+              console.log(`[PDF Parser] Successfully extracted image from PDF. Using Vision API...`);
+              extractedImageFromPdf = extractedImg;
+              useVisionForPdf = true;
+              pdfBuffer = null;
+            } else {
+              console.warn(`[PDF Parser] Could not extract image. Using PDF buffer directly with Vision API...`);
+              useVisionForPdf = true;
+            }
           } else {
             throw pdfError; // Re-throw if we don't have a buffer to work with
           }
@@ -207,14 +243,20 @@ export async function POST(req: NextRequest) {
         fieldsToExtract,
         fileUrl
       );
-    } else if (detectedFileType === "pdf" && useVisionForPdf && pdfBuffer) {
-      // For scanned PDFs, use Vision API directly with the PDF buffer
-      console.log(`[PDF Parser] Using Vision API for scanned PDF field extraction...`);
-      result = await extractFieldsWithAIFromImage(
-        pdfBuffer,
-        fieldsToExtract,
-        fileUrl || "document.pdf"
-      );
+    } else if (detectedFileType === "pdf" && useVisionForPdf) {
+      // For scanned PDFs, use Vision API
+      // Prefer extracted image buffer, fallback to PDF buffer
+      const visionBuffer = extractedImageFromPdf || pdfBuffer;
+      if (visionBuffer) {
+        console.log(`[PDF Parser] Using Vision API for scanned PDF field extraction...`);
+        result = await extractFieldsWithAIFromImage(
+          visionBuffer,
+          fieldsToExtract,
+          fileUrl || "document.pdf"
+        );
+      } else {
+        throw new Error("No buffer available for Vision API extraction");
+      }
     } else {
       // For text-based PDFs, use AI to extract fields from text
       result = await extractFieldsWithAI(
