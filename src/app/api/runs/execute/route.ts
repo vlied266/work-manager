@@ -643,11 +643,21 @@ export async function POST(req: NextRequest) {
       }
 
       // Update log with execution result and output
-      // CRITICAL: Prioritize executionResult.output if it exists (for AI_PARSE, DB_INSERT, etc.)
-      // This ensures the workflow engine can access step_N.output.property correctly
-      const stepOutput = executionResult.success 
-        ? (executionResult.output || executionResult.extractedData || executionResult.data || executionResult.fileUrl || executionResult)
-        : { error: executionResult.error };
+      // CRITICAL: For AI_PARSE, executionResult.output contains { name: "...", email: "..." }
+      // This MUST become log.output directly (not wrapped) so {{step_1.output.name}} works
+      let stepOutput: any;
+      
+      if (!executionResult.success) {
+        stepOutput = { error: executionResult.error };
+      } else if (currentStep.action === "AI_PARSE") {
+        // CRITICAL: For AI_PARSE, use executionResult.output directly
+        // This is already { name: "...", email: "..." } from the AI_PARSE case
+        stepOutput = executionResult.output || executionResult.extractedData || {};
+        console.log(`[Execute] AI_PARSE stepOutput (direct):`, stepOutput);
+      } else {
+        // For other steps, use the fallback chain
+        stepOutput = executionResult.output || executionResult.extractedData || executionResult.data || executionResult.fileUrl || executionResult;
+      }
       
       console.log(`[Execute] Step output for ${currentStep.action}:`, {
         hasOutput: !!executionResult.output,
@@ -657,12 +667,13 @@ export async function POST(req: NextRequest) {
         stepOutputValue: stepOutput,
       });
       
-      // CRITICAL: Ensure stepOutput is properly structured for AI_PARSE
-      // For AI_PARSE, stepOutput should be { name: "...", email: "..." } directly
+      // CRITICAL: Ensure stepOutput is properly structured
+      // For AI_PARSE: stepOutput = { name: "...", email: "..." }
       // This becomes log.output, which is then accessed as {{step_1.output.name}}
+      // The resolver expects log.output to be the data object directly
       const finalLog = {
         ...newLog,
-        output: stepOutput, // This is the actual data that will be in log.output
+        output: stepOutput, // This MUST be the extractedData object for AI_PARSE
         outcome: executionResult.success ? "SUCCESS" : "FAILURE",
         executionResult,
       };
@@ -673,6 +684,10 @@ export async function POST(req: NextRequest) {
         outputType: typeof finalLog.output,
         outputKeys: typeof finalLog.output === 'object' && finalLog.output !== null ? Object.keys(finalLog.output) : [],
         outputValue: finalLog.output,
+        // Verify structure matches expected format
+        isExpectedFormat: currentStep.action === "AI_PARSE" 
+          ? (typeof finalLog.output === 'object' && finalLog.output !== null && !Array.isArray(finalLog.output))
+          : true,
       });
       
       const finalLogs = [...updatedLogs.slice(0, -1), finalLog];
