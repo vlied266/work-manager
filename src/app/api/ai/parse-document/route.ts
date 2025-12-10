@@ -19,6 +19,7 @@ interface ParseDocumentRequest {
   fileType?: "pdf" | "excel" | "image"; // Optional file type hint
   orgId?: string; // Organization ID for plan limits
   fileId?: string; // Google Drive file ID if available
+  fileName?: string; // File name for better file type detection
 }
 
 // Helper function to create a dynamic schema based on fields to extract
@@ -59,7 +60,7 @@ function createExtractedDataSchema(fieldsToExtract: string[]) {
 export async function POST(req: NextRequest) {
   try {
     const body: ParseDocumentRequest = await req.json();
-    const { fileUrl, fieldsToExtract, fileType, orgId, fileId } = body;
+    const { fileUrl, fieldsToExtract, fileType, orgId, fileId, fileName } = body;
 
     if (!fileUrl || !fieldsToExtract || fieldsToExtract.length === 0) {
       return NextResponse.json(
@@ -134,11 +135,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Detect file type from URL if not provided
-    const detectedFileType = fileType || detectFileType(fileUrl);
+    // Detect file type from fileName (preferred) or URL if not provided
+    const detectedFileType = fileType || (fileName ? detectFileType(fileName) : detectFileType(fileUrl));
     
     let extractedText = "";
     let extractedData: any = null;
+    let imageBuffer: Buffer | null = null; // For images, we'll pass the buffer directly
 
     // Step 1: Extract content based on file type
     switch (detectedFileType) {
@@ -150,8 +152,9 @@ export async function POST(req: NextRequest) {
         // For Excel, we'll use the structured data directly
         break;
       case "image":
-        // For images, we'll use Vision API directly
-        extractedText = await extractTextFromImage(fileUrl);
+        // For images, download the file and prepare for Vision API
+        imageBuffer = await downloadImageFile(fileUrl, fileId);
+        // Skip text extraction - we'll use Vision API directly
         break;
       default:
         return NextResponse.json(
@@ -170,8 +173,15 @@ export async function POST(req: NextRequest) {
         fieldsToExtract,
         "excel"
       );
+    } else if (detectedFileType === "image" && imageBuffer) {
+      // For images, use Vision API directly with the image buffer
+      result = await extractFieldsWithAIFromImage(
+        imageBuffer,
+        fieldsToExtract,
+        fileUrl
+      );
     } else {
-      // For PDF and Image, use AI to extract fields from text
+      // For PDF, use AI to extract fields from text
       result = await extractFieldsWithAI(
         extractedText,
         fieldsToExtract,
@@ -219,10 +229,12 @@ function detectFileType(fileUrl: string): "pdf" | "excel" | "image" {
     urlLower.includes(".jpeg") ||
     urlLower.includes(".png") ||
     urlLower.includes(".gif") ||
+    urlLower.includes(".webp") ||
     urlLower.endsWith(".jpg") ||
     urlLower.endsWith(".jpeg") ||
     urlLower.endsWith(".png") ||
-    urlLower.endsWith(".gif")
+    urlLower.endsWith(".gif") ||
+    urlLower.endsWith(".webp")
   ) {
     return "image";
   }
@@ -480,43 +492,88 @@ async function extractDataFromExcel(fileUrl: string): Promise<any[]> {
 }
 
 /**
- * Extract text from Image using GPT-4o Vision API
+ * Download image file from Google Drive or URL
+ * Returns a Buffer ready for base64 encoding
  */
-async function extractTextFromImage(fileUrl: string): Promise<string> {
+async function downloadImageFile(fileUrl: string, fileId?: string): Promise<Buffer> {
   try {
-    console.log(`[Image Parser] Extracting text from image: ${fileUrl}`);
+    let buffer: Buffer;
     
-    // Use OpenAI Vision API to extract text from image
-    const { text } = await generateText({
-      model: openai("gpt-4o"),
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: "Extract all text content from this image. Return the text exactly as it appears, preserving structure and formatting where possible.",
-            },
-            {
-              type: "image",
-              image: fileUrl,
-            },
-          ],
-        },
-      ],
-      maxTokens: 4000,
-    });
-
-    console.log(`[Image Parser] Extracted ${text.length} characters from image`);
-    return text || "";
+    // CRITICAL: If fileId exists, ALWAYS use Google Drive API - IGNORE fileUrl completely
+    if (fileId) {
+      console.log(`[Image Parser] fileId detected: ${fileId}. Using Google Drive API for direct download (IGNORING fileUrl: ${fileUrl})`);
+      
+      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REFRESH_TOKEN) {
+        throw new Error("Google Drive API credentials not configured. GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN are required.");
+      }
+      
+      try {
+        const { google } = await import("googleapis");
+        const oauth2Client = new google.auth.OAuth2(
+          process.env.GOOGLE_CLIENT_ID,
+          process.env.GOOGLE_CLIENT_SECRET,
+          process.env.GOOGLE_REDIRECT_URI || 'https://theatomicwork.com'
+        );
+        
+        oauth2Client.setCredentials({
+          refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+        });
+        
+        const drive = google.drive({ version: 'v3', auth: oauth2Client });
+        
+        console.log(`[Image Parser] Downloading image ${fileId} using Google Drive API...`);
+        
+        // Download file using Google Drive API with arraybuffer response
+        const fileResponse = await drive.files.get(
+          { fileId: fileId, alt: 'media' },
+          { responseType: 'arraybuffer' }
+        );
+        
+        // Convert arraybuffer to Buffer
+        if (fileResponse.data instanceof ArrayBuffer) {
+          buffer = Buffer.from(fileResponse.data);
+        } else if (Buffer.isBuffer(fileResponse.data)) {
+          buffer = fileResponse.data;
+        } else {
+          buffer = Buffer.from(fileResponse.data as any);
+        }
+        
+        if (buffer.length === 0) {
+          throw new Error(`Image file is empty. File ID: ${fileId}`);
+        }
+        
+        console.log(`[Image Parser] Successfully downloaded ${buffer.length} bytes from Google Drive API`);
+        return buffer;
+      } catch (driveError: any) {
+        console.error(`[Image Parser] Google Drive API download failed:`, driveError);
+        throw new Error(`Failed to download image from Google Drive API: ${driveError.message}. File ID: ${fileId}`);
+      }
+    } else {
+      // Fallback to direct URL fetch if fileId is not available
+      console.log(`[Image Parser] No fileId provided. Falling back to direct URL fetch: ${fileUrl}`);
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+      }
+      
+      const arrayBuffer = await response.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+      
+      if (buffer.length === 0) {
+        throw new Error(`Image file is empty. URL: ${fileUrl}`);
+      }
+      
+      console.log(`[Image Parser] Successfully downloaded ${buffer.length} bytes from URL`);
+      return buffer;
+    }
   } catch (error: any) {
-    console.error(`[Image Parser] Error extracting text from image:`, error);
-    throw new Error(`Failed to extract text from image: ${error.message}`);
+    console.error(`[Image Parser] Error downloading image:`, error);
+    throw new Error(`Failed to download image: ${error.message}`);
   }
 }
 
 /**
- * Use AI to extract specific fields from extracted content
+ * Use AI to extract specific fields from extracted content (for PDF/Excel)
  */
 async function extractFieldsWithAI(
   content: string,
@@ -583,6 +640,96 @@ Return a JSON object with the extracted fields. If a field is not found, use nul
       errorType: error.constructor?.name,
     });
     throw new Error(`Failed to extract fields with AI: ${error.message}`);
+  }
+}
+
+/**
+ * Use AI Vision API to extract specific fields directly from image
+ * This bypasses text extraction and uses Vision API with structured output
+ */
+async function extractFieldsWithAIFromImage(
+  imageBuffer: Buffer,
+  fieldsToExtract: string[],
+  fileUrl: string
+): Promise<Record<string, any>> {
+  console.log(`[AI Vision Extractor] Extracting ${fieldsToExtract.length} fields directly from image (${imageBuffer.length} bytes)`);
+  
+  try {
+    // Validate fieldsToExtract before creating schema
+    if (!fieldsToExtract || fieldsToExtract.length === 0) {
+      throw new Error("fieldsToExtract array is empty. At least one field is required.");
+    }
+    
+    // Filter out invalid field names
+    const validFields = fieldsToExtract.filter(field => 
+      field && typeof field === 'string' && field.trim().length > 0
+    );
+    
+    if (validFields.length === 0) {
+      throw new Error("No valid field names found in fieldsToExtract array");
+    }
+    
+    console.log(`[AI Vision Extractor] Creating schema for ${validFields.length} fields:`, validFields);
+    
+    // Create a dynamic schema based on the fields to extract
+    const dynamicSchema = createExtractedDataSchema(validFields);
+    
+    // Determine MIME type from file extension
+    const urlLower = fileUrl.toLowerCase();
+    let mimeType = 'image/jpeg'; // Default
+    if (urlLower.endsWith('.png')) {
+      mimeType = 'image/png';
+    } else if (urlLower.endsWith('.webp')) {
+      mimeType = 'image/webp';
+    } else if (urlLower.endsWith('.gif')) {
+      mimeType = 'image/gif';
+    }
+    
+    // Convert buffer to base64
+    const base64Image = imageBuffer.toString('base64');
+    const dataUrl = `data:${mimeType};base64,${base64Image}`;
+    
+    // Build the prompt
+    const prompt = `You are a data extraction specialist. Extract the following fields from this resume/document image and return them as a JSON object.
+
+Fields to extract:
+${validFields.map((field) => `- ${field}`).join("\n")}
+
+Return a JSON object with the extracted fields. If a field is not found, use null as the value. Use appropriate data types (strings, numbers, dates, booleans) based on the content.`;
+    
+    console.log(`[AI Vision Extractor] Calling OpenAI Vision API with ${mimeType} image...`);
+    
+    // Use generateObject with Vision API
+    const { object } = await generateObject({
+      model: openai("gpt-4o"), // gpt-4o supports vision
+      schema: dynamicSchema,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: prompt,
+            },
+            {
+              type: "image",
+              image: dataUrl,
+            },
+          ],
+        },
+      ],
+    });
+
+    console.log(`[AI Vision Extractor] Successfully extracted fields:`, Object.keys(object));
+    return object;
+  } catch (error: any) {
+    console.error(`[AI Vision Extractor] Error extracting fields from image:`, {
+      message: error.message,
+      stack: error.stack,
+      fieldsToExtract,
+      errorType: error.constructor?.name,
+    });
+    throw new Error(`Failed to extract fields from image: ${error.message}`);
   }
 }
 

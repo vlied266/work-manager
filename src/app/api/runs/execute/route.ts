@@ -357,10 +357,13 @@ export async function POST(req: NextRequest) {
             console.log(`[AI_PARSE] Parsing document - fileId: ${fileId || 'none'}, fileUrl: ${fileUrl || 'none'}`);
             console.log(`[AI_PARSE] Fields to extract:`, currentStep.config.fieldsToExtract);
             
+            // Get fileName from trigger context for better file type detection
+            const fileName = run.triggerContext?.fileName || run.initialInput?.fileName || run.triggerContext?.file || run.initialInput?.filePath;
+            
             // Call parse-document API
             // CRITICAL: parse-document will use Google Drive API if fileId is provided, ignoring fileUrl
             const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-            console.log(`[AI_PARSE] Calling parse-document API with fileId: ${fileId || 'none'}, fileUrl: ${fileUrl || 'none'}`);
+            console.log(`[AI_PARSE] Calling parse-document API with fileId: ${fileId || 'none'}, fileUrl: ${fileUrl || 'none'}, fileName: ${fileName || 'none'}`);
             const parseResponse = await fetch(`${baseUrl}/api/ai/parse-document`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -370,6 +373,7 @@ export async function POST(req: NextRequest) {
                 fileType: currentStep.config.fileType,
                 orgId,
                 fileId: fileId || undefined, // CRITICAL: Pass fileId - parse-document will use Google Drive API
+                fileName: fileName || undefined, // Pass fileName for better file type detection
               }),
             });
             
