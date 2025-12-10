@@ -451,13 +451,37 @@ export async function POST(req: NextRequest) {
             });
             
             // Build run context for variable resolution using latest logs
+            // CRITICAL: For AI_PARSE, log.output is { output: { name: "...", email: "..." } }
+            // So we need to handle this structure correctly for {{step_1.output.name}}
             const runContext = latestLogs.reduce((acc: any, log, idx) => {
               const step = procedure.steps[idx];
               if (step) {
                 const varName = step.config.outputVariableName || `step_${idx + 1}_output`;
-                acc[varName] = log.output;
-                acc[`step_${idx + 1}_output`] = log.output;
-                acc[`step_${idx + 1}`] = { output: log.output };
+                
+                // Check if log.output already has an 'output' key (from AI_PARSE wrapping)
+                if (log.output && typeof log.output === 'object' && log.output !== null && 'output' in log.output) {
+                  // log.output is { output: { name: "...", email: "..." } }
+                  // So step_1 should be { output: { name: "...", email: "..." } }
+                  const innerOutput = log.output.output;
+                  acc[varName] = innerOutput; // Extract the inner output for flat access
+                  acc[`step_${idx + 1}_output`] = innerOutput;
+                  acc[`step_${idx + 1}`] = log.output; // Use log.output directly (already wrapped as { output: {...} })
+                  console.log(`[DB_INSERT] Log ${idx + 1} has wrapped output structure:`, {
+                    stepId: log.stepId,
+                    wrapped: true,
+                    innerOutputKeys: typeof innerOutput === 'object' && innerOutput !== null ? Object.keys(innerOutput) : [],
+                  });
+                } else {
+                  // Normal case: log.output is { name: "...", email: "..." }
+                  acc[varName] = log.output;
+                  acc[`step_${idx + 1}_output`] = log.output;
+                  acc[`step_${idx + 1}`] = { output: log.output };
+                  console.log(`[DB_INSERT] Log ${idx + 1} has flat output structure:`, {
+                    stepId: log.stepId,
+                    wrapped: false,
+                    outputKeys: typeof log.output === 'object' && log.output !== null ? Object.keys(log.output) : [],
+                  });
+                }
               }
               return acc;
             }, {});
