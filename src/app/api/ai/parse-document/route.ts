@@ -165,10 +165,10 @@ export async function POST(req: NextRequest) {
           } 
           // Strategy B: Fallback to Vision (Scanned PDF) - extract image from PDF
           else {
-            console.log(`[PDF Parser] No text found (${extractedText?.length || 0} chars). Likely scanned. Extracting image from PDF...`);
+            console.log(`[PDF Parser] No text found (${extractedText?.length || 0} chars). Scanned PDF detected. Attempting deep image extraction...`);
             
             if (pdfBuffer) {
-              // Try to extract the first image from the PDF
+              // Try to extract the first image from the PDF (recursive search)
               const extractedImg = await extractFirstImageFromPDF(pdfBuffer);
               
               if (extractedImg) {
@@ -178,13 +178,13 @@ export async function POST(req: NextRequest) {
                 useVisionForPdf = true;
                 pdfBuffer = null; // Clear PDF buffer since we're using extracted image
               } else {
-                console.warn(`[PDF Parser] Could not extract image from PDF. Using PDF buffer directly with Vision API...`);
-                // Fallback: Use the PDF buffer directly with Vision API
-                useVisionForPdf = true;
+                // CRITICAL FIX: Stop here. Do not send PDF buffer to Vision.
+                console.error(`[PDF Parser] No extractable image found in scanned PDF.`);
+                throw new Error("Scanned PDF could not be processed: No text or extractable image found. The PDF may be corrupted or use an unsupported image format.");
               }
             } else {
-              console.warn(`[PDF Parser] No buffer available for image extraction.`);
-              useVisionForPdf = true;
+              console.error(`[PDF Parser] No buffer available for image extraction.`);
+              throw new Error("Scanned PDF could not be processed: No buffer available for image extraction.");
             }
           }
         } catch (pdfError: any) {
@@ -192,7 +192,7 @@ export async function POST(req: NextRequest) {
           // If we have the buffer, try to extract image
           if (pdfError.buffer) {
             pdfBuffer = pdfError.buffer;
-            console.log(`[PDF Parser] Attempting to extract image from PDF as fallback...`);
+            console.log(`[PDF Parser] Text extraction failed. Attempting deep image extraction from PDF as fallback...`);
             
             const extractedImg = await extractFirstImageFromPDF(pdfBuffer);
             if (extractedImg) {
@@ -201,8 +201,9 @@ export async function POST(req: NextRequest) {
               useVisionForPdf = true;
               pdfBuffer = null;
             } else {
-              console.warn(`[PDF Parser] Could not extract image. Using PDF buffer directly with Vision API...`);
-              useVisionForPdf = true;
+              // CRITICAL FIX: Stop here. Do not send PDF buffer to Vision.
+              console.error(`[PDF Parser] No extractable image found in PDF.`);
+              throw new Error("PDF could not be processed: Text extraction failed and no extractable image found. The PDF may be corrupted or use an unsupported format.");
             }
           } else {
             throw pdfError; // Re-throw if we don't have a buffer to work with
@@ -285,13 +286,13 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * Extract the first image from a PDF document
+ * Recursive helper to find the first image in a PDF resource tree
+ * Handles nested Form XObjects (common in scanned PDFs)
  * Returns the raw image buffer (usually JPEG/PNG) or null if no image found
- * Helper to extract the first image from a PDF page (for scanned docs)
  */
 async function extractFirstImageFromPDF(pdfBuffer: Buffer): Promise<Buffer | null> {
   try {
-    console.log(`[PDF Image Extractor] Attempting to extract image from PDF (${pdfBuffer.length} bytes)...`);
+    console.log(`[PDF Image Extractor] Attempting deep image extraction from PDF (${pdfBuffer.length} bytes)...`);
     
     const pdfDoc = await PDFDocument.load(pdfBuffer);
     const pages = pdfDoc.getPages();
@@ -301,55 +302,84 @@ async function extractFirstImageFromPDF(pdfBuffer: Buffer): Promise<Buffer | nul
       return null;
     }
     
-    // Check the first page
-    const page = pages[0];
-    
-    // Access page resources to find images
-    const pageDict = page.node;
-    const resources = pageDict.dict.get(PDFName.of('Resources'));
-    
-    if (!resources) {
-      console.warn(`[PDF Image Extractor] Page has no Resources dictionary`);
-      return null;
-    }
-    
-    const resourcesDict = pdfDoc.context.lookup(resources) as any;
-    const xObject = resourcesDict.get(PDFName.of('XObject'));
-    
-    if (!xObject) {
-      console.warn(`[PDF Image Extractor] Page has no XObject dictionary`);
-      return null;
-    }
-    
-    const xObjectDict = pdfDoc.context.lookup(xObject) as any;
-    const xObjectMap = xObjectDict.dict || xObjectDict;
-    
-    // Iterate through XObjects to find images
-    for (const [name, ref] of xObjectMap.entries()) {
-      try {
-        const xObject = pdfDoc.context.lookup(ref) as any;
-        
-        // Check if it's an Image XObject
-        // Look for an Image XObject
-        if (xObject.constructor.name === 'PDFRawStream' && 
-            xObject.dict.get(PDFName.of('Subtype')) === PDFName.of('Image')) {
-          // Get the raw image stream
-          if (xObject.contents) {
-            const imageBuffer = Buffer.from(xObject.contents);
-            console.log(`[PDF Image Extractor] Successfully extracted image: ${imageBuffer.length} bytes`);
-            return imageBuffer;
+    // Iterate through ALL pages, not just the first
+    for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
+      const page = pages[pageIndex];
+      const { XObject } = page.node.normalizedEntries();
+      
+      if (!XObject) {
+        console.log(`[PDF Image Extractor] Page ${pageIndex + 1} has no XObject, skipping...`);
+        continue;
+      }
+      
+      const xObjectMap = XObject as any;
+      
+      // Recursive search function
+      const findImageInMap = (map: any): Buffer | null => {
+        for (const [name, ref] of map.entries()) {
+          try {
+            const xObject = pdfDoc.context.lookup(ref) as any;
+            
+            // Case A: It's an Image
+            if (xObject.constructor.name === 'PDFRawStream' && 
+                xObject.dict.get(PDFName.of('Subtype')) === PDFName.of('Image')) {
+              
+              // Priority: JPEG (DCTDecode) - directly usable
+              const filter = xObject.dict.get(PDFName.of('Filter'));
+              if (filter === PDFName.of('DCTDecode')) {
+                const imageBuffer = Buffer.from(xObject.contents);
+                console.log(`[PDF Image Extractor] Found JPEG image (DCTDecode) on page ${pageIndex + 1}: ${imageBuffer.length} bytes`);
+                return imageBuffer;
+              }
+              
+              // Fallback: Return whatever content (might be PNG/JP2)
+              if (xObject.contents) {
+                const imageBuffer = Buffer.from(xObject.contents);
+                console.log(`[PDF Image Extractor] Found image on page ${pageIndex + 1}: ${imageBuffer.length} bytes`);
+                return imageBuffer;
+              }
+            }
+            
+            // Case B: It's a Form (Container) - Recurse inside!
+            if (xObject.constructor.name === 'PDFRawStream' && 
+                xObject.dict.get(PDFName.of('Subtype')) === PDFName.of('Form')) {
+              
+              console.log(`[PDF Image Extractor] Found Form XObject on page ${pageIndex + 1}, recursing...`);
+              
+              const formResources = xObject.dict.get(PDFName.of('Resources'));
+              if (formResources) {
+                const formResourcesDict = pdfDoc.context.lookup(formResources) as any;
+                const formXObjects = formResourcesDict?.get(PDFName.of('XObject'));
+                if (formXObjects) {
+                  const formXObjectsDict = pdfDoc.context.lookup(formXObjects) as any;
+                  const formXObjectMap = formXObjectsDict?.dict || formXObjectsDict;
+                  if (formXObjectMap) {
+                    const result = findImageInMap(formXObjectMap);
+                    if (result) return result;
+                  }
+                }
+              }
+            }
+          } catch (e: any) {
+            // Skip this XObject if we can't process it
+            console.warn(`[PDF Image Extractor] Error processing XObject ${name}:`, e.message);
+            continue;
           }
         }
-      } catch (e) {
-        // Skip this XObject if we can't process it
-        continue;
+        return null;
+      };
+      
+      const image = findImageInMap(xObjectMap);
+      if (image) {
+        console.log(`[PDF Image Extractor] Successfully extracted image from page ${pageIndex + 1}`);
+        return image;
       }
     }
     
-    console.warn(`[PDF Image Extractor] No image found in PDF`);
+    console.warn(`[PDF Image Extractor] No image found in any page of PDF`);
     return null;
   } catch (error: any) {
-    console.error(`[PDF Image Extractor] Error extracting image from PDF:`, error.message);
+    console.error(`[PDF Image Extractor] Deep image extraction failed:`, error.message);
     return null;
   }
 }
