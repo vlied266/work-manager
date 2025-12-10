@@ -335,37 +335,6 @@ export function resolveConfig(
           }
         }
         
-        if (resolvedVarValue === undefined) {
-          console.error(`[Resolver] ❌ Failed to resolve "${cleanVar}" in string`);
-        }
-          
-          console.log(`[Resolver] Trying direct environment lookup for "${stepId}" with path "${path}"`);
-          console.log(`[Resolver] Environment keys:`, Object.keys(tempEnv));
-          
-          // Try standard nested lookup (step_1.output.name)
-          if (tempEnv[stepId]) {
-            resolvedVarValue = getSafeValue(tempEnv[stepId], path);
-            if (resolvedVarValue !== undefined) {
-              console.log(`[Resolver] ✅ Resolved "${cleanVar}" via Strategy 2 (nested):`, resolvedVarValue);
-            }
-          }
-          
-          // STRATEGY 3: Fallback to flattened output (step_1_output.name)
-          // Sometimes the context builder flattens outputs to "step_1_output"
-          if (resolvedVarValue === undefined && path && path.startsWith('output.')) {
-            const flatKey = `${stepId}_output`;
-            const flatPath = varParts.slice(2).join('.'); // remove "output" from path
-            console.log(`[Resolver] Trying fallback key: "${flatKey}" with path "${flatPath}"`);
-            
-            if (tempEnv[flatKey]) {
-              resolvedVarValue = getSafeValue(tempEnv[flatKey], flatPath);
-              if (resolvedVarValue !== undefined) {
-                console.log(`[Resolver] ✅ Resolved "${cleanVar}" via Strategy 3 (flattened):`, resolvedVarValue);
-              }
-            }
-          }
-        }
-        
         // Final check
         if (resolvedVarValue !== undefined) {
           console.log(`[Resolver] ✅ Successfully resolved "${cleanVar}" to:`, resolvedVarValue);
