@@ -141,9 +141,28 @@ export function resolveConfig(
           if (found) {
             let resolvedValue = found.log.output;
             
-            // If there's a property path, navigate to it
+            console.log(`[Resolver] Resolving ${trimmedVar}:`, {
+              stepVar,
+              propertyPath,
+              logOutputType: typeof resolvedValue,
+              logOutputKeys: typeof resolvedValue === 'object' && resolvedValue !== null ? Object.keys(resolvedValue) : [],
+              logOutputValue: resolvedValue,
+            });
+            
+            // If there's a property path, navigate to it using dot notation
             if (propertyPath) {
+              const beforeValue = resolvedValue;
               resolvedValue = getNestedValue(resolvedValue, propertyPath);
+              
+              console.log(`[Resolver] After getNestedValue("${propertyPath}"):`, {
+                before: beforeValue,
+                after: resolvedValue,
+                found: resolvedValue !== undefined,
+              });
+              
+              if (resolvedValue === undefined) {
+                console.warn(`[Resolver] Failed to resolve "${propertyPath}" from ${stepVar}. Log output structure:`, JSON.stringify(found.log.output, null, 2));
+              }
             }
             
             // Store source information
