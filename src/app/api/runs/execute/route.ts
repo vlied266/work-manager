@@ -654,14 +654,27 @@ export async function POST(req: NextRequest) {
         hasExtractedData: !!executionResult.extractedData,
         stepOutputType: typeof stepOutput,
         stepOutputKeys: typeof stepOutput === 'object' && stepOutput !== null ? Object.keys(stepOutput) : [],
+        stepOutputValue: stepOutput,
       });
       
+      // CRITICAL: Ensure stepOutput is properly structured for AI_PARSE
+      // For AI_PARSE, stepOutput should be { name: "...", email: "..." } directly
+      // This becomes log.output, which is then accessed as {{step_1.output.name}}
       const finalLog = {
         ...newLog,
-        output: stepOutput,
+        output: stepOutput, // This is the actual data that will be in log.output
         outcome: executionResult.success ? "SUCCESS" : "FAILURE",
         executionResult,
       };
+      
+      console.log(`[Execute] Final log structure for ${currentStep.action}:`, {
+        stepId: finalLog.stepId,
+        hasOutput: !!finalLog.output,
+        outputType: typeof finalLog.output,
+        outputKeys: typeof finalLog.output === 'object' && finalLog.output !== null ? Object.keys(finalLog.output) : [],
+        outputValue: finalLog.output,
+      });
+      
       const finalLogs = [...updatedLogs.slice(0, -1), finalLog];
 
       // Update run
