@@ -138,7 +138,7 @@ export function resolveConfig(
           const stepVar = nestedMatch[1]; // e.g., "step_1"
           const propertyPath = nestedMatch[3]; // e.g., "output.email"
           
-          // Pass propertyPath to findVariableInLogs for fallback search
+          // STRATEGY 1: Try to find via logs (existing approach)
           const found = findVariableInLogs(stepVar, propertyPath);
           if (found) {
             let resolvedValue = found.log.output;
@@ -154,9 +154,9 @@ export function resolveConfig(
             // If there's a property path, navigate to it using dot notation
             if (propertyPath) {
               const beforeValue = resolvedValue;
-              resolvedValue = getNestedValue(resolvedValue, propertyPath);
+              resolvedValue = getSafeValue(resolvedValue, propertyPath);
               
-              console.log(`[Resolver] After getNestedValue("${propertyPath}"):`, {
+              console.log(`[Resolver] After getSafeValue("${propertyPath}"):`, {
                 before: beforeValue,
                 after: resolvedValue,
                 found: resolvedValue !== undefined,
@@ -176,19 +176,84 @@ export function resolveConfig(
             
             return resolvedValue !== undefined ? resolvedValue : value; // Keep placeholder if property not found
           }
+          
+          // STRATEGY 2: Build environment from logs and try direct lookup
+          // This handles cases where the context structure matches step_1.output.name
+          if (propertyPath) {
+            const pathParts = propertyPath.split('.');
+            const stepIdOnly = stepVar; // e.g., "step_1"
+            const pathOnly = pathParts.join('.'); // e.g., "output.name"
+            
+            // Build a temporary environment from logs
+            const tempEnv: Record<string, any> = {};
+            runLogs.forEach((log, idx) => {
+              const step = procedureSteps.find(s => s.id === log.stepId);
+              if (step) {
+                const stepIndex = idx + 1;
+                const varName = step.config.outputVariableName || `step_${stepIndex}_output`;
+                tempEnv[varName] = log.output;
+                tempEnv[`step_${stepIndex}_output`] = log.output;
+                tempEnv[`step_${stepIndex}`] = { output: log.output };
+              }
+            });
+            
+            console.log(`[Resolver] Trying direct environment lookup for "${stepIdOnly}" with path "${pathOnly}"`);
+            console.log(`[Resolver] Environment keys:`, Object.keys(tempEnv));
+            
+            // Try standard nested lookup (step_1.output.name)
+            if (tempEnv[stepIdOnly]) {
+              const envValue = getSafeValue(tempEnv[stepIdOnly], pathOnly);
+              if (envValue !== undefined) {
+                console.log(`[Resolver] ✅ Resolved "${trimmedVar}" via Strategy 2 (nested):`, envValue);
+                
+                // Store source information
+                sources[key] = {
+                  stepId: stepVar,
+                  stepTitle: stepVar,
+                  variableName: trimmedVar,
+                };
+                
+                return envValue;
+              }
+            }
+            
+            // STRATEGY 3: Fallback to flattened output (step_1_output.name)
+            // Sometimes the context builder flattens outputs to "step_1_output"
+            if (pathOnly.startsWith('output.')) {
+              const flatKey = `${stepIdOnly}_output`;
+              const flatPath = pathParts.slice(1).join('.'); // remove "output" from path
+              console.log(`[Resolver] Trying fallback key: "${flatKey}" with path "${flatPath}"`);
+              
+              if (tempEnv[flatKey]) {
+                const flatValue = getSafeValue(tempEnv[flatKey], flatPath);
+                if (flatValue !== undefined) {
+                  console.log(`[Resolver] ✅ Resolved "${trimmedVar}" via Strategy 3 (flattened):`, flatValue);
+                  
+                  // Store source information
+                  sources[key] = {
+                    stepId: stepVar,
+                    stepTitle: stepVar,
+                    variableName: trimmedVar,
+                  };
+                  
+                  return flatValue;
+                }
+              }
+            }
+          }
         } else {
           // Try regular variable lookup
           const found = findVariableInLogs(trimmedVar);
-          
-          if (found) {
-            // Store source information
-            sources[key] = {
-              stepId: found.step.id,
-              stepTitle: found.step.title,
-              variableName: trimmedVar,
-            };
-            // Return the actual value (preserve type)
-            return found.log.output;
+        
+        if (found) {
+          // Store source information
+          sources[key] = {
+            stepId: found.step.id,
+            stepTitle: found.step.title,
+            variableName: trimmedVar,
+          };
+          // Return the actual value (preserve type)
+          return found.log.output;
           }
         }
         
@@ -255,7 +320,7 @@ export function resolveConfig(
         } else {
           // Try regular variable lookup
           const found = findVariableInLogs(cleanVar);
-          if (found) {
+        if (found) {
             resolvedVarValue = found.log.output;
           }
         }
