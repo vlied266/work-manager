@@ -340,71 +340,36 @@ export async function POST(req: NextRequest) {
               fileId = resolvedConfig.fileId;
             }
             
-            if (!fileUrl && !fileId) {
-              console.error("[AI_PARSE] File URL not found. Trigger context:", run.triggerContext);
+            // CRITICAL: For Google Drive files, we MUST have fileId - fileUrl is unreliable
+            if (!fileId && !fileUrl) {
+              console.error("[AI_PARSE] Neither fileId nor fileUrl found. Trigger context:", run.triggerContext);
               console.error("[AI_PARSE] Initial input:", run.initialInput);
               console.error("[AI_PARSE] Step config:", currentStep.config);
-              throw new Error("File URL not found. Please ensure the file source is configured correctly.");
+              throw new Error("File ID or URL not found. Please ensure the file source is configured correctly.");
             }
             
-            // If we have a Google Drive file ID, try to get download URL
-            if (fileId && fileUrl?.includes('drive.google.com')) {
-              try {
-                const { google } = await import("googleapis");
-                const oauth2Client = new google.auth.OAuth2(
-                  process.env.GOOGLE_CLIENT_ID,
-                  process.env.GOOGLE_CLIENT_SECRET,
-                  process.env.GOOGLE_REDIRECT_URI || 'https://theatomicwork.com'
-                );
-                
-                if (process.env.GOOGLE_REFRESH_TOKEN) {
-                  oauth2Client.setCredentials({
-                    refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
-                  });
-                  
-                  const drive = google.drive({ version: 'v3', auth: oauth2Client });
-                  
-                  // Get file metadata to check mimeType
-                  const fileMetadata = await drive.files.get({ 
-                    fileId: fileId, 
-                    fields: 'mimeType,webContentLink' 
-                  });
-                  
-                  // For PDFs, use export link
-                  if (fileMetadata.data.mimeType === 'application/pdf') {
-                    fileUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-                  } else {
-                    // For other files, get download URL
-                    const downloadResponse = await drive.files.get(
-                      { fileId: fileId, alt: 'media' },
-                      { responseType: 'stream' }
-                    );
-                    // Use webContentLink if available, otherwise use export link
-                    fileUrl = fileMetadata.data.webContentLink || `https://drive.google.com/uc?export=download&id=${fileId}`;
-                  }
-                  
-                  console.log(`[AI_PARSE] Resolved Google Drive file URL: ${fileUrl}`);
-                }
-              } catch (driveError: any) {
-                console.warn(`[AI_PARSE] Failed to get Google Drive download URL: ${driveError.message}. Using original URL.`);
-              }
+            // If we have fileId, we don't need to resolve fileUrl - parse-document will use Google Drive API
+            // Only set a fallback fileUrl if fileId is missing
+            if (!fileId && !fileUrl) {
+              throw new Error("Cannot parse document: fileId is required for Google Drive files, or fileUrl must be provided for other sources.");
             }
             
-            console.log(`[AI_PARSE] Parsing document from URL: ${fileUrl}`);
+            console.log(`[AI_PARSE] Parsing document - fileId: ${fileId || 'none'}, fileUrl: ${fileUrl || 'none'}`);
             console.log(`[AI_PARSE] Fields to extract:`, currentStep.config.fieldsToExtract);
             
             // Call parse-document API
+            // CRITICAL: parse-document will use Google Drive API if fileId is provided, ignoring fileUrl
             const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-            console.log(`[AI_PARSE] Calling parse-document API with fileUrl: ${fileUrl}, fileId: ${fileId}`);
+            console.log(`[AI_PARSE] Calling parse-document API with fileId: ${fileId || 'none'}, fileUrl: ${fileUrl || 'none'}`);
             const parseResponse = await fetch(`${baseUrl}/api/ai/parse-document`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                fileUrl,
+                fileUrl: fileUrl || '', // May be empty if fileId is provided
                 fieldsToExtract: currentStep.config.fieldsToExtract || [],
                 fileType: currentStep.config.fileType,
                 orgId,
-                fileId, // Pass fileId for Google Drive API access
+                fileId: fileId || undefined, // CRITICAL: Pass fileId - parse-document will use Google Drive API
               }),
             });
             
