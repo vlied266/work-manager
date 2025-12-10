@@ -619,9 +619,18 @@ export async function POST(req: NextRequest) {
       }
 
       // Update log with execution result and output
+      // CRITICAL: Prioritize executionResult.output if it exists (for AI_PARSE, DB_INSERT, etc.)
+      // This ensures the workflow engine can access step_N.output.property correctly
       const stepOutput = executionResult.success 
-        ? (executionResult.extractedData || executionResult.data || executionResult.fileUrl || executionResult)
+        ? (executionResult.output || executionResult.extractedData || executionResult.data || executionResult.fileUrl || executionResult)
         : { error: executionResult.error };
+      
+      console.log(`[Execute] Step output for ${currentStep.action}:`, {
+        hasOutput: !!executionResult.output,
+        hasExtractedData: !!executionResult.extractedData,
+        stepOutputType: typeof stepOutput,
+        stepOutputKeys: typeof stepOutput === 'object' && stepOutput !== null ? Object.keys(stepOutput) : [],
+      });
       
       const finalLog = {
         ...newLog,
