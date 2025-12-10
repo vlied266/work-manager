@@ -229,6 +229,7 @@ async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<str
         const drive = google.drive({ version: 'v3', auth: oauth2Client });
         
         console.log(`[PDF Parser] Downloading file ${fileId} using Google Drive API...`);
+        console.log(`[PDF Parser] Google API credentials check: CLIENT_ID=${!!process.env.GOOGLE_CLIENT_ID}, CLIENT_SECRET=${!!process.env.GOOGLE_CLIENT_SECRET}, REFRESH_TOKEN=${!!process.env.GOOGLE_REFRESH_TOKEN}`);
         
         // Download file using Google Drive API with arraybuffer response
         const fileResponse = await drive.files.get(
@@ -236,11 +237,32 @@ async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<str
           { responseType: 'arraybuffer' }
         );
         
+        console.log(`[PDF Parser] Google Drive API response received. Data type: ${typeof fileResponse.data}, Is ArrayBuffer: ${fileResponse.data instanceof ArrayBuffer}`);
+        
         // Convert arraybuffer to Buffer
-        buffer = Buffer.from(fileResponse.data as ArrayBuffer);
+        // Handle both ArrayBuffer and Buffer types
+        if (fileResponse.data instanceof ArrayBuffer) {
+          buffer = Buffer.from(fileResponse.data);
+        } else if (Buffer.isBuffer(fileResponse.data)) {
+          buffer = fileResponse.data;
+        } else {
+          // Fallback: try to convert whatever we got
+          buffer = Buffer.from(fileResponse.data as any);
+        }
+        
+        console.log(`[PDF Parser] Buffer created. Length: ${buffer.length} bytes, First 10 bytes: ${buffer.slice(0, 10).toString('hex')}`);
         
         if (buffer.length === 0) {
           throw new Error(`PDF file is empty. File ID: ${fileId}`);
+        }
+        
+        // Verify it's actually a PDF by checking the PDF magic bytes
+        const pdfMagicBytes = buffer.slice(0, 4).toString('ascii');
+        if (pdfMagicBytes !== '%PDF') {
+          console.warn(`[PDF Parser] Warning: File does not start with PDF magic bytes. Got: ${pdfMagicBytes}. First 50 bytes: ${buffer.slice(0, 50).toString('ascii')}`);
+          // Don't throw here - let pdf-parse handle it
+        } else {
+          console.log(`[PDF Parser] ✓ PDF magic bytes verified: ${pdfMagicBytes}`);
         }
         
         console.log(`[PDF Parser] Successfully downloaded ${buffer.length} bytes from Google Drive API`);
