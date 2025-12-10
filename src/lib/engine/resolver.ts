@@ -111,48 +111,84 @@ export function resolveConfig(
   // Alias for backward compatibility
   const getNestedValue = getSafeValue;
   
-  // Build environment from logs using the SAME structure as DB_INSERT's runContext
-  // This ensures consistency between context builder and resolver
+  // Build environment from logs using STRICT stepId-based mapping
+  // CRITICAL: Use log.stepId, NOT array index, to prevent data shifting
   const buildEnvironmentFromLogs = (): Record<string, any> => {
+    // 1. Start with a fresh environment
     const env: Record<string, any> = {};
     
-    runLogs.forEach((log, idx) => {
-      const step = procedureSteps.find(s => s.id === log.stepId);
-      if (!step) return;
+    // 2. Iterate strictly over existing logs
+    // STRICT RULE: Trust the log's stepId. Never use array index or current step ID.
+    const logsToProcess = runLogs || [];
+    
+    logsToProcess.forEach((log) => {
+      // STRICT RULE: Use log.stepId, not array index
+      const stepId = log.stepId;
       
-      const stepIndex = idx + 1;
-      const varName = step.config.outputVariableName || `step_${stepIndex}_output`;
-      
-      // Get the output, handling wrapped structures
-      let stepOutput = log.output || {};
-      
-      // Sanitize: Ensure it's a plain object
-      try {
-        stepOutput = JSON.parse(JSON.stringify(stepOutput));
-      } catch (e) {
-        // If circular reference or other issue, use original
-        stepOutput = log.output || {};
+      if (!stepId) {
+        console.warn(`[Context Builder] Log missing stepId, skipping:`, log);
+        return;
       }
       
-      // Check if stepOutput already has an 'output' key (from AI_PARSE wrapping)
-      if (stepOutput && typeof stepOutput === 'object' && stepOutput !== null && 'output' in stepOutput) {
-        // stepOutput is { output: { name: "...", email: "..." } }
-        const innerOutput = stepOutput.output;
-        env[varName] = innerOutput;
-        env[`step_${stepIndex}_output`] = innerOutput;
-        env[`step_${stepIndex}`] = stepOutput; // Already wrapped as { output: {...} }
-      } else if (stepOutput && typeof stepOutput === 'object' && stepOutput !== null && Object.keys(stepOutput).length > 0) {
-        // Normal case: stepOutput is { name: "...", email: "..." }
-        env[varName] = stepOutput;
-        env[`step_${stepIndex}_output`] = stepOutput;
-        env[`step_${stepIndex}`] = { output: stepOutput };
-      } else {
-        // Empty output
-        env[varName] = {};
-        env[`step_${stepIndex}_output`] = {};
-        env[`step_${stepIndex}`] = { output: {} };
+      // Find the step to get its index for naming (step_1, step_2, etc.)
+      const step = procedureSteps.find(s => s.id === stepId);
+      if (!step) {
+        console.warn(`[Context Builder] Step not found for stepId: ${stepId}`);
+        return;
+      }
+      
+      // Get step index from procedureSteps array (for step_1, step_2 naming)
+      const stepIndex = procedureSteps.findIndex(s => s.id === stepId);
+      if (stepIndex === -1) {
+        console.warn(`[Context Builder] Step index not found for stepId: ${stepId}`);
+        return;
+      }
+      
+      const stepNumber = stepIndex + 1; // step_1, step_2, etc.
+      const varName = step.config.outputVariableName || `step_${stepNumber}_output`;
+      
+      // Prioritize logs that have actual output
+      const hasOutput = log.output && typeof log.output === 'object' && log.output !== null && Object.keys(log.output).length > 0;
+      
+      // If we haven't seen this step yet, OR if this log has better data, save it.
+      // This prevents empty logs from overwriting valid data
+      if (!env[`step_${stepNumber}`] || hasOutput) {
+        // Get the output, handling wrapped structures
+        let stepOutput = log.output || {};
+        
+        // Sanitize: Ensure it's a plain object
+        try {
+          stepOutput = JSON.parse(JSON.stringify(stepOutput));
+        } catch (e) {
+          // If circular reference or other issue, use original
+          stepOutput = log.output || {};
+        }
+        
+        // Normalize the output structure
+        // Check if stepOutput already has an 'output' key (from AI_PARSE wrapping)
+        if (stepOutput && typeof stepOutput === 'object' && stepOutput !== null && 'output' in stepOutput) {
+          // stepOutput is { output: { name: "...", email: "..." } }
+          const innerOutput = stepOutput.output;
+          env[varName] = innerOutput;
+          env[`step_${stepNumber}_output`] = innerOutput;
+          env[`step_${stepNumber}`] = stepOutput; // Already wrapped as { output: {...} }
+        } else if (hasOutput) {
+          // Normal case: stepOutput is { name: "...", email: "..." }
+          env[varName] = stepOutput;
+          env[`step_${stepNumber}_output`] = stepOutput;
+          env[`step_${stepNumber}`] = { output: stepOutput };
+        } else {
+          // Empty output - only set if we haven't seen this step before
+          if (!env[`step_${stepNumber}`]) {
+            env[varName] = {};
+            env[`step_${stepNumber}_output`] = {};
+            env[`step_${stepNumber}`] = { output: {} };
+          }
+        }
       }
     });
+    
+    console.log("[Context Builder] Final Environment:", JSON.stringify(env, null, 2));
     
     return env;
   };
