@@ -453,11 +453,37 @@ async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<str
 
     // Try to use pdf-parse if available, otherwise use a fallback
     try {
-      // Ensure polyfills are loaded before requiring pdf-parse
-      // pdf-parse is loaded dynamically to ensure polyfills are in place
-      console.log(`[PDF Parser] Loading pdf-parse module...`);
-      const pdfParse = require("pdf-parse");
-      console.log(`[PDF Parser] pdf-parse module loaded successfully`);
+      // CRITICAL: Use dynamic import to ensure polyfills are loaded BEFORE pdf-parse initializes
+      // Static imports/requires are hoisted by Next.js, causing pdf-parse to load in a broken environment
+      console.log(`[PDF Parser] Loading pdf-parse module dynamically (after polyfills)...`);
+      
+      // Safety check: Ensure polyfills are still in place
+      if (typeof global !== 'undefined') {
+        if (!global.DOMMatrix) {
+          console.warn(`[PDF Parser] Warning: DOMMatrix polyfill missing. Re-applying...`);
+          // Re-apply DOMMatrix polyfill if missing
+          // @ts-ignore
+          global.DOMMatrix = class DOMMatrix {
+            m11 = 1; m12 = 0; m21 = 0; m22 = 1; m41 = 0; m42 = 0;
+            a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
+          };
+        }
+        if (!global.Promise.withResolvers) {
+          console.warn(`[PDF Parser] Warning: Promise.withResolvers polyfill missing. Re-applying...`);
+          // @ts-ignore
+          Promise.withResolvers = function () {
+            let resolve: any, reject: any;
+            const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+            return { promise, resolve, reject };
+          };
+        }
+      }
+      
+      // Dynamic import - this ensures polyfills are active before pdf-parse loads
+      const pdfParseModule = await import("pdf-parse");
+      const pdfParse = pdfParseModule.default || pdfParseModule;
+      
+      console.log(`[PDF Parser] pdf-parse module loaded successfully via dynamic import`);
       
       console.log(`[PDF Parser] Parsing PDF buffer (${buffer.length} bytes)...`);
       const pdfData = await pdfParse(buffer);
