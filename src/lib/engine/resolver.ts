@@ -95,18 +95,18 @@ export function resolveConfig(
     return null;
   };
 
-  // Helper to get nested property from an object using dot notation
+  // Helper for safe deep access with robust traversal
   // CRITICAL: This must properly traverse nested objects step-by-step
-  // Example: getNestedValue({ output: { name: "..." } }, "output.name") -> "..."
-  const getNestedValue = (obj: any, path: string): any => {
-    if (!path || path.trim().length === 0) return obj;
+  // Example: getSafeValue({ output: { name: "..." } }, "output.name") -> "..."
+  const getSafeValue = (obj: any, path: string): any => {
+    if (!obj || !path || path.trim().length === 0) return obj;
     
-    const parts = path.split(".");
+    const cleanPath = path.trim();
+    const parts = cleanPath.split(".");
     let current = obj;
     
     for (const part of parts) {
       if (current === null || current === undefined) {
-        console.warn(`[Resolver] getNestedValue: Cannot traverse path "${path}" - current is null/undefined at part "${part}"`);
         return undefined;
       }
       
@@ -114,13 +114,15 @@ export function resolveConfig(
       if (typeof current === 'object' && part in current) {
         current = current[part];
       } else {
-        console.warn(`[Resolver] getNestedValue: Property "${part}" not found in object. Path: "${path}", Current keys: ${typeof current === 'object' && current !== null ? Object.keys(current).join(', ') : 'N/A'}`);
         return undefined;
       }
     }
     
     return current;
   };
+  
+  // Alias for backward compatibility
+  const getNestedValue = getSafeValue;
 
   // Helper to resolve a single value
   const resolveValue = (value: any, key: string): any => {
