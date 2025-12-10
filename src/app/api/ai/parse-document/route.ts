@@ -1,3 +1,38 @@
+// POLYFILL: Fix for pdf-parse in Node.js environments
+// pdf-parse (via pdfjs-dist) relies on browser-native APIs that don't exist in Node.js
+if (typeof global !== 'undefined' && !global.DOMMatrix) {
+  // @ts-ignore
+  global.DOMMatrix = class DOMMatrix {
+    m11: number;
+    m12: number;
+    m21: number;
+    m22: number;
+    m41: number;
+    m42: number;
+    a: number;
+    b: number;
+    c: number;
+    d: number;
+    e: number;
+    f: number;
+
+    constructor() {
+      this.m11 = 1;
+      this.m12 = 0;
+      this.m21 = 0;
+      this.m22 = 1;
+      this.m41 = 0;
+      this.m42 = 0;
+      this.a = 1;
+      this.b = 0;
+      this.c = 0;
+      this.d = 1;
+      this.e = 0;
+      this.f = 0;
+    }
+  };
+}
+
 import { NextRequest, NextResponse } from "next/server";
 import { openai } from "@ai-sdk/openai";
 import { generateObject, generateText } from "ai";
