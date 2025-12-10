@@ -390,12 +390,20 @@ export async function POST(req: NextRequest) {
               console.warn("[AI_PARSE] Warning: No data extracted from document. This may indicate an empty file or extraction failure.");
             }
             
+            // CRITICAL: Store extractedData in executionResult.output for proper workflow propagation
+            // This ensures step_1.output.name and step_1.output.email work correctly
             executionResult = {
               success: true,
               parsed: true,
               extractedData: parseResult.extractedData,
               fileType: parseResult.fileType,
+              output: parseResult.extractedData, // CRITICAL: Add output key for workflow engine
             };
+            console.log(`[AI_PARSE] Execution result with output:`, {
+              success: executionResult.success,
+              extractedData: executionResult.extractedData,
+              output: executionResult.output,
+            });
             break;
           }
 
