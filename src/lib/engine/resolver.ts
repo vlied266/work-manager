@@ -217,13 +217,27 @@ export function resolveConfig(
           const stepVar = nestedMatch[1]; // e.g., "step_1"
           const propertyPath = nestedMatch[3]; // e.g., "output.email"
           
-          const found = findVariableInLogs(stepVar);
+          const found = findVariableInLogs(stepVar, propertyPath);
           if (found) {
             let output = found.log.output;
             
-            // If there's a property path, navigate to it
+            console.log(`[Resolver] Resolving nested variable ${trimmedVar} in string:`, {
+              stepVar,
+              propertyPath,
+              outputType: typeof output,
+              outputKeys: typeof output === 'object' && output !== null ? Object.keys(output) : [],
+            });
+            
+            // If there's a property path, navigate to it using dot notation
             if (propertyPath) {
+              const beforeOutput = output;
               output = getNestedValue(output, propertyPath);
+              
+              console.log(`[Resolver] After getNestedValue("${propertyPath}"):`, {
+                before: beforeOutput,
+                after: output,
+                found: output !== undefined,
+              });
             }
             
             resolvedVarValue = output;
