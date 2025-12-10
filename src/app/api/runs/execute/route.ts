@@ -463,66 +463,98 @@ export async function POST(req: NextRequest) {
             });
             
             // Build run context for variable resolution using latest logs
-            // CRITICAL: For each step, find the log with actual output data
-            const runContext = latestLogs.reduce((acc: any, log, idx) => {
-              const step = procedure.steps[idx];
-              if (!step) return acc;
+            // CRITICAL: Safe merge logic to prevent empty logs from overwriting valid data
+            const runContext: Record<string, any> = {};
+            
+            // First pass: Process all logs and build a map of stepId -> best output
+            const stepOutputMap: Record<string, any> = {};
+            
+            latestLogs.forEach((log, idx) => {
+              const step = procedure.steps.find(s => s.id === log.stepId);
+              if (!step) return;
               
+              const stepId = log.stepId;
+              const stepOutput = log.output || {};
+              
+              // CRITICAL: Only update if we don't have valid data OR if new data is valid
+              if (!stepOutputMap[stepId]) {
+                // First time seeing this step - store it
+                stepOutputMap[stepId] = stepOutput;
+              } else {
+                // We already have data for this step
+                const existingOutput = stepOutputMap[stepId];
+                const existingHasData = existingOutput && 
+                                       typeof existingOutput === 'object' && 
+                                       existingOutput !== null && 
+                                       Object.keys(existingOutput).length > 0;
+                
+                const newHasData = stepOutput && 
+                                  typeof stepOutput === 'object' && 
+                                  stepOutput !== null && 
+                                  Object.keys(stepOutput).length > 0;
+                
+                if (newHasData && !existingHasData) {
+                  // New data is valid, existing is not - replace
+                  stepOutputMap[stepId] = stepOutput;
+                  console.log(`[DB_INSERT] Replacing empty output for ${stepId} with valid data`);
+                } else if (newHasData && existingHasData) {
+                  // Both have data - merge (new data wins for conflicts)
+                  stepOutputMap[stepId] = {
+                    ...existingOutput,
+                    ...stepOutput,
+                  };
+                  console.log(`[DB_INSERT] Merging outputs for ${stepId}`);
+                }
+                // ELSE: Do nothing! Do not overwrite valid data with empty data.
+              }
+            });
+            
+            // Second pass: Build the final context structure from stepOutputMap
+            procedure.steps.forEach((step, idx) => {
               const stepId = step.id;
               const stepIndex = idx;
               const varName = step.config.outputVariableName || `step_${stepIndex + 1}_output`;
               
-              // Find the best log for this step (prioritize logs with output)
-              const stepLogs = logsByStepId[stepId] || [log];
-              const bestLog = stepLogs.find((l: any) => 
-                l.output && 
-                typeof l.output === 'object' && 
-                l.output !== null && 
-                Object.keys(l.output).length > 0
-              ) || stepLogs[stepLogs.length - 1]; // Fallback to last log if none have output
+              const stepOutput = stepOutputMap[stepId] || {};
               
-              // Skip if we've already processed this step with valid output
-              if (acc[`step_${stepIndex + 1}`] && 
-                  acc[`step_${stepIndex + 1}`].output && 
-                  Object.keys(acc[`step_${stepIndex + 1}`].output).length > 0 &&
-                  bestLog.output === acc[`step_${stepIndex + 1}`].output) {
-                console.log(`[DB_INSERT] Skipping duplicate processing of step_${stepIndex + 1}`);
-                return acc;
+              // Sanitize: Ensure it's a plain object (strip null prototypes, etc.)
+              let sanitizedOutput: any = {};
+              try {
+                sanitizedOutput = JSON.parse(JSON.stringify(stepOutput));
+              } catch (e) {
+                // If circular reference or other issue, use original
+                sanitizedOutput = stepOutput;
+                console.warn(`[DB_INSERT] Could not sanitize output for ${stepId}, using original`);
               }
               
-              // Check if bestLog.output already has an 'output' key (from AI_PARSE wrapping)
-              if (bestLog.output && typeof bestLog.output === 'object' && bestLog.output !== null && 'output' in bestLog.output) {
-                // bestLog.output is { output: { name: "...", email: "..." } }
-                // So step_1 should be { output: { name: "...", email: "..." } }
-                const innerOutput = bestLog.output.output;
-                acc[varName] = innerOutput; // Extract the inner output for flat access
-                acc[`step_${stepIndex + 1}_output`] = innerOutput;
-                acc[`step_${stepIndex + 1}`] = bestLog.output; // Use bestLog.output directly (already wrapped as { output: {...} })
-                console.log(`[DB_INSERT] Step ${stepIndex + 1} (${stepId}) - Using wrapped output:`, {
+              // Check if sanitizedOutput already has an 'output' key (from AI_PARSE wrapping)
+              if (sanitizedOutput && typeof sanitizedOutput === 'object' && sanitizedOutput !== null && 'output' in sanitizedOutput) {
+                // sanitizedOutput is { output: { name: "...", email: "..." } }
+                const innerOutput = sanitizedOutput.output;
+                runContext[varName] = innerOutput;
+                runContext[`step_${stepIndex + 1}_output`] = innerOutput;
+                runContext[`step_${stepIndex + 1}`] = sanitizedOutput; // Already wrapped
+                console.log(`[DB_INSERT] Step ${stepIndex + 1} (${stepId}) - Final wrapped structure:`, {
                   wrapped: true,
                   innerOutputKeys: typeof innerOutput === 'object' && innerOutput !== null ? Object.keys(innerOutput) : [],
-                  innerOutputValue: innerOutput,
                 });
-              } else if (bestLog.output && typeof bestLog.output === 'object' && bestLog.output !== null && Object.keys(bestLog.output).length > 0) {
-                // Normal case: bestLog.output is { name: "...", email: "..." }
-                acc[varName] = bestLog.output;
-                acc[`step_${stepIndex + 1}_output`] = bestLog.output;
-                acc[`step_${stepIndex + 1}`] = { output: bestLog.output };
-                console.log(`[DB_INSERT] Step ${stepIndex + 1} (${stepId}) - Using flat output:`, {
+              } else if (sanitizedOutput && typeof sanitizedOutput === 'object' && sanitizedOutput !== null && Object.keys(sanitizedOutput).length > 0) {
+                // Normal case: sanitizedOutput is { name: "...", email: "..." }
+                runContext[varName] = sanitizedOutput;
+                runContext[`step_${stepIndex + 1}_output`] = sanitizedOutput;
+                runContext[`step_${stepIndex + 1}`] = { output: sanitizedOutput };
+                console.log(`[DB_INSERT] Step ${stepIndex + 1} (${stepId}) - Final flat structure:`, {
                   wrapped: false,
-                  outputKeys: Object.keys(bestLog.output),
-                  outputValue: bestLog.output,
+                  outputKeys: Object.keys(sanitizedOutput),
                 });
               } else {
-                // No valid output found - set empty structure
-                acc[varName] = bestLog.output || {};
-                acc[`step_${stepIndex + 1}_output`] = bestLog.output || {};
-                acc[`step_${stepIndex + 1}`] = { output: bestLog.output || {} };
-                console.warn(`[DB_INSERT] Step ${stepIndex + 1} (${stepId}) - No valid output found, using empty structure`);
+                // Empty output
+                runContext[varName] = {};
+                runContext[`step_${stepIndex + 1}_output`] = {};
+                runContext[`step_${stepIndex + 1}`] = { output: {} };
+                console.warn(`[DB_INSERT] Step ${stepIndex + 1} (${stepId}) - No valid output found`);
               }
-              
-              return acc;
-            }, {});
+            });
             
             console.log(`[DB_INSERT] Run context:`, JSON.stringify(runContext, null, 2));
             console.log(`[DB_INSERT] Step config.data:`, currentStep.config.data);
