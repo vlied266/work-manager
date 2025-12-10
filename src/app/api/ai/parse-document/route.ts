@@ -1,5 +1,21 @@
-// POLYFILL: Fix for pdf-parse in Node.js environments
+// --- POLYFILLS FOR PDF-PARSE IN NODE.JS ---
 // pdf-parse (via pdfjs-dist) relies on browser-native APIs that don't exist in Node.js
+// These polyfills mock the required browser APIs to prevent crashes
+
+// Polyfill for Promise.withResolvers (if not available)
+if (typeof Promise.withResolvers === 'undefined') {
+  // @ts-ignore
+  Promise.withResolvers = function () {
+    let resolve: any, reject: any;
+    const promise = new Promise((res, rej) => { 
+      resolve = res; 
+      reject = rej; 
+    });
+    return { promise, resolve, reject };
+  };
+}
+
+// Polyfill for DOMMatrix
 if (typeof global !== 'undefined' && !global.DOMMatrix) {
   // @ts-ignore
   global.DOMMatrix = class DOMMatrix {
@@ -32,6 +48,33 @@ if (typeof global !== 'undefined' && !global.DOMMatrix) {
     }
   };
 }
+
+// Polyfill for ImageData
+if (typeof global !== 'undefined' && !global.ImageData) {
+  // @ts-ignore
+  global.ImageData = class ImageData {
+    width: number;
+    height: number;
+    data: Uint8ClampedArray;
+
+    constructor(width: number, height: number) {
+      this.width = width;
+      this.height = height;
+      this.data = new Uint8ClampedArray(width * height * 4);
+    }
+  };
+}
+
+// Polyfill for Path2D
+if (typeof global !== 'undefined' && !global.Path2D) {
+  // @ts-ignore
+  global.Path2D = class Path2D {
+    constructor() {
+      // Minimal implementation - pdf-parse just needs the class to exist
+    }
+  };
+}
+// ------------------------------------------
 
 import { NextRequest, NextResponse } from "next/server";
 import { openai } from "@ai-sdk/openai";
