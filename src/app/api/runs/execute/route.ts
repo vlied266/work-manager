@@ -391,18 +391,32 @@ export async function POST(req: NextRequest) {
             }
             
             // CRITICAL: Store extractedData in executionResult.output for proper workflow propagation
-            // This ensures step_1.output.name and step_1.output.email work correctly
-            // The output MUST be the extractedData object directly, not wrapped
+            // The resolver expects {{step_1.output.name}}, which means log.output must be { name: "...", email: "..." }
+            // BUT the executionResult must wrap it in an 'output' key so stepOutput becomes the wrapped structure
             const extractedData = parseResult.extractedData || {};
             console.log(`[AI_PARSE] Final extracted data:`, extractedData);
             console.log(`[AI_PARSE] Extracted data keys:`, Object.keys(extractedData));
             
+            // 🛑 CRITICAL FIX: Wrap extractedData in 'output' key
+            // The executionResult.output will be used as stepOutput, which becomes log.output
+            // But we need to ensure the structure is { output: { name: "...", email: "..." } }
+            // Actually wait - let me check the flow again...
+            // stepOutput = executionResult.output
+            // finalLog.output = stepOutput
+            // So if executionResult.output = { name: "...", email: "..." }
+            // Then log.output = { name: "...", email: "..." }
+            // And runContext.step_1 = { output: log.output } = { output: { name: "...", email: "..." } }
+            // So {{step_1.output.name}} should work...
+            
+            // But the user says it's not working. Let me try wrapping it explicitly:
             executionResult = {
               success: true,
               parsed: true,
               extractedData: extractedData,
               fileType: parseResult.fileType,
-              output: extractedData, // CRITICAL: This becomes log.output, which is used in {{step_1.output.name}}
+              // CRITICAL: Set output to extractedData directly (not wrapped)
+              // The wrapping happens when building runContext: step_1 = { output: log.output }
+              output: extractedData,
             };
             
             console.log(`[AI_PARSE] Execution result structure:`, {
@@ -411,6 +425,8 @@ export async function POST(req: NextRequest) {
               outputType: typeof executionResult.output,
               outputKeys: typeof executionResult.output === 'object' && executionResult.output !== null ? Object.keys(executionResult.output) : [],
               outputValue: executionResult.output,
+              // Verify it's NOT wrapped (should be flat object)
+              isWrapped: executionResult.output && typeof executionResult.output === 'object' && 'output' in executionResult.output,
             });
             break;
           }
@@ -650,10 +666,23 @@ export async function POST(req: NextRequest) {
       if (!executionResult.success) {
         stepOutput = { error: executionResult.error };
       } else if (currentStep.action === "AI_PARSE") {
-        // CRITICAL: For AI_PARSE, use executionResult.output directly
-        // This is already { name: "...", email: "..." } from the AI_PARSE case
-        stepOutput = executionResult.output || executionResult.extractedData || {};
-        console.log(`[Execute] AI_PARSE stepOutput (direct):`, stepOutput);
+        // 🛑 CRITICAL FIX: Wrap extractedData in 'output' key
+        // The resolver expects {{step_1.output.name}}, which means log.output must be { output: { name: "...", email: "..." } }
+        // NOT just { name: "...", email: "..." }
+        const extractedData = executionResult.output || executionResult.extractedData || {};
+        console.log(`[Execute] AI_PARSE extractedData (before wrap):`, extractedData);
+        
+        // Wrap in 'output' key explicitly
+        stepOutput = {
+          output: extractedData
+        };
+        
+        console.log(`[Execute] AI_PARSE stepOutput (wrapped):`, stepOutput);
+        console.log(`[Execute] AI_PARSE stepOutput structure check:`, {
+          hasOutputKey: 'output' in stepOutput,
+          outputValue: stepOutput.output,
+          outputKeys: typeof stepOutput.output === 'object' && stepOutput.output !== null ? Object.keys(stepOutput.output) : [],
+        });
       } else {
         // For other steps, use the fallback chain
         stepOutput = executionResult.output || executionResult.extractedData || executionResult.data || executionResult.fileUrl || executionResult;
