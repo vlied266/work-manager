@@ -638,8 +638,26 @@ ${content.substring(0, 8000)}${content.length > 8000 ? "\n... (truncated)" : ""}
 Return a JSON object with the extracted fields. If a field is not found, use null as the value. Use appropriate data types (strings, numbers, dates, booleans) based on the content.`;
 
   try {
+    // Validate fieldsToExtract before creating schema
+    if (!fieldsToExtract || fieldsToExtract.length === 0) {
+      throw new Error("fieldsToExtract array is empty. At least one field is required.");
+    }
+    
+    // Filter out invalid field names
+    const validFields = fieldsToExtract.filter(field => 
+      field && typeof field === 'string' && field.trim().length > 0
+    );
+    
+    if (validFields.length === 0) {
+      throw new Error("No valid field names found in fieldsToExtract array");
+    }
+    
+    console.log(`[AI Extractor] Creating schema for ${validFields.length} fields:`, validFields);
+    
     // Create a dynamic schema based on the fields to extract
-    const dynamicSchema = createExtractedDataSchema(fieldsToExtract);
+    const dynamicSchema = createExtractedDataSchema(validFields);
+    
+    console.log(`[AI Extractor] Schema created successfully. Calling OpenAI...`);
     
     const { object } = await generateObject({
       model: openai("gpt-4o"),
@@ -650,7 +668,12 @@ Return a JSON object with the extracted fields. If a field is not found, use nul
     console.log(`[AI Extractor] Successfully extracted fields:`, Object.keys(object));
     return object;
   } catch (error: any) {
-    console.error(`[AI Extractor] Error extracting fields with AI:`, error);
+    console.error(`[AI Extractor] Error extracting fields with AI:`, {
+      message: error.message,
+      stack: error.stack,
+      fieldsToExtract,
+      errorType: error.constructor?.name,
+    });
     throw new Error(`Failed to extract fields with AI: ${error.message}`);
   }
 }
