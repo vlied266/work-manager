@@ -144,17 +144,36 @@ interface ParseDocumentRequest {
 
 // Helper function to create a dynamic schema based on fields to extract
 function createExtractedDataSchema(fieldsToExtract: string[]) {
+  // Ensure we have at least one field
+  if (!fieldsToExtract || fieldsToExtract.length === 0) {
+    throw new Error("fieldsToExtract must contain at least one field name");
+  }
+  
   const schemaObject: Record<string, z.ZodTypeAny> = {};
   fieldsToExtract.forEach(field => {
-    // Allow string, number, boolean, null, or date strings
-    schemaObject[field] = z.union([
+    if (!field || typeof field !== 'string' || field.trim().length === 0) {
+      console.warn(`[Schema] Skipping invalid field name: ${field}`);
+      return;
+    }
+    
+    // Clean field name (remove spaces, special chars that might break schema)
+    const cleanField = field.trim();
+    
+    // Allow string, number, boolean, null, or undefined
+    // Make it optional and nullable to handle missing fields gracefully
+    schemaObject[cleanField] = z.union([
       z.string(),
       z.number(),
       z.boolean(),
       z.null(),
-      z.undefined(),
     ]).optional().nullable();
   });
+  
+  // Ensure we have at least one valid field in the schema
+  if (Object.keys(schemaObject).length === 0) {
+    throw new Error("No valid fields found in fieldsToExtract array");
+  }
+  
   return z.object(schemaObject);
 }
 
