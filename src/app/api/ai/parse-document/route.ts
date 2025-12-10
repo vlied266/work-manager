@@ -1,124 +1,3 @@
-/* eslint-disable */
-// --- POLYFILLS FOR SERVER-SIDE PDF PARSING ---
-// pdf-parse (via pdfjs-dist) relies on browser-native APIs that don't exist in Node.js
-// These polyfills mock the required browser APIs to prevent crashes
-
-// 1. Fix "r is not a function" (Missing Promise.withResolvers)
-// This must be defined on Promise prototype, not just as a static method
-if (typeof Promise.withResolvers === 'undefined') {
-  // @ts-ignore
-  Promise.withResolvers = function () {
-    let resolve: any, reject: any;
-    const promise = new Promise((res, rej) => { 
-      resolve = res; 
-      reject = rej; 
-    });
-    return { promise, resolve, reject };
-  };
-}
-
-// Also ensure it's available on the global Promise object
-if (typeof global !== 'undefined' && typeof global.Promise !== 'undefined') {
-  if (typeof global.Promise.withResolvers === 'undefined') {
-    // @ts-ignore
-    global.Promise.withResolvers = Promise.withResolvers;
-  }
-}
-
-// 2. Fix Canvas/DOM Dependencies
-if (typeof global !== 'undefined' && !global.DOMMatrix) {
-  // @ts-ignore
-  global.DOMMatrix = class DOMMatrix {
-    m11: number;
-    m12: number;
-    m21: number;
-    m22: number;
-    m41: number;
-    m42: number;
-    a: number;
-    b: number;
-    c: number;
-    d: number;
-    e: number;
-    f: number;
-
-    constructor() {
-      this.m11 = 1;
-      this.m12 = 0;
-      this.m21 = 0;
-      this.m22 = 1;
-      this.m41 = 0;
-      this.m42 = 0;
-      this.a = 1;
-      this.b = 0;
-      this.c = 0;
-      this.d = 1;
-      this.e = 0;
-      this.f = 0;
-    }
-  };
-}
-
-if (typeof global !== 'undefined' && !global.ImageData) {
-  // @ts-ignore
-  global.ImageData = class ImageData {
-    width?: number;
-    height?: number;
-    data: Uint8ClampedArray;
-
-    constructor(width?: number, height?: number) {
-      this.width = width;
-      this.height = height;
-      this.data = new Uint8ClampedArray((width || 0) * (height || 0) * 4);
-    }
-  };
-}
-
-if (typeof global !== 'undefined' && !global.Path2D) {
-  // @ts-ignore
-  global.Path2D = class Path2D {
-    constructor() {
-      // Minimal implementation - pdf-parse just needs the class to exist
-    }
-  };
-}
-
-if (typeof global !== 'undefined' && !global.CanvasPattern) {
-  // @ts-ignore
-  global.CanvasPattern = class CanvasPattern {
-    constructor() {
-      // Minimal implementation
-    }
-  };
-}
-
-// 3. Mock Canvas to prevent @napi-rs/canvas requirement
-if (typeof global !== 'undefined' && !global.HTMLCanvasElement) {
-  // @ts-ignore
-  global.HTMLCanvasElement = class HTMLCanvasElement {
-    getContext() {
-      return {
-        fillRect: () => {},
-        clearRect: () => {},
-        getImageData: () => ({ data: new Uint8ClampedArray(0) }),
-        putImageData: () => {},
-        createImageData: () => ({ data: new Uint8ClampedArray(0) }),
-        setTransform: () => {},
-        drawImage: () => {},
-        save: () => {},
-        restore: () => {},
-        beginPath: () => {},
-        moveTo: () => {},
-        lineTo: () => {},
-        clip: () => {},
-        fill: () => {},
-        stroke: () => {},
-      };
-    }
-  };
-}
-// ---------------------------------------------
-
 import { NextRequest, NextResponse } from "next/server";
 import { openai } from "@ai-sdk/openai";
 import { generateObject, generateText } from "ai";
@@ -451,113 +330,116 @@ async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<str
       console.log(`[PDF Parser] File size: ${buffer.length} bytes`);
     }
 
-    // Try to use pdf-parse if available, otherwise use a fallback
+    // Use pdf2json - a pure Node.js PDF parser with no Canvas/DOM dependencies
     try {
-      // CRITICAL: Use dynamic import to ensure polyfills are loaded BEFORE pdf-parse initializes
-      // Static imports/requires are hoisted by Next.js, causing pdf-parse to load in a broken environment
-      console.log(`[PDF Parser] Loading pdf-parse module dynamically (after polyfills)...`);
+      console.log(`[PDF Parser] Using pdf2json for PDF parsing (${buffer.length} bytes)...`);
       
-      // Safety check: Ensure polyfills are still in place
-      if (typeof global !== 'undefined') {
-        if (!global.DOMMatrix) {
-          console.warn(`[PDF Parser] Warning: DOMMatrix polyfill missing. Re-applying...`);
-          // Re-apply DOMMatrix polyfill if missing
-          // @ts-ignore
-          global.DOMMatrix = class DOMMatrix {
-            m11 = 1; m12 = 0; m21 = 0; m22 = 1; m41 = 0; m42 = 0;
-            a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
-          };
-        }
-        if (!global.Promise.withResolvers) {
-          console.warn(`[PDF Parser] Warning: Promise.withResolvers polyfill missing. Re-applying...`);
-          // @ts-ignore
-          Promise.withResolvers = function () {
-            let resolve: any, reject: any;
-            const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
-            return { promise, resolve, reject };
-          };
-        }
-      }
+      // Dynamic import to avoid hoisting issues
+      const PDFParserModule = await import("pdf2json");
+      const PDFParser = PDFParserModule.default || PDFParserModule;
       
-      // Dynamic import - this ensures polyfills are active before pdf-parse loads
-      const pdfParseModule = await import("pdf-parse");
-      const pdfParse = pdfParseModule.default || pdfParseModule;
-      
-      console.log(`[PDF Parser] pdf-parse module loaded successfully via dynamic import`);
-      
-      console.log(`[PDF Parser] Parsing PDF buffer (${buffer.length} bytes)...`);
-      const pdfData = await pdfParse(buffer);
-      const extractedText = pdfData.text || "";
-      console.log(`[PDF Parser] Extracted ${extractedText.length} characters from PDF`);
-      
-      if (extractedText.length === 0) {
-        console.warn("[PDF Parser] Warning: PDF appears to be empty or image-based.");
-        // For image-based PDFs, we can't extract text directly
-        // Return empty string and let AI handle it with Vision API if needed
-        throw new Error("PDF appears to be image-based or empty. Cannot extract text using pdf-parse.");
-      }
-      
-      return extractedText;
-    } catch (pdfParseError: any) {
-      console.error(`[PDF Parser] pdf-parse error details:`, {
-        message: pdfParseError.message,
-        stack: pdfParseError.stack,
-        name: pdfParseError.name,
-      });
-      
-      // Check if it's a canvas-related error
-      if (pdfParseError.message.includes('r is not a function') || 
-          pdfParseError.message.includes('@napi-rs/canvas') ||
-          pdfParseError.message.includes('canvas')) {
-        console.error(`[PDF Parser] Canvas-related error detected. Falling back to OpenAI Vision API for PDF extraction...`);
-        
-        // Fallback: Use OpenAI Vision API to extract text from PDF
-        // Note: Vision API doesn't support PDF directly, so we'll use a workaround
-        // by sending the PDF as a document and asking GPT-4o to extract text
-        try {
-          console.log(`[PDF Parser] Attempting OpenAI API fallback for PDF (${buffer.length} bytes)...`);
+      // Helper function to wrap pdf2json in a Promise
+      const parsePdfBuffer = (pdfBuffer: Buffer): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          // Create parser instance - 1 = Text content only
+          const pdfParser = new PDFParser(null, 1);
           
-          // Convert PDF buffer to base64
-          const base64 = buffer.toString('base64');
+          // Set timeout to prevent hanging
+          const timeout = setTimeout(() => {
+            reject(new Error("PDF parsing timeout after 30 seconds"));
+          }, 30000);
           
-          // Use OpenAI's chat completion with document understanding
-          // We'll send the PDF as base64 and ask GPT-4o to extract text
-          const visionResult = await generateText({
-            model: openai("gpt-4o"),
-            messages: [
-              {
-                role: "user",
-                content: [
-                  {
-                    type: "text",
-                    text: "Extract all text content from this PDF document. Return only the raw extracted text, preserving line breaks and structure. Do not add any explanations or formatting."
-                  },
-                  {
-                    type: "image",
-                    image: `data:application/pdf;base64,${base64}`,
-                  }
-                ]
-              }
-            ],
-            maxTokens: 4000,
+          pdfParser.on("pdfParser_dataError", (errData: any) => {
+            clearTimeout(timeout);
+            console.error("[pdf2json] Parse error:", errData.parserError);
+            reject(new Error(errData.parserError || "Failed to parse PDF"));
           });
           
-          const extractedText = visionResult.text || "";
-          console.log(`[PDF Parser] OpenAI API fallback extracted ${extractedText.length} characters from PDF`);
+          pdfParser.on("pdfParser_dataReady", (pdfData: any) => {
+            clearTimeout(timeout);
+            try {
+              // Extract raw text from the PDF structure
+              const rawText = pdfParser.getRawTextContent();
+              
+              if (!rawText || rawText.trim().length === 0) {
+                console.warn("[pdf2json] Warning: Extracted text is empty. PDF may be image-based.");
+                reject(new Error("PDF appears to be image-based or empty. No text content found."));
+                return;
+              }
+              
+              console.log(`[pdf2json] Successfully extracted ${rawText.length} characters`);
+              resolve(rawText);
+            } catch (e: any) {
+              console.error("[pdf2json] Error extracting text:", e);
+              reject(e);
+            }
+          });
           
-          if (extractedText.length === 0) {
-            throw new Error("OpenAI API returned empty text from PDF");
+          // Parse the buffer
+          try {
+            pdfParser.parseBuffer(pdfBuffer);
+          } catch (parseError: any) {
+            clearTimeout(timeout);
+            console.error("[pdf2json] Buffer parse error:", parseError);
+            reject(parseError);
           }
-          
-          return extractedText;
-        } catch (visionError: any) {
-          console.error(`[PDF Parser] OpenAI API fallback also failed:`, visionError);
-          // If Vision API also fails, throw the original error
-          throw new Error(`Failed to parse PDF: ${pdfParseError.message}. OpenAI API fallback also failed: ${visionError.message}`);
-        }
+        });
+      };
+      
+      // Execute parsing
+      const extractedText = await parsePdfBuffer(buffer);
+      
+      if (!extractedText || extractedText.trim().length === 0) {
+        throw new Error("PDF appears to be empty or image-based. No text content extracted.");
       }
       
-      throw new Error(`Failed to parse PDF: ${pdfParseError.message}. The PDF may be image-based or corrupted.`);
+      console.log(`[PDF Parser] Successfully extracted ${extractedText.length} characters using pdf2json`);
+      return extractedText;
+      
+    } catch (pdf2jsonError: any) {
+      console.error(`[PDF Parser] pdf2json error details:`, {
+        message: pdf2jsonError.message,
+        stack: pdf2jsonError.stack,
+        name: pdf2jsonError.name,
+      });
+      
+      // Fallback: Use OpenAI Vision API if pdf2json fails
+      console.log(`[PDF Parser] Falling back to OpenAI Vision API...`);
+      try {
+        const base64 = buffer.toString('base64');
+        
+        const visionResult = await generateText({
+          model: openai("gpt-4o"),
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: "Extract all text content from this PDF document. Return only the raw extracted text, preserving line breaks and structure. Do not add any explanations or formatting."
+                },
+                {
+                  type: "image",
+                  image: `data:application/pdf;base64,${base64}`,
+                }
+              ]
+            }
+          ],
+          maxTokens: 4000,
+        });
+        
+        const extractedText = visionResult.text || "";
+        console.log(`[PDF Parser] OpenAI Vision API fallback extracted ${extractedText.length} characters`);
+        
+        if (extractedText.length === 0) {
+          throw new Error("OpenAI Vision API returned empty text from PDF");
+        }
+        
+        return extractedText;
+      } catch (visionError: any) {
+        console.error(`[PDF Parser] OpenAI Vision API fallback also failed:`, visionError);
+        throw new Error(`Failed to parse PDF: ${pdf2jsonError.message}. Vision API fallback also failed: ${visionError.message}`);
+      }
     }
   } catch (error: any) {
     console.error(`[PDF Parser] Error extracting text from PDF:`, error);
