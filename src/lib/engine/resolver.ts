@@ -273,69 +273,71 @@ export function resolveConfig(
         
         console.log(`[Resolver] Attempting to resolve: "${cleanVar}"`);
         
-        // Split into step ID and property path
+        // 2. Split into step ID and property path
         const varParts = cleanVar.split('.');
         const stepId = varParts[0]; // e.g., "step_1"
         const path = varParts.slice(1).join('.'); // e.g., "output.name"
         
+        // Build environment using the SAME structure as DB_INSERT's runContext
+        const environment = buildEnvironmentFromLogs();
+        
         let resolvedVarValue: any = undefined;
         
-        // STRATEGY 1: Try to find via logs (existing approach)
-        const nestedMatch = cleanVar.match(/^(step_\d+)(\.(.+))?$/);
-        if (nestedMatch) {
-          const stepVar = nestedMatch[1]; // e.g., "step_1"
-          const propertyPath = nestedMatch[3]; // e.g., "output.email"
-          
-          const found = findVariableInLogs(stepVar, propertyPath);
-          if (found) {
-            let output = found.log.output;
-            
-            console.log(`[Resolver] Found log for ${stepVar}:`, {
-              stepVar,
-              propertyPath,
-              outputType: typeof output,
-              outputKeys: typeof output === 'object' && output !== null ? Object.keys(output) : [],
-            });
-            
-            // If there's a property path, navigate to it using dot notation
-            if (propertyPath) {
-              const beforeOutput = output;
-              output = getSafeValue(output, propertyPath);
-              
-              console.log(`[Resolver] After getSafeValue("${propertyPath}"):`, {
-                before: beforeOutput,
-                after: output,
-                found: output !== undefined,
-              });
-            }
-            
-            resolvedVarValue = output;
-          }
-        } else {
-          // Try regular variable lookup
-          const found = findVariableInLogs(cleanVar);
-        if (found) {
-            resolvedVarValue = found.log.output;
+        // STRATEGY 1: Standard Nested Lookup (step_1.output.name)
+        if (environment[stepId]) {
+          resolvedVarValue = getSafeValue(environment[stepId], path);
+          if (resolvedVarValue !== undefined) {
+            console.log(`[Resolver] ✅ Resolved "${cleanVar}" in string via Strategy 1 (nested):`, resolvedVarValue);
           }
         }
         
-        // STRATEGY 2: Build environment from logs and try direct lookup
-        // This handles cases where the context structure matches step_1.output.name
-        if (resolvedVarValue === undefined && nestedMatch) {
-          const stepVar = nestedMatch[1];
+        // STRATEGY 2: Fallback to Flattened Output (step_1_output.name)
+        if (resolvedVarValue === undefined && path.startsWith('output.')) {
+          const flatKey = `${stepId}_output`;
+          const flatPath = varParts.slice(2).join('.'); // remove "output" from path
           
-          // Build a temporary environment from logs
-          const tempEnv: Record<string, any> = {};
-          runLogs.forEach((log, idx) => {
-            const step = procedureSteps.find(s => s.id === log.stepId);
-            if (step) {
-              const stepIndex = idx + 1;
-              const varName = step.config.outputVariableName || `step_${stepIndex}_output`;
-              tempEnv[varName] = log.output;
-              tempEnv[`step_${stepIndex}_output`] = log.output;
-              tempEnv[`step_${stepIndex}`] = { output: log.output };
+          console.log(`[Resolver] Trying fallback key: "${flatKey}" with path "${flatPath}"`);
+          
+          if (environment[flatKey]) {
+            resolvedVarValue = getSafeValue(environment[flatKey], flatPath);
+            if (resolvedVarValue !== undefined) {
+              console.log(`[Resolver] ✅ Resolved "${cleanVar}" in string via Strategy 2 (flattened):`, resolvedVarValue);
             }
-          });
+          }
+        }
+        
+        // STRATEGY 3: Try to find via logs (fallback for edge cases)
+        if (resolvedVarValue === undefined) {
+          const nestedMatch = cleanVar.match(/^(step_\d+)(\.(.+))?$/);
+          if (nestedMatch) {
+            const stepVar = nestedMatch[1]; // e.g., "step_1"
+            const propertyPath = nestedMatch[3]; // e.g., "output.email"
+            
+            const found = findVariableInLogs(stepVar, propertyPath);
+            if (found) {
+              let output = found.log.output;
+              
+              if (propertyPath) {
+                output = getSafeValue(output, propertyPath);
+              }
+              
+              if (output !== undefined) {
+                resolvedVarValue = output;
+                console.log(`[Resolver] ✅ Resolved "${cleanVar}" in string via Strategy 3 (logs):`, resolvedVarValue);
+              }
+            }
+          } else {
+            // Try regular variable lookup
+            const found = findVariableInLogs(cleanVar);
+            if (found) {
+              resolvedVarValue = found.log.output;
+            }
+          }
+        }
+        
+        if (resolvedVarValue === undefined) {
+          console.error(`[Resolver] ❌ Failed to resolve "${cleanVar}" in string`);
+        }
           
           console.log(`[Resolver] Trying direct environment lookup for "${stepId}" with path "${path}"`);
           console.log(`[Resolver] Environment keys:`, Object.keys(tempEnv));
