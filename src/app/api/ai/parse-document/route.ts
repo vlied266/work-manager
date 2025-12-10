@@ -1,8 +1,9 @@
-// --- POLYFILLS FOR PDF-PARSE IN NODE.JS ---
+/* eslint-disable */
+// --- POLYFILLS FOR SERVER-SIDE PDF PARSING ---
 // pdf-parse (via pdfjs-dist) relies on browser-native APIs that don't exist in Node.js
 // These polyfills mock the required browser APIs to prevent crashes
 
-// Polyfill for Promise.withResolvers (if not available)
+// 1. Fix "r is not a function" (Missing Promise.withResolvers)
 if (typeof Promise.withResolvers === 'undefined') {
   // @ts-ignore
   Promise.withResolvers = function () {
@@ -15,7 +16,7 @@ if (typeof Promise.withResolvers === 'undefined') {
   };
 }
 
-// Polyfill for DOMMatrix
+// 2. Fix Canvas/DOM Dependencies
 if (typeof global !== 'undefined' && !global.DOMMatrix) {
   // @ts-ignore
   global.DOMMatrix = class DOMMatrix {
@@ -49,23 +50,21 @@ if (typeof global !== 'undefined' && !global.DOMMatrix) {
   };
 }
 
-// Polyfill for ImageData
 if (typeof global !== 'undefined' && !global.ImageData) {
   // @ts-ignore
   global.ImageData = class ImageData {
-    width: number;
-    height: number;
+    width?: number;
+    height?: number;
     data: Uint8ClampedArray;
 
-    constructor(width: number, height: number) {
+    constructor(width?: number, height?: number) {
       this.width = width;
       this.height = height;
-      this.data = new Uint8ClampedArray(width * height * 4);
+      this.data = new Uint8ClampedArray((width || 0) * (height || 0) * 4);
     }
   };
 }
 
-// Polyfill for Path2D
 if (typeof global !== 'undefined' && !global.Path2D) {
   // @ts-ignore
   global.Path2D = class Path2D {
@@ -74,7 +73,42 @@ if (typeof global !== 'undefined' && !global.Path2D) {
     }
   };
 }
-// ------------------------------------------
+
+if (typeof global !== 'undefined' && !global.CanvasPattern) {
+  // @ts-ignore
+  global.CanvasPattern = class CanvasPattern {
+    constructor() {
+      // Minimal implementation
+    }
+  };
+}
+
+// 3. Mock Canvas to prevent @napi-rs/canvas requirement
+if (typeof global !== 'undefined' && !global.HTMLCanvasElement) {
+  // @ts-ignore
+  global.HTMLCanvasElement = class HTMLCanvasElement {
+    getContext() {
+      return {
+        fillRect: () => {},
+        clearRect: () => {},
+        getImageData: () => ({ data: new Uint8ClampedArray(0) }),
+        putImageData: () => {},
+        createImageData: () => ({ data: new Uint8ClampedArray(0) }),
+        setTransform: () => {},
+        drawImage: () => {},
+        save: () => {},
+        restore: () => {},
+        beginPath: () => {},
+        moveTo: () => {},
+        lineTo: () => {},
+        clip: () => {},
+        fill: () => {},
+        stroke: () => {},
+      };
+    }
+  };
+}
+// ---------------------------------------------
 
 import { NextRequest, NextResponse } from "next/server";
 import { openai } from "@ai-sdk/openai";
