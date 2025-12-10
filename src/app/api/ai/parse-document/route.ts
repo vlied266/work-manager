@@ -451,7 +451,47 @@ async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<str
       if (pdfParseError.message.includes('r is not a function') || 
           pdfParseError.message.includes('@napi-rs/canvas') ||
           pdfParseError.message.includes('canvas')) {
-        console.error(`[PDF Parser] Canvas-related error detected. This may indicate missing canvas dependencies or polyfill issues.`);
+        console.error(`[PDF Parser] Canvas-related error detected. Falling back to OpenAI Vision API for PDF extraction...`);
+        
+        // Fallback: Use OpenAI Vision API to extract text from PDF
+        // Convert PDF buffer to base64 and use Vision API
+        try {
+          const base64 = buffer.toString('base64');
+          console.log(`[PDF Parser] Attempting Vision API fallback for PDF (${buffer.length} bytes)...`);
+          
+          // Use Vision API to extract text from PDF
+          const visionResult = await generateText({
+            model: openai("gpt-4o"),
+            messages: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: "Extract all text from this PDF document. Return only the extracted text, no explanations or formatting."
+                  },
+                  {
+                    type: "image",
+                    image: `data:application/pdf;base64,${base64}`
+                  }
+                ]
+              }
+            ],
+            maxTokens: 4000,
+          });
+          
+          const extractedText = visionResult.text || "";
+          console.log(`[PDF Parser] Vision API extracted ${extractedText.length} characters from PDF`);
+          
+          if (extractedText.length === 0) {
+            throw new Error("Vision API returned empty text from PDF");
+          }
+          
+          return extractedText;
+        } catch (visionError: any) {
+          console.error(`[PDF Parser] Vision API fallback also failed:`, visionError);
+          throw new Error(`Failed to parse PDF: ${pdfParseError.message}. Vision API fallback also failed: ${visionError.message}`);
+        }
       }
       
       throw new Error(`Failed to parse PDF: ${pdfParseError.message}. The PDF may be image-based or corrupted.`);
