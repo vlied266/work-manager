@@ -46,17 +46,31 @@ export function resolveConfig(
           if (propertyPath) {
             const value = getNestedValue(log.output, propertyPath);
             // If the value exists, return this log
-            if (value !== undefined && value !== null) {
+            if (value !== undefined && value !== null && value !== "") {
               return { log, step };
             }
-            // If not found, try fallback: search backwards through previous steps
-            console.warn(`[Resolver] Property "${propertyPath}" not found in ${variableName}. Searching previous steps...`);
+            // If not found, try fallback: search forwards through subsequent steps
+            // This handles cases where AI generated wrong step references (e.g., step_1 when data is in step_2)
+            console.warn(`[Resolver] Property "${propertyPath}" not found in ${variableName}. Searching subsequent steps...`);
+            for (let i = stepIndex + 1; i < procedureSteps.length; i++) {
+              const nextStep = procedureSteps[i];
+              const nextLog = runLogs.find((l) => l.stepId === nextStep.id);
+              if (nextLog) {
+                const nextValue = getNestedValue(nextLog.output, propertyPath);
+                if (nextValue !== undefined && nextValue !== null && nextValue !== "") {
+                  console.log(`[Resolver] Found "${propertyPath}" in step_${i + 1} instead of ${variableName}`);
+                  return { log: nextLog, step: nextStep };
+                }
+              }
+            }
+            // If still not found, also try searching backwards (in case data is in an earlier step)
+            console.warn(`[Resolver] Property "${propertyPath}" not found in subsequent steps. Searching previous steps...`);
             for (let i = stepIndex - 1; i >= 0; i--) {
               const prevStep = procedureSteps[i];
               const prevLog = runLogs.find((l) => l.stepId === prevStep.id);
               if (prevLog) {
                 const prevValue = getNestedValue(prevLog.output, propertyPath);
-                if (prevValue !== undefined && prevValue !== null) {
+                if (prevValue !== undefined && prevValue !== null && prevValue !== "") {
                   console.log(`[Resolver] Found "${propertyPath}" in step_${i + 1} instead of ${variableName}`);
                   return { log: prevLog, step: prevStep };
                 }
