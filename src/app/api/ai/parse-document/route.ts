@@ -142,8 +142,21 @@ interface ParseDocumentRequest {
   fileId?: string; // Google Drive file ID if available
 }
 
-// Schema for extracted data
-const ExtractedDataSchema = z.record(z.string(), z.any());
+// Helper function to create a dynamic schema based on fields to extract
+function createExtractedDataSchema(fieldsToExtract: string[]) {
+  const schemaObject: Record<string, z.ZodTypeAny> = {};
+  fieldsToExtract.forEach(field => {
+    // Allow string, number, boolean, null, or date strings
+    schemaObject[field] = z.union([
+      z.string(),
+      z.number(),
+      z.boolean(),
+      z.null(),
+      z.undefined(),
+    ]).optional().nullable();
+  });
+  return z.object(schemaObject);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -606,9 +619,12 @@ ${content.substring(0, 8000)}${content.length > 8000 ? "\n... (truncated)" : ""}
 Return a JSON object with the extracted fields. If a field is not found, use null as the value. Use appropriate data types (strings, numbers, dates, booleans) based on the content.`;
 
   try {
+    // Create a dynamic schema based on the fields to extract
+    const dynamicSchema = createExtractedDataSchema(fieldsToExtract);
+    
     const { object } = await generateObject({
       model: openai("gpt-4o"),
-      schema: ExtractedDataSchema,
+      schema: dynamicSchema,
       prompt,
     });
 
