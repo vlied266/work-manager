@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { openai } from "@ai-sdk/openai";
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
+import OpenAI from "openai";
 
 /**
  * AI Document Parser API
@@ -646,6 +647,7 @@ Return a JSON object with the extracted fields. If a field is not found, use nul
 /**
  * Use AI Vision API to extract specific fields directly from image
  * This bypasses text extraction and uses Vision API with structured output
+ * Uses raw OpenAI API with image_url format for explicit control
  */
 async function extractFieldsWithAIFromImage(
   imageBuffer: Buffer,
@@ -669,10 +671,7 @@ async function extractFieldsWithAIFromImage(
       throw new Error("No valid field names found in fieldsToExtract array");
     }
     
-    console.log(`[AI Vision Extractor] Creating schema for ${validFields.length} fields:`, validFields);
-    
-    // Create a dynamic schema based on the fields to extract
-    const dynamicSchema = createExtractedDataSchema(validFields);
+    console.log(`[AI Vision Extractor] Processing ${validFields.length} fields:`, validFields);
     
     // Determine MIME type from file extension
     const urlLower = fileUrl.toLowerCase();
@@ -690,7 +689,7 @@ async function extractFieldsWithAIFromImage(
     const dataUrl = `data:${mimeType};base64,${base64Image}`;
     
     // Build the prompt
-    const prompt = `You are a data extraction specialist. Extract the following fields from this resume/document image and return them as a JSON object.
+    const prompt = `You are a data extraction specialist. Analyze this image and extract the following fields. Return a JSON object with the extracted fields.
 
 Fields to extract:
 ${validFields.map((field) => `- ${field}`).join("\n")}
@@ -699,11 +698,37 @@ Return a JSON object with the extracted fields. If a field is not found, use nul
     
     console.log(`[AI Vision Extractor] Calling OpenAI Vision API with ${mimeType} image...`);
     
-    // Use generateObject with Vision API
-    const { object } = await generateObject({
-      model: openai("gpt-4o"), // gpt-4o supports vision
-      schema: dynamicSchema,
+    // Initialize OpenAI client
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY environment variable is not set");
+    }
+    
+    const openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+    
+    // Create the schema definition for response_format
+    const schemaDefinition: any = {
+      type: "object",
+      properties: {},
+      required: [],
+    };
+    
+    validFields.forEach(field => {
+      schemaDefinition.properties[field] = {
+        type: ["string", "number", "boolean", "null"],
+        description: `Extracted value for ${field}`,
+      };
+    });
+    
+    // Use raw OpenAI API with image_url format
+    const completion = await openaiClient.chat.completions.create({
+      model: "gpt-4o", // Must use a vision-capable model
       messages: [
+        {
+          role: "system",
+          content: "You are an AI data extraction assistant. Extract structured data from images and return valid JSON objects.",
+        },
         {
           role: "user",
           content: [
@@ -712,16 +737,49 @@ Return a JSON object with the extracted fields. If a field is not found, use nul
               text: prompt,
             },
             {
-              type: "image",
-              image: dataUrl,
+              type: "image_url",
+              image_url: {
+                url: dataUrl,
+              },
             },
           ],
         },
       ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "extracted_data",
+          description: "Extracted data fields from the image",
+          schema: schemaDefinition,
+          strict: false, // Allow null values for missing fields
+        },
+      },
+      max_tokens: 2000,
     });
 
-    console.log(`[AI Vision Extractor] Successfully extracted fields:`, Object.keys(object));
-    return object;
+    const responseContent = completion.choices[0]?.message?.content;
+    if (!responseContent) {
+      throw new Error("OpenAI Vision API returned empty response");
+    }
+    
+    // Parse the JSON response
+    let extractedData: Record<string, any>;
+    try {
+      extractedData = JSON.parse(responseContent);
+    } catch (parseError) {
+      console.error(`[AI Vision Extractor] Failed to parse JSON response:`, responseContent);
+      throw new Error(`Failed to parse OpenAI response as JSON: ${parseError}`);
+    }
+    
+    // Ensure all fields are present (set to null if missing)
+    validFields.forEach(field => {
+      if (!(field in extractedData)) {
+        extractedData[field] = null;
+      }
+    });
+
+    console.log(`[AI Vision Extractor] Successfully extracted fields:`, Object.keys(extractedData));
+    return extractedData;
   } catch (error: any) {
     console.error(`[AI Vision Extractor] Error extracting fields from image:`, {
       message: error.message,
