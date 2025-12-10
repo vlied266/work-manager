@@ -392,17 +392,25 @@ export async function POST(req: NextRequest) {
             
             // CRITICAL: Store extractedData in executionResult.output for proper workflow propagation
             // This ensures step_1.output.name and step_1.output.email work correctly
+            // The output MUST be the extractedData object directly, not wrapped
+            const extractedData = parseResult.extractedData || {};
+            console.log(`[AI_PARSE] Final extracted data:`, extractedData);
+            console.log(`[AI_PARSE] Extracted data keys:`, Object.keys(extractedData));
+            
             executionResult = {
               success: true,
               parsed: true,
-              extractedData: parseResult.extractedData,
+              extractedData: extractedData,
               fileType: parseResult.fileType,
-              output: parseResult.extractedData, // CRITICAL: Add output key for workflow engine
+              output: extractedData, // CRITICAL: This becomes log.output, which is used in {{step_1.output.name}}
             };
-            console.log(`[AI_PARSE] Execution result with output:`, {
+            
+            console.log(`[AI_PARSE] Execution result structure:`, {
               success: executionResult.success,
-              extractedData: executionResult.extractedData,
-              output: executionResult.output,
+              hasOutput: !!executionResult.output,
+              outputType: typeof executionResult.output,
+              outputKeys: typeof executionResult.output === 'object' && executionResult.output !== null ? Object.keys(executionResult.output) : [],
+              outputValue: executionResult.output,
             });
             break;
           }
