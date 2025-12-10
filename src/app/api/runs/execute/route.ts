@@ -410,8 +410,24 @@ export async function POST(req: NextRequest) {
           case "DB_INSERT": {
             console.log(`[DB_INSERT] Starting DB insert for collection: ${currentStep.config.collectionName}`);
             
-            // Build run context for variable resolution
-            const runContext = (run.logs || []).reduce((acc: any, log, idx) => {
+            // CRITICAL: Reload run from database to get latest logs (in case this is a recursive execution)
+            // This ensures we have the output from previous steps (e.g., AI_PARSE)
+            const updatedRunDoc = await db.collection("active_runs").doc(runId).get();
+            const updatedRun = updatedRunDoc.exists ? (updatedRunDoc.data() as ActiveRun) : run;
+            const latestLogs = updatedRun.logs || run.logs || [];
+            
+            console.log(`[DB_INSERT] Using ${latestLogs.length} logs for context building`);
+            latestLogs.forEach((log, idx) => {
+              console.log(`[DB_INSERT] Log ${idx + 1}:`, {
+                stepId: log.stepId,
+                hasOutput: !!log.output,
+                outputKeys: typeof log.output === 'object' && log.output !== null ? Object.keys(log.output) : [],
+                outputType: typeof log.output,
+              });
+            });
+            
+            // Build run context for variable resolution using latest logs
+            const runContext = latestLogs.reduce((acc: any, log, idx) => {
               const step = procedure.steps[idx];
               if (step) {
                 const varName = step.config.outputVariableName || `step_${idx + 1}_output`;
