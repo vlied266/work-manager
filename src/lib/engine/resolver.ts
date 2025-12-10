@@ -209,12 +209,20 @@ export function resolveConfig(
           parts.push({ text: value.substring(lastIndex, match.index), isVariable: false });
         }
         
-        const trimmedVar = match[1].trim();
+        // 1. Clean the variable string (Remove {{, }}, and spaces)
+        const cleanVar = match[1].trim(); // e.g., "step_1.output.name"
         
-        // Check if it's a nested property like "step_1.output.email"
-        const nestedMatch = trimmedVar.match(/^(step_\d+)(\.(.+))?$/);
+        console.log(`[Resolver] Attempting to resolve: "${cleanVar}"`);
+        
+        // Split into step ID and property path
+        const varParts = cleanVar.split('.');
+        const stepId = varParts[0]; // e.g., "step_1"
+        const path = varParts.slice(1).join('.'); // e.g., "output.name"
+        
         let resolvedVarValue: any = undefined;
         
+        // STRATEGY 1: Try to find via logs (existing approach)
+        const nestedMatch = cleanVar.match(/^(step_\d+)(\.(.+))?$/);
         if (nestedMatch) {
           const stepVar = nestedMatch[1]; // e.g., "step_1"
           const propertyPath = nestedMatch[3]; // e.g., "output.email"
@@ -223,7 +231,7 @@ export function resolveConfig(
           if (found) {
             let output = found.log.output;
             
-            console.log(`[Resolver] Resolving nested variable ${trimmedVar} in string:`, {
+            console.log(`[Resolver] Found log for ${stepVar}:`, {
               stepVar,
               propertyPath,
               outputType: typeof output,
@@ -233,9 +241,9 @@ export function resolveConfig(
             // If there's a property path, navigate to it using dot notation
             if (propertyPath) {
               const beforeOutput = output;
-              output = getNestedValue(output, propertyPath);
+              output = getSafeValue(output, propertyPath);
               
-              console.log(`[Resolver] After getNestedValue("${propertyPath}"):`, {
+              console.log(`[Resolver] After getSafeValue("${propertyPath}"):`, {
                 before: beforeOutput,
                 after: output,
                 found: output !== undefined,
@@ -246,19 +254,68 @@ export function resolveConfig(
           }
         } else {
           // Try regular variable lookup
-          const found = findVariableInLogs(trimmedVar);
+          const found = findVariableInLogs(cleanVar);
           if (found) {
             resolvedVarValue = found.log.output;
           }
         }
         
+        // STRATEGY 2: Build environment from logs and try direct lookup
+        // This handles cases where the context structure matches step_1.output.name
+        if (resolvedVarValue === undefined && nestedMatch) {
+          const stepVar = nestedMatch[1];
+          
+          // Build a temporary environment from logs
+          const tempEnv: Record<string, any> = {};
+          runLogs.forEach((log, idx) => {
+            const step = procedureSteps.find(s => s.id === log.stepId);
+            if (step) {
+              const stepIndex = idx + 1;
+              const varName = step.config.outputVariableName || `step_${stepIndex}_output`;
+              tempEnv[varName] = log.output;
+              tempEnv[`step_${stepIndex}_output`] = log.output;
+              tempEnv[`step_${stepIndex}`] = { output: log.output };
+            }
+          });
+          
+          console.log(`[Resolver] Trying direct environment lookup for "${stepId}" with path "${path}"`);
+          console.log(`[Resolver] Environment keys:`, Object.keys(tempEnv));
+          
+          // Try standard nested lookup (step_1.output.name)
+          if (tempEnv[stepId]) {
+            resolvedVarValue = getSafeValue(tempEnv[stepId], path);
+            if (resolvedVarValue !== undefined) {
+              console.log(`[Resolver] ✅ Resolved "${cleanVar}" via Strategy 2 (nested):`, resolvedVarValue);
+            }
+          }
+          
+          // STRATEGY 3: Fallback to flattened output (step_1_output.name)
+          // Sometimes the context builder flattens outputs to "step_1_output"
+          if (resolvedVarValue === undefined && path && path.startsWith('output.')) {
+            const flatKey = `${stepId}_output`;
+            const flatPath = varParts.slice(2).join('.'); // remove "output" from path
+            console.log(`[Resolver] Trying fallback key: "${flatKey}" with path "${flatPath}"`);
+            
+            if (tempEnv[flatKey]) {
+              resolvedVarValue = getSafeValue(tempEnv[flatKey], flatPath);
+              if (resolvedVarValue !== undefined) {
+                console.log(`[Resolver] ✅ Resolved "${cleanVar}" via Strategy 3 (flattened):`, resolvedVarValue);
+              }
+            }
+          }
+        }
+        
+        // Final check
         if (resolvedVarValue !== undefined) {
+          console.log(`[Resolver] ✅ Successfully resolved "${cleanVar}" to:`, resolvedVarValue);
           const outputStr = typeof resolvedVarValue === "object" && resolvedVarValue !== null
             ? JSON.stringify(resolvedVarValue)
             : String(resolvedVarValue ?? "");
-          parts.push({ text: outputStr, isVariable: true, variable: trimmedVar });
+          parts.push({ text: outputStr, isVariable: true, variable: cleanVar });
         } else {
-          parts.push({ text: match[0], isVariable: false }); // Keep placeholder
+          console.error(`[Resolver] ❌ Failed to resolve "${cleanVar}"`);
+          // Keep the placeholder if not found
+          parts.push({ text: match[0], isVariable: true, variable: cleanVar });
         }
         
         lastIndex = match.index + match[0].length;
