@@ -285,6 +285,76 @@ export async function POST(req: NextRequest) {
 }
 
 /**
+ * Extract the first image from a PDF document
+ * Returns the raw image buffer (usually JPEG/PNG) or null if no image found
+ * Helper to extract the first image from a PDF page (for scanned docs)
+ */
+async function extractFirstImageFromPDF(pdfBuffer: Buffer): Promise<Buffer | null> {
+  try {
+    console.log(`[PDF Image Extractor] Attempting to extract image from PDF (${pdfBuffer.length} bytes)...`);
+    
+    const pdfDoc = await PDFDocument.load(pdfBuffer);
+    const pages = pdfDoc.getPages();
+    
+    if (pages.length === 0) {
+      console.warn(`[PDF Image Extractor] PDF has no pages`);
+      return null;
+    }
+    
+    // Check the first page
+    const page = pages[0];
+    
+    // Access page resources to find images
+    const pageDict = page.node;
+    const resources = pageDict.dict.get(PDFName.of('Resources'));
+    
+    if (!resources) {
+      console.warn(`[PDF Image Extractor] Page has no Resources dictionary`);
+      return null;
+    }
+    
+    const resourcesDict = pdfDoc.context.lookup(resources) as any;
+    const xObject = resourcesDict.get(PDFName.of('XObject'));
+    
+    if (!xObject) {
+      console.warn(`[PDF Image Extractor] Page has no XObject dictionary`);
+      return null;
+    }
+    
+    const xObjectDict = pdfDoc.context.lookup(xObject) as any;
+    const xObjectMap = xObjectDict.dict || xObjectDict;
+    
+    // Iterate through XObjects to find images
+    for (const [name, ref] of xObjectMap.entries()) {
+      try {
+        const xObject = pdfDoc.context.lookup(ref) as any;
+        
+        // Check if it's an Image XObject
+        // Look for an Image XObject
+        if (xObject.constructor.name === 'PDFRawStream' && 
+            xObject.dict.get(PDFName.of('Subtype')) === PDFName.of('Image')) {
+          // Get the raw image stream
+          if (xObject.contents) {
+            const imageBuffer = Buffer.from(xObject.contents);
+            console.log(`[PDF Image Extractor] Successfully extracted image: ${imageBuffer.length} bytes`);
+            return imageBuffer;
+          }
+        }
+      } catch (e) {
+        // Skip this XObject if we can't process it
+        continue;
+      }
+    }
+    
+    console.warn(`[PDF Image Extractor] No image found in PDF`);
+    return null;
+  } catch (error: any) {
+    console.error(`[PDF Image Extractor] Error extracting image from PDF:`, error.message);
+    return null;
+  }
+}
+
+/**
  * Detect file type from URL or file extension
  */
 function detectFileType(fileUrl: string): "pdf" | "excel" | "image" {
