@@ -441,48 +441,86 @@ export async function POST(req: NextRequest) {
             const latestLogs = updatedRun.logs || run.logs || [];
             
             console.log(`[DB_INSERT] Using ${latestLogs.length} logs for context building`);
+            
+            // CRITICAL: Group logs by stepId and prioritize logs with actual output
+            // Multiple logs may exist for the same step (e.g., initial log + execution log)
+            // We need to find the log with actual output data, not empty ones
+            const logsByStepId: Record<string, any> = {};
             latestLogs.forEach((log, idx) => {
               console.log(`[DB_INSERT] Log ${idx + 1}:`, {
                 stepId: log.stepId,
                 hasOutput: !!log.output,
                 outputKeys: typeof log.output === 'object' && log.output !== null ? Object.keys(log.output) : [],
                 outputType: typeof log.output,
+                outputValue: log.output,
               });
+              
+              // Group by stepId
+              if (!logsByStepId[log.stepId]) {
+                logsByStepId[log.stepId] = [];
+              }
+              logsByStepId[log.stepId].push(log);
             });
             
             // Build run context for variable resolution using latest logs
-            // CRITICAL: For AI_PARSE, log.output is { output: { name: "...", email: "..." } }
-            // So we need to handle this structure correctly for {{step_1.output.name}}
+            // CRITICAL: For each step, find the log with actual output data
             const runContext = latestLogs.reduce((acc: any, log, idx) => {
               const step = procedure.steps[idx];
-              if (step) {
-                const varName = step.config.outputVariableName || `step_${idx + 1}_output`;
-                
-                // Check if log.output already has an 'output' key (from AI_PARSE wrapping)
-                if (log.output && typeof log.output === 'object' && log.output !== null && 'output' in log.output) {
-                  // log.output is { output: { name: "...", email: "..." } }
-                  // So step_1 should be { output: { name: "...", email: "..." } }
-                  const innerOutput = log.output.output;
-                  acc[varName] = innerOutput; // Extract the inner output for flat access
-                  acc[`step_${idx + 1}_output`] = innerOutput;
-                  acc[`step_${idx + 1}`] = log.output; // Use log.output directly (already wrapped as { output: {...} })
-                  console.log(`[DB_INSERT] Log ${idx + 1} has wrapped output structure:`, {
-                    stepId: log.stepId,
-                    wrapped: true,
-                    innerOutputKeys: typeof innerOutput === 'object' && innerOutput !== null ? Object.keys(innerOutput) : [],
-                  });
-                } else {
-                  // Normal case: log.output is { name: "...", email: "..." }
-                  acc[varName] = log.output;
-                  acc[`step_${idx + 1}_output`] = log.output;
-                  acc[`step_${idx + 1}`] = { output: log.output };
-                  console.log(`[DB_INSERT] Log ${idx + 1} has flat output structure:`, {
-                    stepId: log.stepId,
-                    wrapped: false,
-                    outputKeys: typeof log.output === 'object' && log.output !== null ? Object.keys(log.output) : [],
-                  });
-                }
+              if (!step) return acc;
+              
+              const stepId = step.id;
+              const stepIndex = idx;
+              const varName = step.config.outputVariableName || `step_${stepIndex + 1}_output`;
+              
+              // Find the best log for this step (prioritize logs with output)
+              const stepLogs = logsByStepId[stepId] || [log];
+              const bestLog = stepLogs.find((l: any) => 
+                l.output && 
+                typeof l.output === 'object' && 
+                l.output !== null && 
+                Object.keys(l.output).length > 0
+              ) || stepLogs[stepLogs.length - 1]; // Fallback to last log if none have output
+              
+              // Skip if we've already processed this step with valid output
+              if (acc[`step_${stepIndex + 1}`] && 
+                  acc[`step_${stepIndex + 1}`].output && 
+                  Object.keys(acc[`step_${stepIndex + 1}`].output).length > 0 &&
+                  bestLog.output === acc[`step_${stepIndex + 1}`].output) {
+                console.log(`[DB_INSERT] Skipping duplicate processing of step_${stepIndex + 1}`);
+                return acc;
               }
+              
+              // Check if bestLog.output already has an 'output' key (from AI_PARSE wrapping)
+              if (bestLog.output && typeof bestLog.output === 'object' && bestLog.output !== null && 'output' in bestLog.output) {
+                // bestLog.output is { output: { name: "...", email: "..." } }
+                // So step_1 should be { output: { name: "...", email: "..." } }
+                const innerOutput = bestLog.output.output;
+                acc[varName] = innerOutput; // Extract the inner output for flat access
+                acc[`step_${stepIndex + 1}_output`] = innerOutput;
+                acc[`step_${stepIndex + 1}`] = bestLog.output; // Use bestLog.output directly (already wrapped as { output: {...} })
+                console.log(`[DB_INSERT] Step ${stepIndex + 1} (${stepId}) - Using wrapped output:`, {
+                  wrapped: true,
+                  innerOutputKeys: typeof innerOutput === 'object' && innerOutput !== null ? Object.keys(innerOutput) : [],
+                  innerOutputValue: innerOutput,
+                });
+              } else if (bestLog.output && typeof bestLog.output === 'object' && bestLog.output !== null && Object.keys(bestLog.output).length > 0) {
+                // Normal case: bestLog.output is { name: "...", email: "..." }
+                acc[varName] = bestLog.output;
+                acc[`step_${stepIndex + 1}_output`] = bestLog.output;
+                acc[`step_${stepIndex + 1}`] = { output: bestLog.output };
+                console.log(`[DB_INSERT] Step ${stepIndex + 1} (${stepId}) - Using flat output:`, {
+                  wrapped: false,
+                  outputKeys: Object.keys(bestLog.output),
+                  outputValue: bestLog.output,
+                });
+              } else {
+                // No valid output found - set empty structure
+                acc[varName] = bestLog.output || {};
+                acc[`step_${stepIndex + 1}_output`] = bestLog.output || {};
+                acc[`step_${stepIndex + 1}`] = { output: bestLog.output || {} };
+                console.warn(`[DB_INSERT] Step ${stepIndex + 1} (${stepId}) - No valid output found, using empty structure`);
+              }
+              
               return acc;
             }, {});
             
