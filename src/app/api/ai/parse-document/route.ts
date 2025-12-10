@@ -141,13 +141,39 @@ export async function POST(req: NextRequest) {
     
     let extractedText = "";
     let extractedData: any = null;
-    let imageBuffer: Buffer | null = null; // For images, we'll pass the buffer directly
+    let imageBuffer: Buffer | null = null; // For images and scanned PDFs, we'll pass the buffer directly
+    let pdfBuffer: Buffer | null = null; // For PDFs, we need the buffer for Vision API fallback
+    let useVisionForPdf = false; // Flag to indicate if we should use Vision API for PDF
 
     // Step 1: Extract content based on file type
     switch (detectedFileType) {
-      case "pdf":
-        extractedText = await extractTextFromPDF(fileUrl, fileId);
+      case "pdf": {
+        // Try pdf2json first
+        try {
+          const pdfResult = await extractTextFromPDF(fileUrl, fileId);
+          extractedText = pdfResult.text || "";
+          pdfBuffer = pdfResult.buffer || null;
+          
+          // Check if text is too short (likely a scanned PDF)
+          if (!extractedText || extractedText.trim().length < 50) {
+            console.warn(`[PDF Parser] PDF has no selectable text (${extractedText?.length || 0} chars). Likely scanned. Using Vision API...`);
+            useVisionForPdf = true;
+          } else {
+            console.log(`[PDF Parser] Successfully extracted ${extractedText.length} characters. Using text-based extraction.`);
+          }
+        } catch (pdfError: any) {
+          console.error(`[PDF Parser] PDF text extraction failed:`, pdfError.message);
+          // If we have the buffer, use Vision API as fallback
+          if (pdfError.buffer) {
+            pdfBuffer = pdfError.buffer;
+            useVisionForPdf = true;
+            console.log(`[PDF Parser] Falling back to Vision API for field extraction...`);
+          } else {
+            throw pdfError; // Re-throw if we don't have a buffer to work with
+          }
+        }
         break;
+      }
       case "excel":
         extractedData = await extractDataFromExcel(fileUrl);
         // For Excel, we'll use the structured data directly
@@ -181,8 +207,16 @@ export async function POST(req: NextRequest) {
         fieldsToExtract,
         fileUrl
       );
+    } else if (detectedFileType === "pdf" && useVisionForPdf && pdfBuffer) {
+      // For scanned PDFs, use Vision API directly with the PDF buffer
+      console.log(`[PDF Parser] Using Vision API for scanned PDF field extraction...`);
+      result = await extractFieldsWithAIFromImage(
+        pdfBuffer,
+        fieldsToExtract,
+        fileUrl || "document.pdf"
+      );
     } else {
-      // For PDF, use AI to extract fields from text
+      // For text-based PDFs, use AI to extract fields from text
       result = await extractFieldsWithAI(
         extractedText,
         fieldsToExtract,
@@ -246,8 +280,9 @@ function detectFileType(fileUrl: string): "pdf" | "excel" | "image" {
 
 /**
  * Extract text from PDF file
+ * Returns both the extracted text and the buffer for Vision API fallback
  */
-async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<string> {
+async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<{ text: string; buffer: Buffer }> {
   try {
     let buffer: Buffer;
     
@@ -402,12 +437,9 @@ async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<str
       // Execute parsing
       const extractedText = await parsePdfBuffer(buffer);
       
-      if (!extractedText || extractedText.trim().length === 0) {
-        throw new Error("PDF appears to be empty or image-based. No text content extracted.");
-      }
-      
-      console.log(`[PDF Parser] Successfully extracted ${extractedText.length} characters using pdf2json`);
-      return extractedText;
+      // Return both text and buffer - caller will decide if text is sufficient
+      console.log(`[PDF Parser] pdf2json extracted ${extractedText?.length || 0} characters`);
+      return { text: extractedText || "", buffer };
       
     } catch (pdf2jsonError: any) {
       console.error(`[PDF Parser] pdf2json error details:`, {
@@ -416,46 +448,19 @@ async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<str
         name: pdf2jsonError.name,
       });
       
-      // Fallback: Use OpenAI Vision API if pdf2json fails
-      console.log(`[PDF Parser] Falling back to OpenAI Vision API...`);
-      try {
-        const base64 = buffer.toString('base64');
-        
-        const visionResult = await generateText({
-          model: openai("gpt-4o"),
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "Extract all text content from this PDF document. Return only the raw extracted text, preserving line breaks and structure. Do not add any explanations or formatting."
-                },
-                {
-                  type: "image",
-                  image: `data:application/pdf;base64,${base64}`,
-                }
-              ]
-            }
-          ],
-          maxTokens: 4000,
-        });
-        
-        const extractedText = visionResult.text || "";
-        console.log(`[PDF Parser] OpenAI Vision API fallback extracted ${extractedText.length} characters`);
-        
-        if (extractedText.length === 0) {
-          throw new Error("OpenAI Vision API returned empty text from PDF");
-        }
-        
-        return extractedText;
-      } catch (visionError: any) {
-        console.error(`[PDF Parser] OpenAI Vision API fallback also failed:`, visionError);
-        throw new Error(`Failed to parse PDF: ${pdf2jsonError.message}. Vision API fallback also failed: ${visionError.message}`);
-      }
+      // Return empty text but keep the buffer for Vision API fallback
+      // The caller will use Vision API if text is empty
+      console.log(`[PDF Parser] pdf2json failed, returning buffer for Vision API fallback...`);
+      const errorWithBuffer: any = new Error(`PDF text extraction failed: ${pdf2jsonError.message}`);
+      errorWithBuffer.buffer = buffer;
+      throw errorWithBuffer;
     }
   } catch (error: any) {
     console.error(`[PDF Parser] Error extracting text from PDF:`, error);
+    // If error has buffer, preserve it
+    if (error.buffer) {
+      throw error;
+    }
     throw new Error(`Failed to extract text from PDF: ${error.message}. URL: ${fileUrl}`);
   }
 }
