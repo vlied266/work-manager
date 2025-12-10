@@ -96,13 +96,29 @@ export function resolveConfig(
   };
 
   // Helper to get nested property from an object using dot notation
+  // CRITICAL: This must properly traverse nested objects step-by-step
+  // Example: getNestedValue({ output: { name: "..." } }, "output.name") -> "..."
   const getNestedValue = (obj: any, path: string): any => {
+    if (!path || path.trim().length === 0) return obj;
+    
     const parts = path.split(".");
     let current = obj;
+    
     for (const part of parts) {
-      if (current === null || current === undefined) return undefined;
-      current = current[part];
+      if (current === null || current === undefined) {
+        console.warn(`[Resolver] getNestedValue: Cannot traverse path "${path}" - current is null/undefined at part "${part}"`);
+        return undefined;
+      }
+      
+      // Check if current is an object/array and has the property
+      if (typeof current === 'object' && part in current) {
+        current = current[part];
+      } else {
+        console.warn(`[Resolver] getNestedValue: Property "${part}" not found in object. Path: "${path}", Current keys: ${typeof current === 'object' && current !== null ? Object.keys(current).join(', ') : 'N/A'}`);
+        return undefined;
+      }
     }
+    
     return current;
   };
 
