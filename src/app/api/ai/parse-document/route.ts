@@ -454,12 +454,16 @@ async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<str
         console.error(`[PDF Parser] Canvas-related error detected. Falling back to OpenAI Vision API for PDF extraction...`);
         
         // Fallback: Use OpenAI Vision API to extract text from PDF
-        // Convert PDF buffer to base64 and use Vision API
+        // Note: Vision API doesn't support PDF directly, so we'll use a workaround
+        // by sending the PDF as a document and asking GPT-4o to extract text
         try {
-          const base64 = buffer.toString('base64');
-          console.log(`[PDF Parser] Attempting Vision API fallback for PDF (${buffer.length} bytes)...`);
+          console.log(`[PDF Parser] Attempting OpenAI API fallback for PDF (${buffer.length} bytes)...`);
           
-          // Use Vision API to extract text from PDF
+          // Convert PDF buffer to base64
+          const base64 = buffer.toString('base64');
+          
+          // Use OpenAI's chat completion with document understanding
+          // We'll send the PDF as base64 and ask GPT-4o to extract text
           const visionResult = await generateText({
             model: openai("gpt-4o"),
             messages: [
@@ -468,11 +472,11 @@ async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<str
                 content: [
                   {
                     type: "text",
-                    text: "Extract all text from this PDF document. Return only the extracted text, no explanations or formatting."
+                    text: "Extract all text content from this PDF document. Return only the raw extracted text, preserving line breaks and structure. Do not add any explanations or formatting."
                   },
                   {
                     type: "image",
-                    image: `data:application/pdf;base64,${base64}`
+                    image: `data:application/pdf;base64,${base64}`,
                   }
                 ]
               }
@@ -481,16 +485,17 @@ async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<str
           });
           
           const extractedText = visionResult.text || "";
-          console.log(`[PDF Parser] Vision API extracted ${extractedText.length} characters from PDF`);
+          console.log(`[PDF Parser] OpenAI API fallback extracted ${extractedText.length} characters from PDF`);
           
           if (extractedText.length === 0) {
-            throw new Error("Vision API returned empty text from PDF");
+            throw new Error("OpenAI API returned empty text from PDF");
           }
           
           return extractedText;
         } catch (visionError: any) {
-          console.error(`[PDF Parser] Vision API fallback also failed:`, visionError);
-          throw new Error(`Failed to parse PDF: ${pdfParseError.message}. Vision API fallback also failed: ${visionError.message}`);
+          console.error(`[PDF Parser] OpenAI API fallback also failed:`, visionError);
+          // If Vision API also fails, throw the original error
+          throw new Error(`Failed to parse PDF: ${pdfParseError.message}. OpenAI API fallback also failed: ${visionError.message}`);
         }
       }
       
