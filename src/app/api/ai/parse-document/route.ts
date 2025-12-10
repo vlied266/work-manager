@@ -412,25 +412,39 @@ async function extractTextFromPDF(fileUrl: string, fileId?: string): Promise<str
 
     // Try to use pdf-parse if available, otherwise use a fallback
     try {
+      // Ensure polyfills are loaded before requiring pdf-parse
+      // pdf-parse is loaded dynamically to ensure polyfills are in place
+      console.log(`[PDF Parser] Loading pdf-parse module...`);
       const pdfParse = require("pdf-parse");
+      console.log(`[PDF Parser] pdf-parse module loaded successfully`);
+      
+      console.log(`[PDF Parser] Parsing PDF buffer (${buffer.length} bytes)...`);
       const pdfData = await pdfParse(buffer);
       const extractedText = pdfData.text || "";
       console.log(`[PDF Parser] Extracted ${extractedText.length} characters from PDF`);
       
       if (extractedText.length === 0) {
-        console.warn("[PDF Parser] Warning: PDF appears to be empty or image-based. Trying Vision API fallback...");
-        // For image-based PDFs, we need to convert to image first
-        // For now, throw an error to indicate the PDF is not parseable
+        console.warn("[PDF Parser] Warning: PDF appears to be empty or image-based.");
+        // For image-based PDFs, we can't extract text directly
+        // Return empty string and let AI handle it with Vision API if needed
         throw new Error("PDF appears to be image-based or empty. Cannot extract text using pdf-parse.");
       }
       
       return extractedText;
     } catch (pdfParseError: any) {
-      // Fallback: Use OpenAI Vision API to extract text from PDF
-      // Note: This is a workaround if pdf-parse is not installed or PDF is image-based
-      console.warn(`[PDF Parser] pdf-parse error: ${pdfParseError.message}. Using Vision API fallback...`);
-      // Note: Vision API requires image format, so we can't use it directly for PDF
-      // Instead, we should throw an error or use a different approach
+      console.error(`[PDF Parser] pdf-parse error details:`, {
+        message: pdfParseError.message,
+        stack: pdfParseError.stack,
+        name: pdfParseError.name,
+      });
+      
+      // Check if it's a canvas-related error
+      if (pdfParseError.message.includes('r is not a function') || 
+          pdfParseError.message.includes('@napi-rs/canvas') ||
+          pdfParseError.message.includes('canvas')) {
+        console.error(`[PDF Parser] Canvas-related error detected. This may indicate missing canvas dependencies or polyfill issues.`);
+      }
+      
       throw new Error(`Failed to parse PDF: ${pdfParseError.message}. The PDF may be image-based or corrupted.`);
     }
   } catch (error: any) {
