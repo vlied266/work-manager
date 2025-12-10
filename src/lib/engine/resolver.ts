@@ -33,7 +33,7 @@ export function resolveConfig(
   const sources: Record<string, { stepId: string; stepTitle: string; variableName: string }> = {};
 
   // Helper to find variable in logs
-  const findVariableInLogs = (variableName: string): { log: RunLog; step: AtomicStep } | null => {
+  const findVariableInLogs = (variableName: string, propertyPath?: string): { log: RunLog; step: AtomicStep } | null => {
     // Check if it's a step reference like "step_1_output" or "step_1"
     const stepMatch = variableName.match(/^step_(\d+)(_output)?$/);
     if (stepMatch) {
@@ -41,7 +41,32 @@ export function resolveConfig(
       if (stepIndex >= 0 && stepIndex < procedureSteps.length) {
         const step = procedureSteps[stepIndex];
         const log = runLogs.find((l) => l.stepId === step.id);
-        if (log) return { log, step };
+        if (log) {
+          // If a property path is specified, check if it exists in the output
+          if (propertyPath) {
+            const value = getNestedValue(log.output, propertyPath);
+            // If the value exists, return this log
+            if (value !== undefined && value !== null) {
+              return { log, step };
+            }
+            // If not found, try fallback: search backwards through previous steps
+            console.warn(`[Resolver] Property "${propertyPath}" not found in ${variableName}. Searching previous steps...`);
+            for (let i = stepIndex - 1; i >= 0; i--) {
+              const prevStep = procedureSteps[i];
+              const prevLog = runLogs.find((l) => l.stepId === prevStep.id);
+              if (prevLog) {
+                const prevValue = getNestedValue(prevLog.output, propertyPath);
+                if (prevValue !== undefined && prevValue !== null) {
+                  console.log(`[Resolver] Found "${propertyPath}" in step_${i + 1} instead of ${variableName}`);
+                  return { log: prevLog, step: prevStep };
+                }
+              }
+            }
+          } else {
+            // No property path, just return the log if it exists
+            return { log, step };
+          }
+        }
       }
     } else {
       // Try to find by outputVariableName
@@ -81,7 +106,8 @@ export function resolveConfig(
           const stepVar = nestedMatch[1]; // e.g., "step_1"
           const propertyPath = nestedMatch[3]; // e.g., "output.email"
           
-          const found = findVariableInLogs(stepVar);
+          // Pass propertyPath to findVariableInLogs for fallback search
+          const found = findVariableInLogs(stepVar, propertyPath);
           if (found) {
             let resolvedValue = found.log.output;
             
