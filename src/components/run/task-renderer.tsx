@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { AtomicStep, AtomicAction } from "@/types/schema";
+import { AtomicStep, AtomicAction, ActiveRun } from "@/types/schema";
 import { CheckCircle2, XCircle, AlertTriangle, Upload, FileText, Calendar, Hash, PenTool, Paperclip } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -10,6 +10,8 @@ import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { getContextValue, evaluateComparison } from "@/lib/engine";
 import { ResolvedConfig, getConfigSource } from "@/lib/engine/resolver";
+import { useRouter } from "next/navigation";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import { ValidateRenderer } from "./validate-renderer";
 import { AuthorizeRenderer } from "./authorize-renderer";
 import { ManualTaskRenderer } from "./manual-task-renderer";
