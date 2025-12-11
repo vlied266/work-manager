@@ -280,16 +280,19 @@ function renderActionConfigBasic(
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Recipient <span className="text-rose-500">*</span>
+              To (Recipient) <span className="text-rose-500">*</span>
             </label>
             <MagicInput
-              value={config.recipient || ""}
+              value={config.to || config.recipient || ""}
               onChange={(value) =>
-                onUpdate({ config: { ...config, recipient: value || undefined } })
+                onUpdate({ config: { ...config, to: value || undefined, recipient: value || undefined } })
               }
-              placeholder="email@example.com or {{step_1.email}}"
+              placeholder="email@example.com or {{step_1.output.email}}"
               availableVariables={availableVariables}
             />
+            <p className="mt-1 text-xs text-slate-500">
+              Use variables like <code className="bg-slate-100 px-1 rounded">{`{{step_1.output.email}}`}</code> or <code className="bg-slate-100 px-1 rounded">{`{{trigger.body.email}}`}</code>
+            </p>
           </div>
 
           <div>
@@ -301,9 +304,12 @@ function renderActionConfigBasic(
               onChange={(value) =>
                 onUpdate({ config: { ...config, subject: value || undefined } })
               }
-              placeholder="Email subject or {{step_1.title}}"
+              placeholder="Email subject or {{step_1.output.title}}"
               availableVariables={availableVariables}
             />
+            <p className="mt-1 text-xs text-slate-500">
+              Use variables like <code className="bg-slate-100 px-1 rounded">{`{{step_1.output.name}}`}</code>
+            </p>
           </div>
         </div>
       );
@@ -395,7 +401,6 @@ function renderActionConfigBasic(
       );
 
     case "APPROVAL":
-    case "MANUAL_TASK":
     case "NEGOTIATE":
     case "INSPECT":
       return (
@@ -413,6 +418,48 @@ function renderActionConfigBasic(
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
               placeholder="Enter detailed instructions..."
             />
+          </div>
+        </div>
+      );
+
+    case "MANUAL_TASK":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Task Title <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={config.title || step.title || ""}
+              onChange={(e) => {
+                const title = e.target.value;
+                onUpdate({ 
+                  title: title,
+                  config: { ...config, title: title || undefined } 
+                });
+              }}
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+              placeholder="e.g., Call the client, Inspect the machine"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Instructions <span className="text-rose-500">*</span>
+            </label>
+            <textarea
+              value={config.instruction || config.instructions || ""}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, instruction: e.target.value, instructions: e.target.value } })
+              }
+              rows={10}
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
+              placeholder="Enter detailed instructions in Markdown format...&#10;&#10;## Steps:&#10;1. First, do this...&#10;2. Then, do that...&#10;&#10;## Notes:&#10;- Important point 1&#10;- Important point 2"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Supports Markdown formatting (headers, lists, links). This will be displayed to the operator when they complete the task.
+            </p>
           </div>
         </div>
       );
@@ -526,31 +573,54 @@ function renderActionConfigSettings(
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Email Body <span className="text-rose-500">*</span>
             </label>
-            <MagicInput
-              value={config.emailBody || ""}
-              onChange={(value) =>
-                onUpdate({ config: { ...config, emailBody: value || undefined } })
+            <textarea
+              value={config.body || config.emailBody || ""}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, body: e.target.value || undefined, emailBody: e.target.value || undefined } })
               }
-              placeholder="Email body text or HTML with {{step_1.content}}"
-              availableVariables={availableVariables}
+              rows={8}
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none font-mono"
+              placeholder="Hello {{step_1.output.name}},\n\nYour request has been approved.\n\nThank you!"
             />
+            <p className="mt-1 text-xs text-slate-500">
+              Plain text or HTML. Use variables like <code className="bg-slate-100 px-1 rounded">{`{{step_1.output.name}}`}</code>. Line breaks are preserved.
+            </p>
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Attachments (Optional)
+              HTML Content (Optional)
+            </label>
+            <textarea
+              value={config.html || ""}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, html: e.target.value || undefined } })
+              }
+              rows={6}
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none font-mono"
+              placeholder="<h1>Welcome!</h1><p>Hello {{step_1.output.name}}</p>"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              If HTML is provided, it will be used instead of the body. Leave empty to use plain text body.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              From Address (Optional)
             </label>
             <input
               type="text"
-              value={config.attachments ? config.attachments.join(", ") : ""}
-              onChange={(e) => {
-                const attachments = e.target.value.split(",").map(a => a.trim()).filter(a => a);
-                onUpdate({ config: { ...config, attachments: attachments.length > 0 ? attachments : undefined } });
-              }}
+              value={config.from || ""}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, from: e.target.value || undefined } })
+              }
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-              placeholder="URL1, URL2 or {{step_1.fileUrl}}"
+              placeholder="Sender Name <sender@example.com>"
             />
-            <p className="mt-1 text-xs text-slate-500">Comma-separated file URLs or variables</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Default: Atomic Work &lt;alerts@theatomicwork.com&gt;
+            </p>
           </div>
         </div>
       );

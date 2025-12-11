@@ -48,7 +48,7 @@ export function TriggerConfigModal({
   useEffect(() => {
     if (triggerType === "WEBHOOK" && procedure?.id && !procedure.id.startsWith("temp-")) {
       const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-      const generatedUrl = `${baseUrl}/api/runs/trigger?procedureId=${procedure.id}`;
+      const generatedUrl = `${baseUrl}/api/webhooks/${procedure.id}`;
       setWebhookUrl(generatedUrl);
       
       // Generate a random secret if not already set
