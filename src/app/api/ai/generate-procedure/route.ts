@@ -158,7 +158,16 @@ If the user wants to SAVE/STORE data into a specific table/collection (e.g., "Sa
 
 2. If yes, generate a step with action: "DB_INSERT".
 
-3. In the \`config\` object, you MUST include:
+3. **CRITICAL RULE FOR FIELD NAMING:**
+   - You MUST STRICTLY use "snake_case" (lowercase with underscores) for all keys in the \`data\` object.
+   - NEVER use camelCase or PascalCase.
+   - Examples:
+     * User asks for "Start Date" → You MUST use key: "start_date"
+     * User asks for "Payment Terms" → You MUST use key: "payment_terms"
+     * User asks for "Contract Number" → You MUST use key: "contract_number"
+   - This applies to ALL keys in the \`data\` object, including those referencing previous step outputs.
+
+4. In the \`config\` object, you MUST include:
 
    {
      "collectionName": "Deals",  // Exact name from Available Tables
@@ -206,15 +215,25 @@ If the user wants to EXTRACT/READ/PARSE data from a file (PDF, Excel, Image), us
 
    {
      "fileUrl": "{{step_1.output.fileUrl}}",  // URL or path to the file (use variable from previous step)
-     "fieldsToExtract": ["invoiceDate", "amount", "vendor", "invoiceNumber"],  // List of field names to extract
+     "fieldsToExtract": ["invoice_date", "amount", "vendor", "invoice_number"],  // List of field names to extract
      "fileType": "pdf"  // Optional: "pdf", "excel", or "image" (auto-detected if not provided)
    }
 
-3. **Field Extraction:**
+3. **CRITICAL RULE FOR FIELD NAMING:**
+   - You MUST STRICTLY use "snake_case" (lowercase with underscores) for all field names in "fieldsToExtract" array.
+   - NEVER use camelCase or PascalCase.
+   - Examples:
+     * User asks for "Start Date" → You MUST use: "start_date"
+     * User asks for "Payment Terms" → You MUST use: "payment_terms"
+     * User asks for "Contract Number" → You MUST use: "contract_number"
+     * User asks for "Invoice Date" → You MUST use: "invoice_date"
+     * User asks for "Total Amount" → You MUST use: "total_amount"
+
+4. **Field Extraction:**
    - The "fieldsToExtract" array should contain meaningful field names based on what the user wants to extract.
    - Examples:
-     * Invoice: ["invoiceDate", "amount", "vendor", "invoiceNumber", "dueDate"]
-     * Contract: ["contractDate", "parties", "expiryDate", "terms"]
+     * Invoice: ["invoice_date", "amount", "vendor", "invoice_number", "due_date"]
+     * Contract: ["contract_date", "parties", "expiry_date", "terms"]
      * Receipt: ["date", "total", "merchant", "items"]
 
 4. **File URL Source:**
@@ -223,10 +242,10 @@ If the user wants to EXTRACT/READ/PARSE data from a file (PDF, Excel, Image), us
 
 5. **Examples:**
    - User says: "Read the invoice and extract date, amount, and vendor"
-     → action: "AI_PARSE", config: { fileUrl: "{{step_1.output.fileUrl}}", fieldsToExtract: ["invoiceDate", "amount", "vendor"] }
+     → action: "AI_PARSE", config: { fileUrl: "{{step_1.output.fileUrl}}", fieldsToExtract: ["invoice_date", "amount", "vendor"] }
    
    - User says: "Parse the contract PDF"
-     → action: "AI_PARSE", config: { fileUrl: "{{step_1.output.fileUrl}}", fieldsToExtract: ["contractDate", "parties", "expiryDate"], fileType: "pdf" }
+     → action: "AI_PARSE", config: { fileUrl: "{{step_1.output.fileUrl}}", fieldsToExtract: ["contract_date", "parties", "expiry_date"], fileType: "pdf" }
    
    - User says: "Extract data from the uploaded Excel file"
      → action: "AI_PARSE", config: { fileUrl: "{{step_1.output.fileUrl}}", fieldsToExtract: ["name", "email", "amount"], fileType: "excel" }
@@ -663,10 +682,10 @@ These rules ensure precise variable mapping and data flow between steps.
      \`\`\`
 
    * **Inference Guidelines:**
-     * If user says "save invoice number", use key "invoiceNumber" or "invoice_number".
-     * If user says "store customer name", use key "customerName" or "customer_name".
+     * If user says "save invoice number", use key "invoice_number" (snake_case).
+     * If user says "store customer name", use key "customer_name" (snake_case).
      * If collection schema is provided, match the field keys from the schema.
-     * Use camelCase or snake_case consistently (prefer camelCase).
+     * ALWAYS use snake_case (lowercase with underscores). NEVER use camelCase or PascalCase.
 
 4. **STEP OUTPUT VARIABLE NAMES:**
 
