@@ -31,23 +31,33 @@ export function ManualTaskRenderer({
   const { organizationId, userProfile } = useOrganization();
   const [completing, setCompleting] = useState(false);
 
-  const stepConfig = step.config || {};
-  const instructions = stepConfig.instruction || stepConfig.instructions || step.description || "";
-  const taskTitle = step.title || "Manual Task";
+  const stepConfig = step?.config || {};
+  // Safely extract instructions, ensuring it's always a string
+  const instructionsRaw = stepConfig?.instruction || stepConfig?.instructions || step?.description || "";
+  const instructions = typeof instructionsRaw === "string" ? instructionsRaw : String(instructionsRaw || "");
+  
+  // Safely extract task title, ensuring it's always a string
+  const taskTitleRaw = step?.title || stepConfig?.title || "Manual Task";
+  const taskTitle = typeof taskTitleRaw === "string" ? taskTitleRaw : String(taskTitleRaw || "Manual Task");
 
   const handleMarkComplete = async () => {
     // If run is in WAITING_FOR_USER status, use resume API
     if (run?.status === "WAITING_FOR_USER" && runId && organizationId && userProfile?.uid) {
       setCompleting(true);
       try {
+        // Safely prepare output - ensure it's an object
+        const safeOutput = output && typeof output === "object" && !Array.isArray(output)
+          ? output
+          : { completed: true, completedAt: new Date().toISOString() };
+        
         const resumeResponse = await fetch("/api/runs/resume", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             runId,
-            stepId: step.id,
+            stepId: step?.id || "",
             outcome: "SUCCESS",
-            output: output || { completed: true, completedAt: new Date().toISOString() },
+            output: safeOutput,
             orgId: organizationId,
             userId: userProfile.uid,
           }),
@@ -77,7 +87,11 @@ export function ManualTaskRenderer({
     }
 
     // Fallback to original handleCompleteStep for non-WAITING_FOR_USER scenarios
-    setOutput({ ...output, completed: true, completedAt: new Date().toISOString() });
+    // Safely merge output - ensure it's an object before spreading
+    const safeOutput = output && typeof output === "object" && !Array.isArray(output)
+      ? { ...output, completed: true, completedAt: new Date().toISOString() }
+      : { completed: true, completedAt: new Date().toISOString() };
+    setOutput(safeOutput);
     handleCompleteStep("SUCCESS");
   };
 
@@ -95,7 +109,7 @@ export function ManualTaskRenderer({
           </div>
           <div className="flex-1">
             <h3 className="text-xl font-bold text-slate-900 mb-2 tracking-tight">{taskTitle}</h3>
-            {step.description && (
+            {step?.description && typeof step.description === "string" && (
               <p className="text-sm text-slate-600 font-medium">{step.description}</p>
             )}
           </div>
@@ -139,12 +153,22 @@ export function ManualTaskRenderer({
                     className="text-blue-600 hover:text-blue-700 underline font-medium"
                     target="_blank"
                     rel="noopener noreferrer"
-                    {...props}
-                  />
+                    {...props} />
                 ),
-                code: ({ node, ...props }) => (
-                  <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono text-slate-800" {...props} />
-                ),
+                code: ({ node, inline, className, children, ...props }) => {
+                  const match = /language-(\w+)/.exec(className || '');
+                  return !inline && match ? (
+                    <pre className="bg-slate-100 rounded-lg p-3 text-sm overflow-x-auto my-2">
+                      <code className={`language-${match[1]}`} {...props}>
+                        {children}
+                      </code>
+                    </pre>
+                  ) : (
+                    <code className="bg-slate-100 rounded-md px-1 py-0.5 text-sm font-mono" {...props}>
+                      {children}
+                    </code>
+                  );
+                },
                 pre: ({ node, ...props }) => (
                   <pre className="bg-slate-100 p-3 rounded-lg overflow-x-auto mb-3 text-xs font-mono text-slate-800" {...props} />
                 ),
@@ -159,7 +183,7 @@ export function ManualTaskRenderer({
                 ),
               }}
             >
-              {instructions}
+              {instructions || ""}
             </ReactMarkdown>
           </div>
         </div>
