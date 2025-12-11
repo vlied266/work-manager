@@ -193,9 +193,28 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
     : null;
 
   // Resolve config variables at runtime
-  const resolvedConfig: ResolvedConfig | null = currentStep && run && procedure
-    ? resolveConfig(currentStep.config, run.logs || [], procedure.steps, run.triggerContext)
+  // Only resolve if run is fully loaded and has necessary data
+  const resolvedConfig: ResolvedConfig | null = currentStep && run && procedure && run.logs
+    ? resolveConfig(
+        currentStep.config, 
+        run.logs || [], 
+        procedure.steps, 
+        run.triggerContext || undefined // Explicitly pass undefined if triggerContext is missing
+      )
     : null;
+  
+  // Debug: Log triggerContext availability
+  useEffect(() => {
+    if (run) {
+      console.log("[Run Page] Run object loaded:", {
+        hasTriggerContext: !!run.triggerContext,
+        triggerContextKeys: run.triggerContext ? Object.keys(run.triggerContext) : [],
+        triggerContextType: typeof run.triggerContext,
+        logsCount: run.logs?.length || 0,
+        currentStepIndex: run.currentStepIndex,
+      });
+    }
+  }, [run?.triggerContext, run?.logs]);
 
   const resolvedStep: AtomicStep | null = currentStep && resolvedConfig
     ? {
