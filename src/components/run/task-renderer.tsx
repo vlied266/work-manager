@@ -649,6 +649,10 @@ function InputDataRenderer({
   handleCompleteStep?: (outcome: "SUCCESS" | "FAILURE" | "FLAGGED", autoFlagged?: boolean) => void;
   submitting?: boolean;
 }) {
+  const router = useRouter();
+  const { organizationId, userProfile } = useOrganization();
+  const [resuming, setResuming] = useState(false);
+  
   const stepConfig = step.config || {};
   const inputType = stepConfig.inputType || "text";
   const placeholder = stepConfig.placeholder || `Enter ${inputType}`;
