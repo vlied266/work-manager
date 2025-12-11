@@ -8,16 +8,26 @@ import { AlertRule, Notification } from "@/types/alerts";
  */
 function evaluateCondition(condition: string, record: any): boolean {
   try {
-    // Create a safe context for evaluation
-    // Replace 'record' with actual record data
-    const context = {
-      record: record,
-    };
+    // Ensure condition is a string
+    if (typeof condition !== 'string' || !condition.trim()) {
+      return false;
+    }
 
-    // Use Function constructor for safer evaluation (still needs validation in production)
-    // In production, you might want to use a proper expression parser
+    // Basic validation: only allow safe characters (prevent code injection)
+    // Allow: letters, numbers, spaces, operators, dots, underscores, parentheses, quotes
+    const safePattern = /^[a-zA-Z0-9\s\._<>=\-+*\/()'"&|!]+$/;
+    if (!safePattern.test(condition)) {
+      console.error(`[Alert Check] Unsafe condition detected: ${condition}`);
+      return false;
+    }
+
+    // Use Function constructor for evaluation
+    // The condition should reference 'record' as the variable name
     const func = new Function('record', `return ${condition}`);
-    return func(record) === true;
+    const result = func(record);
+    
+    // Return true only if result is explicitly true
+    return result === true;
   } catch (error) {
     console.error(`[Alert Check] Error evaluating condition "${condition}":`, error);
     return false;
