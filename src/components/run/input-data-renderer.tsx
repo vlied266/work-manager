@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AtomicStep, ActiveRun } from "@/types/schema";
-import { CheckCircle2, Loader2, Hash, Calendar, FileText } from "lucide-react";
+import { CheckCircle2, Loader2, Hash, Calendar, FileText, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useOrganization } from "@/contexts/OrganizationContext";
@@ -35,8 +35,34 @@ export function InputDataRenderer({
   
   const stepConfig = step.config || {};
   const inputType = stepConfig.inputType || "text";
-  const placeholder = stepConfig.placeholder || `Enter ${inputType}`;
+  const placeholder = stepConfig.placeholder || (inputType === "select" ? "Select an option" : `Enter ${inputType}`);
   const fieldLabel = stepConfig.fieldLabel || "Input";
+  
+  // Parse options for select type - handle both array format and comma-separated string
+  const parseOptions = (): Array<{ label: string; value: string }> => {
+    const optionsRaw = stepConfig.options;
+    if (!optionsRaw) return [];
+    
+    // If it's already an array of objects
+    if (Array.isArray(optionsRaw)) {
+      return optionsRaw.map(opt => {
+        if (typeof opt === "string") {
+          return { label: opt, value: opt };
+        }
+        return { label: opt.label || opt.value || "", value: opt.value || opt.label || "" };
+      });
+    }
+    
+    // If it's a string (comma-separated or newline-separated)
+    if (typeof optionsRaw === "string") {
+      const optionStrings = optionsRaw.split(/[,\n]/).map(s => s.trim()).filter(s => s);
+      return optionStrings.map(opt => ({ label: opt, value: opt }));
+    }
+    
+    return [];
+  };
+  
+  const selectOptions = inputType === "select" ? parseOptions() : [];
 
   // Handle table input type
   if (inputType === "table") {
@@ -64,8 +90,14 @@ export function InputDataRenderer({
     setOutput(value);
 
     // Real-time validation
-    if (stepConfig.required && !value.trim()) {
+    if (stepConfig.required && !value.trim() && inputType !== "select") {
       setValidationError("This field is required");
+      return;
+    }
+    
+    // For select, check if a valid option is selected
+    if (inputType === "select" && stepConfig.required && !value) {
+      setValidationError("Please select an option");
       return;
     }
 
@@ -103,7 +135,12 @@ export function InputDataRenderer({
 
   const handleSubmit = async () => {
     // Validate required field
-    if (stepConfig.required && (!output || (typeof output === "string" && !output.trim()))) {
+    if (inputType === "select") {
+      if (stepConfig.required && !output) {
+        setValidationError("Please select an option");
+        return;
+      }
+    } else if (stepConfig.required && (!output || (typeof output === "string" && !output.trim()))) {
       setValidationError("This field is required");
       return;
     }
@@ -210,13 +247,18 @@ export function InputDataRenderer({
         return <Hash className="h-5 w-5 text-slate-400" />;
       case "date":
         return <Calendar className="h-5 w-5 text-slate-400" />;
+      case "select":
+        return <ChevronDown className="h-5 w-5 text-slate-400" />;
       default:
         return <FileText className="h-5 w-5 text-slate-400" />;
     }
   };
 
   const isSubmitting = submitting || resuming;
-  const canSubmit = !isSubmitting && (!stepConfig.required || (output && (typeof output !== "string" || output.trim())));
+  const canSubmit = !isSubmitting && (
+    !stepConfig.required || 
+    (inputType === "select" ? output : (output && (typeof output !== "string" || output.trim())))
+  );
 
   return (
     <div className="space-y-6">
@@ -242,6 +284,23 @@ export function InputDataRenderer({
               disabled={isSubmitting}
               className="w-full rounded-2xl border-2 border-slate-200 bg-white pl-14 pr-6 py-5 text-base font-semibold text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             />
+          ) : inputType === "select" ? (
+            <select
+              value={output || ""}
+              onChange={(e) => handleChange(e.target.value)}
+              required={stepConfig.required}
+              disabled={isSubmitting}
+              className="w-full rounded-2xl border-2 border-slate-200 bg-white pl-14 pr-12 py-5 text-base font-semibold text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed appearance-none cursor-pointer"
+            >
+              <option value="" disabled>
+                {placeholder}
+              </option>
+              {selectOptions.map((option, index) => (
+                <option key={index} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           ) : (
             <input
               type={inputType === "number" ? "number" : inputType === "email" ? "email" : "text"}
