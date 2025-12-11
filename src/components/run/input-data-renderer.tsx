@@ -181,21 +181,29 @@ export function InputDataRenderer({
       try {
         // Prepare output data - ensure it's an object for proper variable resolution
         // Use fieldLabel as key if available, otherwise use "value"
+        // Also check if there's a specific outputVariableName configured
         const fieldKey = stepConfig.fieldLabel 
           ? stepConfig.fieldLabel.toLowerCase().replace(/\s+/g, "_") 
-          : "value";
+          : (stepConfig.outputVariableName || "value");
         
         let outputData: any;
         if (typeof output === "string" || typeof output === "number" || typeof output === "boolean") {
           // Simple value - wrap in object with field key
           outputData = { [fieldKey]: output };
         } else if (output && typeof output === "object") {
-          // Already an object - use as is
+          // Already an object - use as is, but ensure it has the expected structure
           outputData = output;
         } else {
           // Fallback to empty object
           outputData = {};
         }
+        
+        console.log("[InputDataRenderer] Preparing output data:", {
+          rawOutput: output,
+          fieldKey,
+          outputData,
+          outputType: typeof output,
+        });
 
         const resumeResponse = await fetch("/api/runs/resume", {
           method: "POST",
