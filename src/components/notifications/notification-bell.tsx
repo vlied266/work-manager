@@ -24,7 +24,8 @@ export function NotificationBell({ userId }: NotificationBellProps) {
   useEffect(() => {
     if (!userId) return;
 
-    const allNotifications: CombinedNotification[] = [];
+    let schemaNotifications: CombinedNotification[] = [];
+    let alertNotifications: CombinedNotification[] = [];
 
     const processSchemaNotification = (doc: any) => {
       const data = doc.data();
@@ -90,7 +91,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     };
 
     const updateNotifications = () => {
-      const combined: CombinedNotification[] = [...allNotifications];
+      const combined: CombinedNotification[] = [...schemaNotifications, ...alertNotifications];
       
       // Sort by createdAt descending (newest first) and limit to 20
       const sorted = combined
@@ -108,21 +109,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     const schemaUnsubscribe = onSnapshot(
       query(collection(db, "notifications"), where("recipientId", "==", userId)),
       (snapshot) => {
-        // Clear existing schema notifications
-        const schemaIndices: number[] = [];
-        allNotifications.forEach((n, idx) => {
-          if (!('collectionName' in n) || !n.collectionName) {
-            schemaIndices.push(idx);
-          }
-        });
-        // Remove in reverse order to maintain indices
-        schemaIndices.reverse().forEach(idx => allNotifications.splice(idx, 1));
-        
-        // Add new schema notifications
-        snapshot.docs.forEach((doc) => {
-          allNotifications.push(processSchemaNotification(doc));
-        });
-        
+        schemaNotifications = snapshot.docs.map(processSchemaNotification);
         updateNotifications();
       },
       (error) => console.error("Error in schema notifications listener:", error)
@@ -137,21 +124,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
             where("read", "==", false)
           ),
           (snapshot) => {
-            // Clear existing alert notifications
-            const alertIndices: number[] = [];
-            allNotifications.forEach((n, idx) => {
-              if ('collectionName' in n && n.collectionName) {
-                alertIndices.push(idx);
-              }
-            });
-            // Remove in reverse order to maintain indices
-            alertIndices.reverse().forEach(idx => allNotifications.splice(idx, 1));
-            
-            // Add new alert notifications
-            snapshot.docs.forEach((doc) => {
-              allNotifications.push(processAlertNotification(doc));
-            });
-            
+            alertNotifications = snapshot.docs.map(processAlertNotification);
             updateNotifications();
           },
           (error) => console.error("Error in alert notifications listener:", error)
