@@ -572,6 +572,7 @@ async function updateCollectionDashboardLayout(
 
 /**
  * Helper function to create an alert rule
+ * Uses AI to convert natural language condition descriptions to JavaScript conditions
  */
 async function createAlertRule(
   orgId: string,
@@ -582,42 +583,108 @@ async function createAlertRule(
   const adminDb = getAdminDb();
   const now = Timestamp.now();
 
-  // Use AI to convert natural language description to JavaScript condition
-  // For now, we'll do a simple conversion. In production, you might want to use AI here too.
-  // Example: "amount is over 5k" -> "record.total_amount > 5000"
-  
-  // Simple pattern matching for common conditions
+  // Fetch collection to get field names for better condition generation
+  let collectionFields: string[] = [];
+  try {
+    const collectionsSnapshot = await adminDb
+      .collection("collections")
+      .where("orgId", "==", orgId)
+      .where("name", "==", collectionName)
+      .limit(1)
+      .get();
+    
+    if (!collectionsSnapshot.empty) {
+      const collectionData = collectionsSnapshot.docs[0].data();
+      collectionFields = (collectionData.fields || []).map((f: any) => f.key);
+    }
+  } catch (error) {
+    console.warn(`[AI Generator] Could not fetch collection fields for "${collectionName}":`, error);
+  }
+
+  // Use AI to convert natural language to JavaScript condition
   let condition = "";
-  const lowerDesc = conditionDescription.toLowerCase();
-  
-  // Pattern: "amount is over X" or "amount > X"
-  const overMatch = lowerDesc.match(/(?:amount|total|value|price|cost).*(?:over|greater|more than|above)\s*(\d+[k]?)/i);
-  if (overMatch) {
-    const value = overMatch[1].replace('k', '000');
-    condition = `record.total_amount > ${value}`;
-  }
-  // Pattern: "amount is under X" or "amount < X"
-  else if (lowerDesc.match(/(?:amount|total|value|price|cost).*(?:under|less than|below)\s*(\d+[k]?)/i)) {
-    const underMatch = lowerDesc.match(/(?:amount|total|value|price|cost).*(?:under|less than|below)\s*(\d+[k]?)/i);
-    if (underMatch) {
-      const value = underMatch[1].replace('k', '000');
-      condition = `record.total_amount < ${value}`;
+  try {
+    const openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    const fieldsContext = collectionFields.length > 0 
+      ? `Available fields in this collection: ${collectionFields.join(", ")}`
+      : "No field information available. Use common field names like 'total_amount', 'amount', 'status', etc.";
+
+    const aiResponse = await openaiClient.chat.completions.create({
+      model: "gpt-4o-mini", // Use cheaper model for simple parsing
+      messages: [
+        {
+          role: "system",
+          content: `You are a condition parser. Convert natural language descriptions into JavaScript-like conditions that evaluate against a 'record' object.
+
+${fieldsContext}
+
+Rules:
+- The condition must reference 'record' as the variable (e.g., "record.total_amount > 5000")
+- Use snake_case for field names (e.g., "total_amount", "invoice_date", "status")
+- Support operators: >, <, >=, <=, ===, !==
+- For string comparisons, use === with quotes (e.g., record.status === 'expired')
+- For numeric comparisons, use numbers directly (e.g., record.amount > 5000)
+- Return ONLY the condition expression, nothing else
+
+Examples:
+- "amount is over 5000" -> "record.total_amount > 5000"
+- "status equals expired" -> "record.status === 'expired'"
+- "total is greater than 10000" -> "record.total_amount > 10000"
+- "value is under 100" -> "record.total_amount < 100"`,
+        },
+        {
+          role: "user",
+          content: `Convert this condition description to a JavaScript condition: "${conditionDescription}"`,
+        },
+      ],
+      temperature: 0.3,
+      max_tokens: 100,
+    });
+
+    condition = aiResponse.choices[0]?.message?.content?.trim() || "";
+    
+    // Validate the condition
+    if (!condition || !condition.includes("record.")) {
+      throw new Error("AI did not generate a valid condition");
     }
-  }
-  // Pattern: "status is X" or "status == X"
-  else if (lowerDesc.match(/status.*(?:is|equals?|==)\s*['"]?(\w+)['"]?/i)) {
-    const statusMatch = lowerDesc.match(/status.*(?:is|equals?|==)\s*['"]?(\w+)['"]?/i);
-    if (statusMatch) {
-      const status = statusMatch[1];
-      condition = `record.status === '${status}'`;
+
+    console.log(`[AI Generator] AI-generated condition: "${condition}"`);
+  } catch (error) {
+    console.error(`[AI Generator] Error using AI to parse condition, using fallback:`, error);
+    
+    // Fallback: Simple pattern matching
+    const lowerDesc = conditionDescription.toLowerCase();
+    
+    // Pattern: "amount is over X" or "amount > X"
+    const overMatch = lowerDesc.match(/(?:amount|total|value|price|cost).*(?:over|greater|more than|above)\s*(\d+[k]?)/i);
+    if (overMatch) {
+      const value = overMatch[1].replace('k', '000');
+      condition = `record.total_amount > ${value}`;
     }
-  }
-  // Default: try to extract field and operator
-  else {
-    // Fallback: create a simple condition based on description
-    // This is a basic implementation - in production, use AI to parse this better
-    condition = `record.total_amount > 0`; // Default fallback
-    console.warn(`[AI Generator] Could not parse condition from: "${conditionDescription}". Using fallback.`);
+    // Pattern: "amount is under X" or "amount < X"
+    else if (lowerDesc.match(/(?:amount|total|value|price|cost).*(?:under|less than|below)\s*(\d+[k]?)/i)) {
+      const underMatch = lowerDesc.match(/(?:amount|total|value|price|cost).*(?:under|less than|below)\s*(\d+[k]?)/i);
+      if (underMatch) {
+        const value = underMatch[1].replace('k', '000');
+        condition = `record.total_amount < ${value}`;
+      }
+    }
+    // Pattern: "status is X" or "status == X"
+    else if (lowerDesc.match(/status.*(?:is|equals?|==)\s*['"]?(\w+)['"]?/i)) {
+      const statusMatch = lowerDesc.match(/status.*(?:is|equals?|==)\s*['"]?(\w+)['"]?/i);
+      if (statusMatch) {
+        const status = statusMatch[1];
+        condition = `record.status === '${status}'`;
+      }
+    }
+    // Default fallback
+    else {
+      condition = `record.total_amount > 0`; // Default fallback
+      console.warn(`[AI Generator] Could not parse condition from: "${conditionDescription}". Using fallback.`);
+    }
   }
 
   // Generate message template if not provided
@@ -636,7 +703,7 @@ async function createAlertRule(
 
   const docRef = await adminDb.collection("_alerts").add(alertRule);
 
-  console.log(`[AI Generator] Alert rule created: ${docRef.id} for collection "${collectionName}"`);
+  console.log(`[AI Generator] Alert rule created: ${docRef.id} for collection "${collectionName}" with condition: "${condition}"`);
 
   return {
     id: docRef.id,
