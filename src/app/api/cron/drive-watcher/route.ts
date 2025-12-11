@@ -94,6 +94,32 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // CRITICAL: Also fetch ALL procedures (including inactive/unpublished) for lastPolledAt updates
+    // This ensures that even if a workflow is temporarily inactive, we still update its lastPolledAt
+    // when we check its folder, so the UI shows "Checked X ago" instead of "Never checked"
+    const allProceduresSnapshot = await db
+      .collection("procedures")
+      .where("trigger.type", "==", "ON_FILE_CREATED")
+      .get();
+    
+    const allProcedures = allProceduresSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as any[];
+
+    // Create a map of all procedures by folder for lastPolledAt updates
+    const allProceduresByFolder = new Map<string, any[]>();
+    for (const proc of allProcedures) {
+      const folderPath = proc.trigger?.config?.folderPath;
+      if (folderPath) {
+        const key = `${proc.organizationId}:${folderPath}`;
+        if (!allProceduresByFolder.has(key)) {
+          allProceduresByFolder.set(key, []);
+        }
+        allProceduresByFolder.get(key)!.push(proc);
+      }
+    }
+
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://theatomicwork.com";
     const runsCreated: string[] = [];
     const errors: string[] = [];
@@ -308,13 +334,15 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Update lastPolledAt for all procedures watching this folder
-        for (const proc of procs) {
+        // Update lastPolledAt for ALL procedures watching this folder (including inactive/unpublished)
+        // This ensures UI shows "Checked X ago" for all workflows, not just active ones
+        const allProcsForFolder = allProceduresByFolder.get(key) || [];
+        for (const proc of allProcsForFolder) {
           try {
             await db.collection("procedures").doc(proc.id).update({
               lastPolledAt: Timestamp.now(),
             });
-            console.log(`[Cron] Updated lastPolledAt for procedure ${proc.id}`);
+            console.log(`[Cron] Updated lastPolledAt for procedure ${proc.id} (${proc.title || 'unnamed'})`);
           } catch (err) {
             console.error(`Error updating lastPolledAt for procedure ${proc.id}:`, err);
             errors.push(`Error updating lastPolledAt for procedure ${proc.id}: ${err}`);
@@ -331,12 +359,14 @@ export async function GET(request: NextRequest) {
         errors.push(`Error processing folder ${folderPath}: ${err.message}`);
         
         // Still update lastPolledAt even if there was an error (so UI shows it was checked)
-        for (const proc of procs) {
+        // Update ALL procedures for this folder, not just active ones
+        const allProcsForFolder = allProceduresByFolder.get(key) || [];
+        for (const proc of allProcsForFolder) {
           try {
             await db.collection("procedures").doc(proc.id).update({
               lastPolledAt: Timestamp.now(),
             });
-            console.log(`[Cron] Updated lastPolledAt for procedure ${proc.id} (after error)`);
+            console.log(`[Cron] Updated lastPolledAt for procedure ${proc.id} (${proc.title || 'unnamed'}) (after error)`);
           } catch (updateErr: any) {
             console.error(`Error updating lastPolledAt for procedure ${proc.id}:`, updateErr);
             errors.push(`Error updating lastPolledAt for procedure ${proc.id}: ${updateErr.message}`);
