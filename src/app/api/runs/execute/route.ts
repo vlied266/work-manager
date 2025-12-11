@@ -302,7 +302,8 @@ export async function POST(req: NextRequest) {
             const resolvedConfig = resolveConfig(
               currentStep.config,
               run.logs || [],
-              procedure.steps
+              procedure.steps,
+              run.triggerContext // Pass trigger context for webhook/file triggers
             );
             
             // Handle TRIGGER_EVENT fileSourceStepId
@@ -567,7 +568,8 @@ export async function POST(req: NextRequest) {
             const resolvedData = resolveConfig(
               currentStep.config.data || {},
               run.logs || [],
-              procedure.steps
+              procedure.steps,
+              run.triggerContext // Pass trigger context for webhook/file triggers
             );
             
             console.log(`[DB_INSERT] Resolved data:`, resolvedData);
@@ -675,7 +677,8 @@ export async function POST(req: NextRequest) {
               const resolvedData = resolveConfig(
                 currentStep.config.dataMapping || currentStep.config.data || {},
                 run.logs || [],
-                procedure.steps
+                procedure.steps,
+                run.triggerContext // Pass trigger context for webhook/file triggers
               );
 
               // Remove _sources metadata if present

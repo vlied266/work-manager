@@ -18,12 +18,14 @@ export interface ResolvedConfig {
  * @param rawConfig - The raw config object with variable placeholders
  * @param runLogs - Array of completed step logs
  * @param procedureSteps - All steps in the procedure (for step index lookup)
+ * @param triggerContext - Optional trigger context (for webhook/file triggers) accessible via {{trigger.body.field}} or {{trigger.headers.header}}
  * @returns Resolved config with actual values and source metadata
  */
 export function resolveConfig(
   rawConfig: any,
   runLogs: RunLog[],
-  procedureSteps: AtomicStep[]
+  procedureSteps: AtomicStep[],
+  triggerContext?: any
 ): ResolvedConfig {
   if (!rawConfig || typeof rawConfig !== "object") {
     return rawConfig;
