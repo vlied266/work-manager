@@ -298,12 +298,12 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
           </div>
 
           {/* Split Screen Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-200px)]">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-100px)]">
             {/* Left Column: Document Viewer */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="lg:sticky lg:top-8"
+              className="h-full"
             >
               <DocumentViewer fileUrl={fileUrl} fileName={fileName} />
             </motion.div>
@@ -312,18 +312,10 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col"
+              className="h-full overflow-hidden flex flex-col bg-white rounded-lg shadow"
             >
-              {/* Form Header */}
-              <div className="p-6 border-b border-slate-200 bg-slate-50">
-                <h2 className="text-lg font-bold text-slate-900">Record Data</h2>
-                <p className="text-sm text-slate-600 mt-1">
-                  Verify and edit the extracted information
-                </p>
-              </div>
-
               {/* Scrollable Form Content */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="overflow-y-auto h-full p-4 space-y-6">
                 {collection.fields.map((field) => (
                   <div key={field.key}>
                     <label className="block text-sm font-semibold text-slate-900 mb-2">
@@ -334,8 +326,8 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
                 ))}
               </div>
 
-              {/* Form Footer */}
-              <div className="p-6 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+              {/* Form Footer - Fixed at bottom */}
+              <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3 flex-shrink-0">
                 <button
                   onClick={() => router.push(`/data/${collectionId}`)}
                   className="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors"
