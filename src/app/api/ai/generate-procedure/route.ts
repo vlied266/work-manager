@@ -1506,6 +1506,48 @@ Example: For a collection with fields ["invoice_date", "total_amount", "vendor",
                 }),
               });
             }
+          } else if (toolCall.function.name === "create_alert_rule") {
+            try {
+              const args = JSON.parse(toolCall.function.arguments);
+              console.log("[AI Generator] Creating alert rule for collection:", args.collection_name);
+
+              if (!trimmedOrgId) {
+                throw new Error("Organization ID is required to create alert rules");
+              }
+
+              const alertRule = await createAlertRule(
+                trimmedOrgId,
+                args.collection_name,
+                args.condition_description,
+                args.message_template,
+                args.action || 'in_app' // Use provided action or default to 'in_app'
+              );
+
+              console.log("[AI Generator] Alert rule created:", alertRule.id);
+
+              // Add tool result to messages
+              messages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                content: JSON.stringify({
+                  success: true,
+                  alertRuleId: alertRule.id,
+                  collectionName: alertRule.collectionName,
+                  condition: alertRule.condition,
+                  message: alertRule.message,
+                }),
+              });
+            } catch (error: any) {
+              console.error("[AI Generator] Error creating alert rule:", error);
+              messages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                content: JSON.stringify({
+                  success: false,
+                  error: error.message || "Failed to create alert rule",
+                }),
+              });
+            }
           }
         }
         // Continue loop to generate workflow after tool execution
