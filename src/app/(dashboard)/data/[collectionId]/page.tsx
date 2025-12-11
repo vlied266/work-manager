@@ -12,7 +12,11 @@ import {
   Save,
   Loader2,
   Database,
+  Download,
+  Search,
 } from "lucide-react";
+import Papa from "papaparse";
+import { useMemo } from "react";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { Collection, CollectionField } from "@/app/api/data/collections/route";
 import { Record } from "@/app/api/data/records/route";
@@ -34,6 +38,7 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
   const [editingRecord, setEditingRecord] = useState<Record | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (!collectionId || !organizationId) return;
@@ -268,6 +273,79 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
     }
   };
 
+  // System fields to exclude from CSV export
+  const systemFields = ["_id", "userId", "file_url", "dashboardLayout", "id", "createdAt", "updatedAt"];
+
+  // Filter records based on search query
+  const filteredRecords = useMemo(() => {
+    if (!searchQuery.trim()) return records;
+
+    const query = searchQuery.toLowerCase();
+    return records.filter((record) => {
+      // Search across all text fields in the record data
+      return Object.values(record.data).some((value) => {
+        if (value === null || value === undefined) return false;
+        return String(value).toLowerCase().includes(query);
+      });
+    });
+  }, [records, searchQuery]);
+
+  // Export to CSV function
+  const handleExportCSV = () => {
+    if (!collection || filteredRecords.length === 0) {
+      alert("No data to export");
+      return;
+    }
+
+    // Get business fields only (exclude system fields)
+    const businessFields = collection.fields.filter(
+      (field) => !systemFields.includes(field.key)
+    );
+
+    // Prepare data for CSV
+    const csvData = filteredRecords.map((record) => {
+      const row: Record<string, any> = {};
+      businessFields.forEach((field) => {
+        const value = record.data[field.key];
+        // Format values for CSV
+        if (value === null || value === undefined) {
+          row[field.label] = "";
+        } else if (field.type === "boolean") {
+          row[field.label] = value ? "Yes" : "No";
+        } else if (field.type === "date") {
+          row[field.label] = new Date(value).toLocaleDateString();
+        } else if (field.type === "number") {
+          row[field.label] = value;
+        } else {
+          row[field.label] = String(value);
+        }
+      });
+      return row;
+    });
+
+    // Convert to CSV
+    const csv = Papa.unparse(csvData, {
+      header: true,
+      delimiter: ",",
+    });
+
+    // Create download link
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    
+    // Generate filename with collection name and date
+    const date = new Date().toISOString().split("T")[0];
+    const filename = `${collection.name.replace(/\s+/g, "_")}_export_${date}.csv`;
+    link.setAttribute("download", filename);
+    
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
@@ -335,6 +413,34 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
           <DynamicDashboard layout={collection.dashboardLayout as DashboardLayout} data={records} />
         )}
 
+        {/* Search and Export Controls */}
+        {records.length > 0 && (
+          <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-md w-full">
+              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search records..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white pl-12 pr-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            {/* Export Button */}
+            <motion.button
+              onClick={handleExportCSV}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </motion.button>
+          </div>
+        )}
+
         {/* Table */}
         {records.length === 0 ? (
           <motion.div
@@ -375,7 +481,25 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {records.map((record) => (
+                  {filteredRecords.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={collection.fields.length + 1}
+                        className="px-6 py-12 text-center"
+                      >
+                        <div className="flex flex-col items-center">
+                          <Search className="h-12 w-12 text-slate-300 mb-4" />
+                          <p className="text-sm font-medium text-slate-600">
+                            No records match your search
+                          </p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            Try adjusting your search query
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredRecords.map((record) => (
                     <tr key={record.id} className="hover:bg-slate-50 transition-colors">
                       {collection.fields.map((field) => (
                         <td key={field.key} className="px-6 py-4 text-sm text-slate-900">
@@ -401,7 +525,8 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

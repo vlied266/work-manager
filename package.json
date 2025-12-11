@@ -25,7 +25,7 @@
     "@splinetool/react-spline": "^4.1.0",
     "@splinetool/runtime": "^1.12.6",
     "@types/handlebars": "^4.0.40",
-    "@types/papaparse": "^5.5.0",
+    "@types/papaparse": "^5.5.1",
     "@types/react-signature-canvas": "^1.0.7",
     "@types/three": "^0.181.0",
     "@xyflow/react": "^12.9.3",
