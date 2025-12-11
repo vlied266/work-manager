@@ -108,16 +108,34 @@ export async function POST(req: NextRequest) {
     let updatedLogs = [...(run.logs || [])];
     const existingLogIndex = updatedLogs.findIndex((log) => log.stepId === stepId);
     
+    // CRITICAL: If output is explicitly provided (not null/undefined), REPLACE the existing output
+    // Otherwise, keep the existing output if available
+    const finalOutput = output !== null && output !== undefined 
+      ? output 
+      : (existingLogIndex >= 0 ? updatedLogs[existingLogIndex].output : {});
+    
+    console.log(`[Resume] Updating log for step ${stepId}:`, {
+      hasProvidedOutput: output !== null && output !== undefined,
+      providedOutput: output,
+      finalOutput,
+      existingOutput: existingLogIndex >= 0 ? updatedLogs[existingLogIndex].output : null,
+      outputType: typeof output,
+      outputIsObject: output && typeof output === 'object',
+      outputKeys: output && typeof output === 'object' ? Object.keys(output) : [],
+    });
+    
     if (existingLogIndex >= 0) {
-      // Update existing log entry
+      // Update existing log entry - REPLACE output if provided, otherwise keep existing
       updatedLogs[existingLogIndex] = {
         ...updatedLogs[existingLogIndex],
-        output: output || updatedLogs[existingLogIndex].output || {},
+        output: finalOutput, // Replace with new output if provided, otherwise keep existing
         outcome,
         executedBy: userId,
         executionType: "HUMAN",
         completedAt: Timestamp.now(),
       };
+      
+      console.log(`[Resume] ✅ Updated existing log entry. Final output:`, finalOutput);
     } else {
       // Create new log entry if it doesn't exist (shouldn't happen, but handle gracefully)
       console.warn(`[Resume] Log entry for step ${stepId} not found, creating new one`);
@@ -125,13 +143,15 @@ export async function POST(req: NextRequest) {
         stepId,
         stepTitle: completedStep.title,
         action: completedStep.action,
-        output: output || {},
+        output: finalOutput,
         timestamp: Timestamp.now(),
         outcome,
         executedBy: userId,
         executionType: "HUMAN",
         completedAt: Timestamp.now(),
       });
+      
+      console.log(`[Resume] ✅ Created new log entry with output:`, finalOutput);
     }
 
     // Get the next step (currentStepIndex should already point to the next step)

@@ -119,7 +119,13 @@ export function resolveConfig(
     // 1. Start with a fresh environment
     const env: Record<string, any> = {};
     
-    // 2. Iterate strictly over existing logs
+    // 2. Add trigger context FIRST (if available) - this allows {{trigger.body.*}} and {{trigger.headers.*}}
+    if (triggerContext && typeof triggerContext === 'object') {
+      env.trigger = triggerContext;
+      console.log("[Context Builder] Added trigger context to environment:", Object.keys(triggerContext));
+    }
+    
+    // 3. Iterate strictly over existing logs
     // STRICT RULE: Trust the log's stepId. Never use array index or current step ID.
     const logsToProcess = runLogs || [];
     
@@ -217,6 +223,20 @@ export function resolveConfig(
         console.log(`[Resolver] Looking for Step ID: "${stepId}" in environment keys:`, Object.keys(environment));
         
         let resolvedValue: any = undefined;
+        
+        // STRATEGY 0: Trigger Context Lookup (trigger.body.field or trigger.headers.header)
+        if (stepId === 'trigger' && path) {
+          resolvedValue = getSafeValue(environment.trigger, path);
+          if (resolvedValue !== undefined) {
+            console.log(`[Resolver] ✅ Resolved "${cleanVar}" via Strategy 0 (trigger context):`, resolvedValue);
+            sources[key] = {
+              stepId: 'trigger',
+              stepTitle: 'Trigger Context',
+              variableName: cleanVar,
+            };
+            return resolvedValue;
+          }
+        }
         
         // STRATEGY 1: Standard Nested Lookup (step_1.output.name)
         if (environment[stepId]) {
@@ -321,8 +341,16 @@ export function resolveConfig(
         
         let resolvedVarValue: any = undefined;
         
+        // STRATEGY 0: Trigger Context Lookup (trigger.body.field or trigger.headers.header)
+        if (stepId === 'trigger' && path) {
+          resolvedVarValue = getSafeValue(environment.trigger, path);
+          if (resolvedVarValue !== undefined) {
+            console.log(`[Resolver] ✅ Resolved "${cleanVar}" in string via Strategy 0 (trigger context):`, resolvedVarValue);
+          }
+        }
+        
         // STRATEGY 1: Standard Nested Lookup (step_1.output.name)
-        if (environment[stepId]) {
+        if (resolvedVarValue === undefined && environment[stepId]) {
           resolvedVarValue = getSafeValue(environment[stepId], path);
           if (resolvedVarValue !== undefined) {
             console.log(`[Resolver] ✅ Resolved "${cleanVar}" in string via Strategy 1 (nested):`, resolvedVarValue);
