@@ -7,6 +7,7 @@ import { Notification } from "@/types/schema";
 import { Bell, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import Link from "next/link";
 
 interface NotificationBellProps {
