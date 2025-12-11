@@ -22,6 +22,7 @@ import { Collection, CollectionField } from "@/app/api/data/collections/route";
 import { Record } from "@/app/api/data/records/route";
 import { DynamicDashboard } from "@/components/dashboard/DynamicDashboard";
 import { DashboardLayout } from "@/types/dashboard";
+import AICopilot from "@/components/layout/AICopilot";
 
 interface CollectionPageProps {
   params: Promise<{ collectionId: string }>;
