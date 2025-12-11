@@ -23,7 +23,12 @@ interface NudgeData {
   visible: boolean;
 }
 
-export default function AICopilot() {
+interface AICopilotProps {
+  records?: any[];
+  collectionName?: string;
+}
+
+export default function AICopilot({ records, collectionName }: AICopilotProps = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -138,9 +143,9 @@ export default function AICopilot() {
     return () => unsubscribe();
   }, [organizationId]);
 
-  // Smart proactive nudge based on pathname and real data
+  // Smart proactive nudge based on pathname and real data OR collection records
   useEffect(() => {
-    // Reset nudge state when pathname changes
+    // Reset nudge state when pathname or records change
     setNudge(null);
     setNudgeDismissed(false);
     
@@ -150,6 +155,64 @@ export default function AICopilot() {
       nudgeTimeoutRef.current = null;
     }
 
+    // PRIORITY 1: If records are provided (Collection View), analyze them
+    if (records && records.length > 0 && collectionName) {
+      if (isOpen) {
+        return;
+      }
+
+      // Analyze records immediately
+      const recordCount = records.length;
+      
+      // Calculate summary statistics
+      let totalValue = 0;
+      let hasNumericFields = false;
+      
+      // Try to find numeric fields (amount, total, price, etc.)
+      if (records.length > 0) {
+        const firstRecord = records[0];
+        const data = firstRecord.data || firstRecord;
+        const numericFields = Object.keys(data).filter(key => {
+          const value = data[key];
+          return typeof value === 'number' && !isNaN(value);
+        });
+        
+        if (numericFields.length > 0) {
+          hasNumericFields = true;
+          numericFields.forEach(field => {
+            records.forEach(record => {
+              const value = (record.data || record)[field];
+              if (typeof value === 'number') {
+                totalValue += value;
+              }
+            });
+          });
+        }
+      }
+
+      const nudgeData: NudgeData = {
+        message: hasNumericFields 
+          ? `I see ${recordCount} ${collectionName.toLowerCase()} records. Total value: $${totalValue.toLocaleString()}. Want a summary?`
+          : `I see ${recordCount} ${collectionName.toLowerCase()} records. Want to analyze them?`,
+        prompt: `Analyze the ${collectionName} collection data and provide insights.`,
+        visible: true,
+      };
+
+      // Show nudge after a short delay
+      nudgeTimeoutRef.current = setTimeout(() => {
+        if (!isOpen) {
+          setNudge(nudgeData);
+        }
+      }, 2000);
+
+      return () => {
+        if (nudgeTimeoutRef.current) {
+          clearTimeout(nudgeTimeoutRef.current);
+        }
+      };
+    }
+
+    // PRIORITY 2: Original logic for dashboard/monitor pages
     // Wait for organization plan to be loaded before checking
     if (organizationId && !organizationPlan) {
       console.log("🔍 [Nudge] Waiting for organization plan to load...");
@@ -346,7 +409,7 @@ export default function AICopilot() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, isAppPath, isOpen, organizationId, organizationPlan, userId, userEmail]);
+  }, [pathname, isAppPath, isOpen, organizationId, organizationPlan, userId, userEmail, records, collectionName]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -405,6 +468,8 @@ export default function AICopilot() {
           messages: [...messages, userMessage].map(({ id, ...rest }) => rest),
           userId: userId,
           currentPath: pathname || "/", // Fallback to "/" if pathname is null/undefined
+          records: records, // Include collection records if provided
+          collectionName: collectionName, // Include collection name if provided
         }),
       });
 
@@ -779,7 +844,9 @@ export default function AICopilot() {
                     {isPublicPath ? "Welcome to Atomic Work!" : "Your AI Co-pilot"}
                   </h4>
                   <p className="text-sm text-slate-600 max-w-xs">
-                    {isPublicPath
+                    {records && collectionName
+                      ? `I can analyze your ${collectionName} collection data and answer questions about it.`
+                      : isPublicPath
                       ? "I can help you understand features, pricing, and how to get started."
                       : "I analyze your workflows, identify bottlenecks, and suggest improvements."}
                   </p>

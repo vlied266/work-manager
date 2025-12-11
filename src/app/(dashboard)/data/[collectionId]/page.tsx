@@ -423,6 +423,13 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
           <DynamicDashboard layout={collection.dashboardLayout as DashboardLayout} data={records} />
         )}
 
+        {/* AI Copilot for Collection Analysis */}
+        {records && records.length > 0 && (
+          <div className="mb-6">
+            <AICopilot records={records} collectionName={collection.name} />
+          </div>
+        )}
+
           {/* Search and Export Controls */}
           {records.length > 0 && (
             <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">

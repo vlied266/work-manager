@@ -158,7 +158,7 @@ async function fetchAppContext(userId: string, organizationId?: string) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { messages, userId, currentPath } = body;
+    const { messages, userId, currentPath, records, collectionName } = body;
 
     // Debug: Log received data
     console.log("🔍 [API] ========== CHAT REQUEST ==========");
@@ -263,7 +263,36 @@ Note: Advanced data analysis and Atomic Insight features are available on Pro an
     // Build system prompt
     let systemPrompt = finalPersona.systemPrompt;
 
-    if (appContext) {
+    // PRIORITY: If collection records are provided, use them as context
+    if (records && Array.isArray(records) && records.length > 0) {
+      const collectionContext = {
+        collectionName: collectionName || "Collection",
+        recordCount: records.length,
+        sampleRecords: records.slice(0, 20).map(record => {
+          // Extract data from record (could be record.data or record itself)
+          return record.data || record;
+        }),
+      };
+
+      systemPrompt += `\n\nCOLLECTION DATA CONTEXT:
+You are analyzing the "${collectionContext.collectionName}" collection with ${collectionContext.recordCount} records.
+
+SAMPLE RECORDS (first 20):
+${JSON.stringify(collectionContext.sampleRecords, null, 2)}
+
+FULL RECORDS DATA (all ${records.length} records):
+${JSON.stringify(records.map(r => r.data || r), null, 2)}
+
+Your role is to:
+- Answer specific questions about the data in this collection
+- Provide insights, summaries, and analysis
+- Identify patterns, trends, and anomalies
+- Calculate statistics (totals, averages, counts, etc.)
+- Help users understand their data better
+
+Be specific and reference actual data from the records when answering questions.`;
+    } else if (appContext) {
+      // Fallback to original app context logic
       systemPrompt += `\n\nCURRENT SYSTEM DATA (JSON):
 ${JSON.stringify(appContext.statistics, null, 2)}
 
