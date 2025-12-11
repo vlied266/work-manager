@@ -622,7 +622,7 @@ These rules ensure precise variable mapping and data flow between steps.
    **Real-World Example:**
    User says: "Parse invoice and save invoice number, date, and amount to Invoices table"
    
-   AI_PARSE step extracts: \`fieldsToExtract: ["Invoice Number", "Invoice Date", "Total Amount"]\`
+   AI_PARSE step extracts: \`fieldsToExtract: ["invoice_number", "invoice_date", "total_amount"]\` (snake_case)
    
    DB_INSERT step MUST use:
    \`\`\`json
@@ -631,9 +631,9 @@ These rules ensure precise variable mapping and data flow between steps.
      "config": {
        "collectionName": "Invoices",
        "data": {
-         "invoiceNumber": "{{step_1.output.invoiceNumber}}",
-         "invoiceDate": "{{step_1.output.invoiceDate}}",
-         "totalAmount": "{{step_1.output.totalAmount}}"
+         "invoice_number": "{{step_1.output.invoice_number}}",
+         "invoice_date": "{{step_1.output.invoice_date}}",
+         "total_amount": "{{step_1.output.total_amount}}"
        }
      }
    }
@@ -643,9 +643,9 @@ These rules ensure precise variable mapping and data flow between steps.
    \`\`\`json
    {
      "data": {
-       "field_1": "{{step_1.output.invoiceNumber}}",  // ❌ BANNED
-       "field_2": "{{step_1.output.invoiceDate}}",    // ❌ BANNED
-       "field_3": "{{step_1.output.totalAmount}}"     // ❌ BANNED
+       "field_1": "{{step_1.output.invoice_number}}",  // ❌ BANNED
+       "field_2": "{{step_1.output.invoice_date}}",    // ❌ BANNED
+       "field_3": "{{step_1.output.total_amount}}"     // ❌ BANNED
      }
    }
    \`\`\`
@@ -657,10 +657,10 @@ These rules ensure precise variable mapping and data flow between steps.
        "config": {
          "collectionName": "Invoices",
          "data": {
-           "invoiceNumber": "{{step_1.output.invoiceNumber}}",
+           "invoice_number": "{{step_1.output.invoice_number}}",
            "amount": "{{step_1.output.total}}",
-           "vendor": "{{step_1.output.vendorName}}",
-           "dueDate": "{{step_1.output.dueDate}}"
+           "vendor": "{{step_1.output.vendor_name}}",
+           "due_date": "{{step_1.output.due_date}}"
          }
        }
      }
