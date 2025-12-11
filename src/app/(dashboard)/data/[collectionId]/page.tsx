@@ -16,6 +16,8 @@ import {
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { Collection, CollectionField } from "@/app/api/data/collections/route";
 import { Record } from "@/app/api/data/records/route";
+import { DynamicDashboard } from "@/components/dashboard/DynamicDashboard";
+import { DashboardLayout } from "@/types/dashboard";
 
 interface CollectionPageProps {
   params: Promise<{ collectionId: string }>;
@@ -327,6 +329,11 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
             </motion.button>
           </div>
         </div>
+
+        {/* Dashboard */}
+        {collection.dashboardLayout && (
+          <DynamicDashboard layout={collection.dashboardLayout as DashboardLayout} data={records} />
+        )}
 
         {/* Table */}
         {records.length === 0 ? (

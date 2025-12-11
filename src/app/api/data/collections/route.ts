@@ -14,6 +14,17 @@ export interface Collection {
   orgId: string;
   name: string;
   fields: CollectionField[];
+  dashboardLayout?: {
+    widgets: Array<{
+      id: string;
+      type: 'stat_card' | 'bar_chart' | 'line_chart' | 'pie_chart';
+      title: string;
+      field: string;
+      operation?: 'sum' | 'count' | 'avg';
+      xAxis?: string;
+      yAxis?: string;
+    }>;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
