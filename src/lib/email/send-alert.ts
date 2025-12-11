@@ -1,8 +1,5 @@
-import { Resend } from "resend";
 import { getAdminDb } from "@/lib/firebase-admin";
-
-// Initialize Resend client
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { sendEmail } from "./sender";
 
 /**
  * Sends an alert email notification
@@ -100,20 +97,20 @@ export async function sendAlertEmail({
 </html>
     `;
 
-    // Send email
-    const { data, error } = await resend.emails.send({
-      from: "Atomic Work <alerts@theatomicwork.com>", // Update with your verified domain
-      to: [to],
+    // Send email using generic sender
+    const result = await sendEmail({
+      to: to,
       subject: subject,
       html: html,
+      from: "Atomic Work <alerts@theatomicwork.com>",
     });
 
-    if (error) {
-      console.error("[Email] Error sending alert email:", error);
-      return { success: false, error: error.message || "Failed to send email" };
+    if (!result.success) {
+      console.error("[Email] Error sending alert email:", result.error);
+      return { success: false, error: result.error || "Failed to send email" };
     }
 
-    console.log(`[Email] ✅ Alert email sent successfully to ${to}. Email ID: ${data?.id}`);
+    console.log(`[Email] ✅ Alert email sent successfully to ${to}. Email ID: ${result.emailId}`);
     return { success: true };
   } catch (error) {
     console.error("[Email] Exception sending alert email:", error);

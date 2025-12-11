@@ -4,6 +4,7 @@ import { Timestamp } from "firebase-admin/firestore";
 import { ActiveRun, Procedure, AtomicStep } from "@/types/schema";
 import { isHumanStep, isAutoStep, getStepExecutionType } from "@/lib/constants";
 import { resolveConfig } from "@/lib/engine/resolver";
+import { sendEmail, textToHtml } from "@/lib/email/sender";
 
 interface ExecuteStepRequest {
   runId: string;
@@ -727,11 +728,158 @@ export async function POST(req: NextRequest) {
             executionResult = { success: true, executed: true };
             break;
 
-          case "SEND_EMAIL":
-            // Execute email sending
-            // TODO: Implement email sending logic
-            executionResult = { success: true, executed: true };
+          case "SEND_EMAIL": {
+            console.log(`[SEND_EMAIL] Starting email sending step: ${currentStep.id}`);
+            
+            // Reload run from database to get latest logs (in case this is a recursive execution)
+            const updatedRunDoc = await db.collection("active_runs").doc(runId).get();
+            const updatedRun = updatedRunDoc.exists ? (updatedRunDoc.data() as ActiveRun) : run;
+            const latestLogs = updatedRun.logs || run.logs || [];
+            
+            console.log(`[SEND_EMAIL] Using ${latestLogs.length} logs for context building`);
+            
+            // Build run context for variable resolution (similar to DB_INSERT)
+            const runContext: Record<string, any> = {};
+            
+            // Build step output map
+            const stepOutputMap: Record<string, any> = {};
+            latestLogs.forEach((log) => {
+              const stepId = log.stepId;
+              const stepOutput = log.output || {};
+              
+              if (!stepOutputMap[stepId]) {
+                stepOutputMap[stepId] = stepOutput;
+              } else {
+                const existingOutput = stepOutputMap[stepId];
+                const existingHasData = existingOutput && 
+                                       typeof existingOutput === 'object' && 
+                                       existingOutput !== null && 
+                                       Object.keys(existingOutput).length > 0;
+                
+                const newHasData = stepOutput && 
+                                  typeof stepOutput === 'object' && 
+                                  stepOutput !== null && 
+                                  Object.keys(stepOutput).length > 0;
+                
+                if (newHasData && !existingHasData) {
+                  stepOutputMap[stepId] = stepOutput;
+                } else if (newHasData && existingHasData) {
+                  stepOutputMap[stepId] = {
+                    ...existingOutput,
+                    ...stepOutput,
+                  };
+                }
+              }
+            });
+            
+            // Build final context structure
+            procedure.steps.forEach((step, idx) => {
+              const stepId = step.id;
+              const stepIndex = idx;
+              const varName = step.config.outputVariableName || `step_${stepIndex + 1}_output`;
+              
+              const stepOutput = stepOutputMap[stepId] || {};
+              
+              let sanitizedOutput: any = {};
+              try {
+                sanitizedOutput = JSON.parse(JSON.stringify(stepOutput));
+              } catch (e) {
+                sanitizedOutput = stepOutput;
+              }
+              
+              if (sanitizedOutput && typeof sanitizedOutput === 'object' && sanitizedOutput !== null && 'output' in sanitizedOutput) {
+                const innerOutput = sanitizedOutput.output;
+                runContext[varName] = innerOutput;
+                runContext[`step_${stepIndex + 1}_output`] = innerOutput;
+                runContext[`step_${stepIndex + 1}`] = sanitizedOutput;
+              } else if (sanitizedOutput && typeof sanitizedOutput === 'object' && sanitizedOutput !== null && Object.keys(sanitizedOutput).length > 0) {
+                runContext[varName] = sanitizedOutput;
+                runContext[`step_${stepIndex + 1}_output`] = sanitizedOutput;
+                runContext[`step_${stepIndex + 1}`] = { output: sanitizedOutput };
+              }
+            });
+            
+            // Add trigger context if available
+            if (updatedRun.triggerContext) {
+              runContext.trigger = updatedRun.triggerContext;
+            }
+            if (updatedRun.initialInput) {
+              runContext.initialInput = updatedRun.initialInput;
+            }
+            
+            // Resolve email configuration variables
+            const resolvedConfig = resolveConfig(
+              currentStep.config,
+              latestLogs,
+              procedure.steps,
+              updatedRun.triggerContext
+            );
+            
+            console.log(`[SEND_EMAIL] Resolved config:`, {
+              to: resolvedConfig.to,
+              subject: resolvedConfig.subject,
+              hasBody: !!resolvedConfig.body,
+              hasHtml: !!resolvedConfig.html,
+              hasFrom: !!resolvedConfig.from,
+            });
+            
+            // Extract email fields
+            const to = resolvedConfig.to || resolvedConfig.recipient || resolvedConfig.email;
+            const subject = resolvedConfig.subject || resolvedConfig.title || "Notification from Atomic Work";
+            const body = resolvedConfig.body || resolvedConfig.message || resolvedConfig.content || "";
+            const html = resolvedConfig.html || null;
+            const from = resolvedConfig.from || null;
+            
+            // Validate required fields
+            if (!to) {
+              throw new Error("Email 'to' field is required. Please provide a recipient email address.");
+            }
+            
+            if (!subject) {
+              throw new Error("Email 'subject' field is required.");
+            }
+            
+            // Determine HTML content
+            let emailHtml: string;
+            if (html) {
+              // Use provided HTML
+              emailHtml = html;
+            } else if (body) {
+              // Convert plain text to HTML
+              emailHtml = textToHtml(body);
+            } else {
+              throw new Error("Email 'body' or 'html' field is required.");
+            }
+            
+            // Send email
+            console.log(`[SEND_EMAIL] Sending email to: ${to}`);
+            const emailResult = await sendEmail({
+              to: to,
+              subject: subject,
+              html: emailHtml,
+              from: from || undefined,
+            });
+            
+            if (!emailResult.success) {
+              throw new Error(emailResult.error || "Failed to send email");
+            }
+            
+            console.log(`[SEND_EMAIL] ✅ Email sent successfully. Email ID: ${emailResult.emailId}`);
+            
+            executionResult = {
+              success: true,
+              executed: true,
+              sent: true,
+              emailId: emailResult.emailId,
+              output: {
+                sent: true,
+                emailId: emailResult.emailId,
+                recipient: to,
+                subject: subject,
+              },
+            };
             break;
+          }
 
           case "GOOGLE_SHEET":
             // Execute Google Sheet operation
