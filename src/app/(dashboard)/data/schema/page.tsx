@@ -23,7 +23,7 @@ import { Collection, CollectionField } from "@/app/api/data/collections/route";
 
 export default function SchemaBuilderPage() {
   const router = useRouter();
-  const { organizationId } = useOrganization();
+  const { organizationId, userProfile } = useOrganization();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -31,6 +31,10 @@ export default function SchemaBuilderPage() {
   const [collectionName, setCollectionName] = useState("");
   const [fields, setFields] = useState<CollectionField[]>([]);
   const [saving, setSaving] = useState(false);
+  
+  // Check if user is admin/manager (can edit schemas)
+  const normalizedRole = userProfile?.role ? userProfile.role.toUpperCase() : "OPERATOR";
+  const isAdmin = normalizedRole === "ADMIN" || normalizedRole === "MANAGER";
 
   useEffect(() => {
     if (!organizationId) return;
@@ -190,19 +194,23 @@ export default function SchemaBuilderPage() {
                 <div>
                   <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 mb-2">Atomic Data</h1>
                   <p className="text-sm text-slate-600 font-medium">
-                    Create custom data structures and manage records
+                    {isAdmin 
+                      ? "Create custom data structures and manage records"
+                      : "View and access your data collections"}
                   </p>
                 </div>
               </div>
-              <motion.button
-                onClick={handleCreateCollection}
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg shadow-black/5 px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-xl"
-              >
-                <Plus className="h-5 w-5" />
-                Create Collection
-              </motion.button>
+              {isAdmin && (
+                <motion.button
+                  onClick={handleCreateCollection}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg shadow-black/5 px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-xl"
+                >
+                  <Plus className="h-5 w-5" />
+                  Create Collection
+                </motion.button>
+              )}
             </div>
           </div>
 
@@ -232,17 +240,21 @@ export default function SchemaBuilderPage() {
                 </div>
                 <h3 className="text-2xl font-extrabold text-slate-900 mb-2">No Collections Yet</h3>
                 <p className="text-slate-600 mb-8 font-medium">
-                  Create your first collection to start organizing data
+                  {isAdmin 
+                    ? "Create your first collection to start organizing data"
+                    : "No collections available. Contact your administrator to create collections."}
                 </p>
-                <motion.button
-                  onClick={handleCreateCollection}
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg shadow-black/5 px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-xl"
-                >
-                  <Plus className="h-5 w-5" />
-                  Create Collection
-                </motion.button>
+                {isAdmin && (
+                  <motion.button
+                    onClick={handleCreateCollection}
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg shadow-black/5 px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-xl"
+                  >
+                    <Plus className="h-5 w-5" />
+                    Create Collection
+                  </motion.button>
+                )}
               </div>
             </motion.div>
           ) : (
@@ -287,26 +299,30 @@ export default function SchemaBuilderPage() {
                         >
                           <BarChart3 className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditCollection(collection);
-                          }}
-                          className="p-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/60 hover:bg-white/90 text-slate-600 hover:text-blue-600 transition-all shadow-sm hover:shadow-md"
-                          title="Edit Collection"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteCollection(collection.id);
-                          }}
-                          className="p-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/60 hover:bg-white/90 text-slate-600 hover:text-red-600 transition-all shadow-sm hover:shadow-md"
-                          title="Delete Collection"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {isAdmin && (
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditCollection(collection);
+                              }}
+                              className="p-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/60 hover:bg-white/90 text-slate-600 hover:text-blue-600 transition-all shadow-sm hover:shadow-md"
+                              title="Edit Collection"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteCollection(collection.id);
+                              }}
+                              className="p-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/60 hover:bg-white/90 text-slate-600 hover:text-red-600 transition-all shadow-sm hover:shadow-md"
+                              title="Delete Collection"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -331,9 +347,9 @@ export default function SchemaBuilderPage() {
             </div>
           )}
 
-          {/* Create/Edit Modal */}
+          {/* Create/Edit Modal - Only show for admins */}
           <AnimatePresence>
-            {showCreateModal && (
+            {showCreateModal && isAdmin && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}

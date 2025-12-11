@@ -47,6 +47,7 @@ const ADMIN_NAVIGATION = [
 const MEMBER_NAVIGATION = [
   { name: "My Tasks", href: "/inbox", icon: Inbox },
   { name: "Focus Mode", href: "/focus", icon: Target },
+  { name: "Collections", href: "/data/schema", icon: Database },
   { name: "Explore Templates", href: "/explore-templates", icon: FileText },
   { name: "My History", href: "/history", icon: Clock },
   { name: "Profile", href: "/profile", icon: User },

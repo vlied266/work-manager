@@ -30,7 +30,7 @@ interface CollectionPageProps {
 
 export default function CollectionPage({ params: paramsPromise }: CollectionPageProps) {
   const router = useRouter();
-  const { organizationId } = useOrganization();
+  const { organizationId, userProfile } = useOrganization();
   const { collectionId } = use(paramsPromise);
   const [collection, setCollection] = useState<Collection | null>(null);
   const [records, setRecords] = useState<Record[]>([]);
@@ -40,6 +40,10 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Check if user is admin/manager (can edit schemas)
+  const normalizedRole = userProfile?.role ? userProfile.role.toUpperCase() : "OPERATOR";
+  const isAdmin = normalizedRole === "ADMIN" || normalizedRole === "MANAGER";
 
   useEffect(() => {
     if (!collectionId || !organizationId) return;
@@ -549,13 +553,15 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
                               >
                                 <Edit className="h-4 w-4" />
                               </button>
-                              <button
-                                onClick={() => handleDeleteRecord(record.id)}
-                                className="p-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/60 hover:bg-white/90 text-slate-600 hover:text-red-600 transition-all shadow-sm hover:shadow-md"
-                                title="Delete Record"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                              {isAdmin && (
+                                <button
+                                  onClick={() => handleDeleteRecord(record.id)}
+                                  className="p-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/60 hover:bg-white/90 text-slate-600 hover:text-red-600 transition-all shadow-sm hover:shadow-md"
+                                  title="Delete Record"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
