@@ -334,16 +334,28 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
       setSaving(true);
       const newActiveState = !procedure.isActive;
 
-      // Update procedure isActive state
+      // CRITICAL: If activating workflow, automatically publish it if not already published
+      // This ensures that active workflows are always published and can be found by cron jobs
+      const shouldPublish = newActiveState && !procedure.isPublished;
+      const newPublishedState = shouldPublish ? true : procedure.isPublished;
+
+      // Update procedure isActive state and isPublished if needed
       await updateDoc(doc(db, "procedures", procedure.id), {
         isActive: newActiveState,
+        isPublished: newPublishedState,
         updatedAt: serverTimestamp(),
       });
 
       setProcedure({
         ...procedure,
         isActive: newActiveState,
+        isPublished: newPublishedState,
       });
+      
+      // Update local state for isPublished
+      if (shouldPublish) {
+        setIsPublished(true);
+      }
 
       alert(
         newActiveState
