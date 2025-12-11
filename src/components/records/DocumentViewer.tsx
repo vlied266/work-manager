@@ -21,11 +21,17 @@ export function DocumentViewer({ fileUrl, fileName }: DocumentViewerProps) {
 
   if (!fileUrl) {
     return (
-      <div className="h-full flex items-center justify-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-300">
-        <div className="text-center p-8">
-          <FileText className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-          <p className="text-sm font-medium text-slate-500">No document attached</p>
-          <p className="text-xs text-slate-400 mt-1">Upload a file to view it here</p>
+      <div className="h-full flex items-center justify-center rounded-3xl bg-white/70 backdrop-blur-xl border-2 border-dashed border-white/60 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 to-purple-50/30" />
+        <div className="relative text-center p-8">
+          <div className="relative mb-6 inline-block">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-purple-100/50 rounded-3xl blur-2xl" />
+            <div className="relative h-20 w-20 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 flex items-center justify-center shadow-lg mx-auto">
+              <FileText className="h-10 w-10 text-slate-400" />
+            </div>
+          </div>
+          <p className="text-sm font-extrabold text-slate-600 mb-1">No document attached</p>
+          <p className="text-xs text-slate-400 font-medium">Upload a file to view it here</p>
         </div>
       </div>
     );
@@ -74,35 +80,50 @@ export function DocumentViewer({ fileUrl, fileName }: DocumentViewerProps) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <div className="h-full flex flex-col rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
+      <div className="flex items-center justify-between p-4 border-b border-white/60 bg-white/50 backdrop-blur-sm">
         <div className="flex items-center gap-2">
-          {isImage ? (
-            <ImageIcon className="h-5 w-5 text-blue-600" />
-          ) : (
-            <FileText className="h-5 w-5 text-blue-600" />
-          )}
-          <span className="text-sm font-semibold text-slate-900">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/80 backdrop-blur-sm border border-white/60">
+            {isImage ? (
+              <ImageIcon className="h-4 w-4 text-blue-600" />
+            ) : (
+              <FileText className="h-4 w-4 text-blue-600" />
+            )}
+          </div>
+          <span className="text-sm font-extrabold tracking-tight text-slate-900">
             {fileName || "Document"}
           </span>
         </div>
       </div>
 
       {/* Document Content */}
-      <div className="flex-1 relative overflow-auto bg-slate-100">
+      <div className="flex-1 relative overflow-auto bg-gradient-to-br from-slate-50/50 to-white/30">
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10 rounded-3xl">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-purple-100/50 rounded-2xl blur-xl" />
+              <div className="relative rounded-2xl bg-white/80 backdrop-blur-xl border border-white/60 p-6">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              </div>
+            </div>
           </div>
         )}
         
         {error ? (
           <div className="h-full flex items-center justify-center p-8">
-            <div className="text-center">
-              <FileText className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-sm font-medium text-slate-600">{error}</p>
-              <p className="text-xs text-slate-400 mt-1">Unable to load the document</p>
+            <div className="relative text-center">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-purple-100/50 rounded-3xl blur-2xl" />
+              <div className="relative">
+                <div className="relative mb-6 inline-block">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-purple-100/50 rounded-3xl blur-2xl" />
+                  <div className="relative h-20 w-20 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 flex items-center justify-center shadow-lg mx-auto">
+                    <FileText className="h-10 w-10 text-slate-400" />
+                  </div>
+                </div>
+                <p className="text-sm font-extrabold text-slate-600 mb-1">{error}</p>
+                <p className="text-xs text-slate-400 font-medium">Unable to load the document</p>
+              </div>
             </div>
           </div>
         ) : isImage ? (
@@ -112,7 +133,7 @@ export function DocumentViewer({ fileUrl, fileName }: DocumentViewerProps) {
               alt={fileName || "Document"}
               onLoad={handleLoad}
               onError={handleError}
-              className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+              className="max-w-full max-h-full object-contain rounded-2xl shadow-xl border border-white/60"
             />
           </div>
         ) : isPdf ? (
@@ -120,23 +141,31 @@ export function DocumentViewer({ fileUrl, fileName }: DocumentViewerProps) {
             src={displayUrl || fileUrl}
             onLoad={handleLoad}
             onError={handleError}
-            className="w-full h-full min-h-[600px] border-0 rounded-lg"
+            className="w-full h-full min-h-[600px] border-0 rounded-2xl"
             title={fileName || "PDF Document"}
           />
         ) : (
           <div className="h-full flex items-center justify-center p-8">
-            <div className="text-center">
-              <FileText className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-sm font-medium text-slate-600">Unsupported file type</p>
-              <p className="text-xs text-slate-400 mt-1">Please download the file to view it</p>
-              <a
-                href={fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-block text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                Open in new tab →
-              </a>
+            <div className="relative text-center">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-purple-100/50 rounded-3xl blur-2xl" />
+              <div className="relative">
+                <div className="relative mb-6 inline-block">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-purple-100/50 rounded-3xl blur-2xl" />
+                  <div className="relative h-20 w-20 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 flex items-center justify-center shadow-lg mx-auto">
+                    <FileText className="h-10 w-10 text-slate-400" />
+                  </div>
+                </div>
+                <p className="text-sm font-extrabold text-slate-600 mb-1">Unsupported file type</p>
+                <p className="text-xs text-slate-400 font-medium mb-4">Please download the file to view it</p>
+                <a
+                  href={fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 px-4 py-2 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 shadow-sm hover:shadow-md"
+                >
+                  Open in new tab →
+                </a>
+              </div>
             </div>
           </div>
         )}
