@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 import { DEFAULT_ENGLISH_PROMPT } from "@/lib/ai/default-prompt";
+import OpenAI from "openai";
 
 const ATOMIC_ACTIONS: AtomicAction[] = [
   // Human Tasks
@@ -471,6 +472,44 @@ Response:
 5. Always use the whitelist of allowed step types. Map unknown actions to the closest match.
 `;
 
+/**
+ * Helper function to create a database collection
+ */
+async function createDatabaseCollection(
+  orgId: string,
+  name: string,
+  fields: Array<{ label: string; key: string; type: string }>
+): Promise<{ id: string; name: string; fields: any[] }> {
+  const adminDb = getAdminDb();
+  const now = Timestamp.now();
+
+  // Validate fields
+  for (const field of fields) {
+    if (!field.key || !field.label || !field.type) {
+      throw new Error("Each field must have key, label, and type");
+    }
+    if (!["text", "number", "date", "boolean", "select"].includes(field.type)) {
+      throw new Error(`Invalid field type: ${field.type}`);
+    }
+  }
+
+  const collectionData = {
+    orgId,
+    name,
+    fields,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const docRef = await adminDb.collection("collections").add(collectionData);
+
+  return {
+    id: docRef.id,
+    name,
+    fields,
+  };
+}
+
 const CONFIGURATION_REFINEMENT_RULES = `
 ### 🔧 CONFIGURATION REFINEMENT RULES
 
@@ -802,13 +841,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch dynamic prompt from Firestore, fallback to default
-    let systemPrompt = DEFAULT_ENGLISH_PROMPT;
+    let baseSystemPrompt = DEFAULT_ENGLISH_PROMPT;
     try {
       const promptDoc = await getDoc(doc(db, "system_configs", "ai_prompts"));
       if (promptDoc.exists()) {
         const data = promptDoc.data();
         if (data?.prompt_text && typeof data.prompt_text === "string") {
-          systemPrompt = data.prompt_text;
+          baseSystemPrompt = data.prompt_text;
         }
       }
     } catch (error) {
@@ -871,12 +910,26 @@ export async function POST(req: NextRequest) {
       staffListText || "- No staff records available for this organization."
     }`;
 
+    // Add instruction for auto-creating collections
+    const COLLECTION_CREATION_INSTRUCTION = `
+AUTO-CREATE COLLECTIONS:
+
+If the user asks to process a new type of document (e.g., "Invoices", "Contracts", "Receipts") that doesn't exist in the Available Tables list, you MUST use the create_database_collection tool FIRST to define the schema before generating the workflow.
+
+Rules:
+- Use snake_case for all field keys (e.g., "invoice_date", "total_amount", "contract_number").
+- Infer field types from context: dates → "date", numbers → "number", text → "text", yes/no → "boolean".
+- Create fields based on what the user wants to extract or store.
+- After creating the collection, proceed to generate the workflow targeting this new collection.
+`;
+
     // Construct the final system prompt with all instructions
-    systemPrompt = [
-      systemPrompt, // Base prompt (from Firestore or default)
+    let systemPrompt = [
+      baseSystemPrompt, // Base prompt (from Firestore or default)
       GUARDRAIL_CLAUSE,
       staffContextSection, // The list of users
       collectionsSchemaText, // Available collections/tables
+      COLLECTION_CREATION_INSTRUCTION, // Auto-create collections instruction
       ASSIGNMENT_INSTRUCTION, // Smart Mentions logic
       GOOGLE_SHEET_INSTRUCTION, // Smart Sheet Mapping logic
       METADATA_INSTRUCTION, // Professional Title & Description generation
@@ -888,12 +941,195 @@ export async function POST(req: NextRequest) {
       CONFIGURATION_REFINEMENT_RULES // Configuration refinement and variable mapping rules
     ].join("\n\n");
 
-    const result = await generateText({
-      model: openai("gpt-4o"),
-      system: systemPrompt,
-      prompt: `Convert this process description into a workflow:\n\n"${description}"\n\nReturn a JSON object with "title", "description", and "steps" fields.\n\nIMPORTANT: Follow the NAMING RULES strictly:\n- Title must be 3-5 words, professional, action-oriented (e.g., "Candidate Resume Processing", NOT "Create a form for resume").\n- Description must be 1-2 sentences focusing on business outcome (e.g., "Automates the collection of candidate resumes, extracts key data using AI, and stores valid entries in the Candidates database.").\n- NEVER copy the user's prompt verbatim.\n- Match the language of the user's prompt (English or Persian).`,
-      temperature: 0.7,
+    // Initialize OpenAI client for function calling
+    const openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
     });
+
+    // Define the tool for creating collections
+    const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+      {
+        type: "function",
+        function: {
+          name: "create_database_collection",
+          description: "Creates a new database collection (table) with defined fields. Use this when the user wants to process a document type that doesn't exist yet.",
+          parameters: {
+            type: "object",
+            properties: {
+              name: {
+                type: "string",
+                description: "The name of the collection (e.g., 'Contracts', 'Invoices', 'Receipts')",
+              },
+              fields: {
+                type: "array",
+                description: "Array of field definitions for the collection",
+                items: {
+                  type: "object",
+                  properties: {
+                    label: {
+                      type: "string",
+                      description: "Human-readable label for the field (e.g., 'Invoice Date', 'Total Amount')",
+                    },
+                    key: {
+                      type: "string",
+                      description: "Field key in snake_case (e.g., 'invoice_date', 'total_amount'). MUST be lowercase with underscores.",
+                    },
+                    type: {
+                      type: "string",
+                      enum: ["text", "number", "date", "boolean", "select"],
+                      description: "Data type of the field",
+                    },
+                  },
+                  required: ["label", "key", "type"],
+                },
+              },
+            },
+            required: ["name", "fields"],
+          },
+        },
+      },
+    ];
+
+    // First call: Check if AI wants to create a collection
+    const userPrompt = `Convert this process description into a workflow:\n\n"${description}"\n\nReturn a JSON object with "title", "description", and "steps" fields.\n\nIMPORTANT: Follow the NAMING RULES strictly:\n- Title must be 3-5 words, professional, action-oriented (e.g., "Candidate Resume Processing", NOT "Create a form for resume").\n- Description must be 1-2 sentences focusing on business outcome (e.g., "Automates the collection of candidate resumes, extracts key data using AI, and stores valid entries in the Candidates database.").\n- NEVER copy the user's prompt verbatim.\n- Match the language of the user's prompt (English or Persian).\n\nIf you need to create a new collection that doesn't exist, use the create_database_collection tool FIRST.`;
+
+    let messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      {
+        role: "system",
+        content: systemPrompt,
+      },
+      {
+        role: "user",
+        content: userPrompt,
+      },
+    ];
+
+    let createdCollection: { id: string; name: string; fields: any[] } | null = null;
+    let workflowJson: string = "";
+
+    // Handle function calling loop
+    let maxIterations = 3; // Prevent infinite loops
+    while (maxIterations > 0) {
+      maxIterations--;
+
+      const completion = await openaiClient.chat.completions.create({
+        model: "gpt-4o",
+        messages,
+        tools: maxIterations === 2 ? tools : undefined, // Only provide tools on first call
+        tool_choice: maxIterations === 2 ? "auto" : undefined,
+        temperature: 0.7,
+      });
+
+      const message = completion.choices[0]?.message;
+      if (!message) {
+        throw new Error("No response from OpenAI");
+      }
+
+      // Add assistant message to conversation
+      messages.push({
+        role: "assistant",
+        content: message.content || null,
+        tool_calls: message.tool_calls,
+      });
+
+      // Check if AI wants to call a tool
+      if (message.tool_calls && message.tool_calls.length > 0) {
+        for (const toolCall of message.tool_calls) {
+          if (toolCall.function.name === "create_database_collection") {
+            try {
+              const args = JSON.parse(toolCall.function.arguments);
+              console.log("[AI Generator] Creating collection:", args.name);
+
+              if (!trimmedOrgId) {
+                throw new Error("Organization ID is required to create collections");
+              }
+
+              // Ensure all keys are snake_case
+              const normalizedFields = args.fields.map((f: any) => ({
+                ...f,
+                key: f.key
+                  .toLowerCase()
+                  .replace(/\s+/g, "_")
+                  .replace(/[^a-z0-9_]/g, ""),
+              }));
+
+              createdCollection = await createDatabaseCollection(
+                trimmedOrgId,
+                args.name,
+                normalizedFields
+              );
+
+              console.log("[AI Generator] Collection created:", createdCollection.id);
+
+              // Add tool result to messages
+              messages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                content: JSON.stringify({
+                  success: true,
+                  collectionId: createdCollection.id,
+                  collectionName: createdCollection.name,
+                  message: `Collection "${createdCollection.name}" created successfully with ${createdCollection.fields.length} fields.`,
+                }),
+              });
+
+              // Update collections schema text for next call
+              const existingCollections = collectionsSchemaText !== "Available Tables: []" 
+                ? collectionsSchemaText.split("\n").slice(1).join("\n")
+                : "";
+              collectionsSchemaText = `Available Tables:\n- { name: "${createdCollection.name}", fields: [${createdCollection.fields.map((f: any) => `"${f.key}"`).join(", ")}] }${existingCollections ? "\n" + existingCollections : ""}`;
+              
+              // Update system prompt with new collection info
+              systemPrompt = [
+                baseSystemPrompt,
+                GUARDRAIL_CLAUSE,
+                staffContextSection,
+                collectionsSchemaText,
+                COLLECTION_CREATION_INSTRUCTION,
+                ASSIGNMENT_INSTRUCTION,
+                GOOGLE_SHEET_INSTRUCTION,
+                METADATA_INSTRUCTION,
+                SLACK_INSTRUCTION,
+                DB_INSERT_INSTRUCTION,
+                AI_PARSE_INSTRUCTION,
+                DOC_GENERATE_INSTRUCTION,
+                TRIGGER_INSTRUCTION,
+                CONFIGURATION_REFINEMENT_RULES,
+              ].join("\n\n");
+              
+              // Update system message in conversation
+              messages[0] = {
+                role: "system",
+                content: systemPrompt,
+              };
+            } catch (error: any) {
+              console.error("[AI Generator] Error creating collection:", error);
+              messages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                content: JSON.stringify({
+                  success: false,
+                  error: error.message || "Failed to create collection",
+                }),
+              });
+            }
+          }
+        }
+        // Continue loop to generate workflow after tool execution
+        continue;
+      }
+
+      // No tool calls, AI returned the workflow JSON
+      workflowJson = message.content || "";
+      break;
+    }
+
+    if (!workflowJson) {
+      throw new Error("Failed to generate workflow after tool calls");
+    }
+
+    // Parse the workflow JSON (same logic as before)
+    const result = { text: workflowJson };
 
     // Get the full response
     const fullText = result.text;
@@ -1068,7 +1304,12 @@ export async function POST(req: NextRequest) {
       title,
       description: procedureDescription,
       steps: sanitizedSteps,
-      trigger: trigger || undefined // Include trigger if present
+      trigger: trigger || undefined, // Include trigger if present
+      createdCollection: createdCollection ? {
+        id: createdCollection.id,
+        name: createdCollection.name,
+        fields: createdCollection.fields,
+      } : null,
     });
   } catch (error) {
     console.error("Error generating procedure:", error);
