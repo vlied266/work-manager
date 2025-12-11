@@ -510,6 +510,34 @@ async function createDatabaseCollection(
   };
 }
 
+/**
+ * Helper function to update collection with dashboard layout
+ */
+async function updateCollectionDashboardLayout(
+  collectionId: string,
+  widgets: Array<{
+    id: string;
+    type: 'stat_card' | 'bar_chart' | 'line_chart' | 'pie_chart';
+    title: string;
+    field: string;
+    operation?: 'sum' | 'count' | 'avg';
+    xAxis?: string;
+    yAxis?: string;
+  }>
+): Promise<void> {
+  const adminDb = getAdminDb();
+  const now = Timestamp.now();
+
+  await adminDb.collection("collections").doc(collectionId).update({
+    dashboardLayout: {
+      widgets,
+    },
+    updatedAt: now,
+  });
+
+  console.log(`[AI Generator] Dashboard layout saved for collection ${collectionId} with ${widgets.length} widgets`);
+}
+
 const CONFIGURATION_REFINEMENT_RULES = `
 ### 🔧 CONFIGURATION REFINEMENT RULES
 
@@ -923,6 +951,41 @@ Rules:
 - After creating the collection, proceed to generate the workflow targeting this new collection.
 `;
 
+    // Add instruction for dashboard layout generation
+    const DASHBOARD_LAYOUT_INSTRUCTION = `
+DASHBOARD LAYOUT GENERATION:
+
+AFTER creating a new collection using create_database_collection, you MUST immediately call generate_dashboard_layout to create a useful dashboard configuration.
+
+Rules for generating widgets:
+1. **Stat Cards**: If fields contain currency/numbers (e.g., "amount", "total", "price", "cost"), create a 'stat_card' with:
+   - type: "stat_card"
+   - operation: "sum" (for currency) or "count" (for counting records)
+   - field: the numeric field key (e.g., "total_amount")
+
+2. **Bar Charts**: If you have numeric fields, create a 'bar_chart' with:
+   - type: "bar_chart"
+   - xAxis: a categorical field (e.g., "vendor", "status", "category")
+   - yAxis: a numeric field (e.g., "total_amount")
+
+3. **Line Charts**: If fields contain dates, create a 'line_chart' showing trends over time:
+   - type: "line_chart"
+   - xAxis: the date field (e.g., "invoice_date", "created_at")
+   - yAxis: a numeric field to track over time (e.g., "total_amount")
+
+4. **Pie Charts**: If fields contain categories (e.g., "status", "type", "category"), create a 'pie_chart':
+   - type: "pie_chart"
+   - field: the categorical field key (e.g., "status")
+
+5. **Always create at least 3 widgets** to provide comprehensive insights.
+
+Example: For a collection with fields ["invoice_date", "total_amount", "vendor", "status"]:
+- Widget 1: stat_card (sum of total_amount)
+- Widget 2: bar_chart (xAxis: vendor, yAxis: total_amount)
+- Widget 3: line_chart (xAxis: invoice_date, yAxis: total_amount)
+- Widget 4: pie_chart (field: status)
+`;
+
     // Construct the final system prompt with all instructions
     let systemPrompt = [
       baseSystemPrompt, // Base prompt (from Firestore or default)
@@ -930,6 +993,7 @@ Rules:
       staffContextSection, // The list of users
       collectionsSchemaText, // Available collections/tables
       COLLECTION_CREATION_INSTRUCTION, // Auto-create collections instruction
+      DASHBOARD_LAYOUT_INSTRUCTION, // Dashboard layout generation instruction
       ASSIGNMENT_INSTRUCTION, // Smart Mentions logic
       GOOGLE_SHEET_INSTRUCTION, // Smart Sheet Mapping logic
       METADATA_INSTRUCTION, // Professional Title & Description generation
@@ -946,7 +1010,7 @@ Rules:
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    // Define the tool for creating collections
+    // Define the tools for creating collections and dashboard layouts
     const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       {
         type: "function",
@@ -988,10 +1052,67 @@ Rules:
           },
         },
       },
+      {
+        type: "function",
+        function: {
+          name: "generate_dashboard_layout",
+          description: "Generates a dashboard layout configuration for a collection. MUST be called immediately after creating a new collection. Analyzes the collection fields and creates appropriate widgets (stat cards, charts) for data visualization.",
+          parameters: {
+            type: "object",
+            properties: {
+              collection_name: {
+                type: "string",
+                description: "The name of the collection to generate dashboard for (must match the collection created earlier)",
+              },
+              widgets: {
+                type: "array",
+                description: "Array of dashboard widgets to display",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: {
+                      type: "string",
+                      description: "Unique identifier for the widget (e.g., 'widget_1', 'total_sum_card')",
+                    },
+                    type: {
+                      type: "string",
+                      enum: ["stat_card", "bar_chart", "line_chart", "pie_chart"],
+                      description: "Type of widget",
+                    },
+                    title: {
+                      type: "string",
+                      description: "Display title for the widget (e.g., 'Total Revenue', 'Sales Over Time')",
+                    },
+                    field: {
+                      type: "string",
+                      description: "The database field key to analyze (e.g., 'total_amount', 'status')",
+                    },
+                    operation: {
+                      type: "string",
+                      enum: ["sum", "count", "avg"],
+                      description: "Operation for stat_card widgets (sum for currency, count for records, avg for averages)",
+                    },
+                    xAxis: {
+                      type: "string",
+                      description: "Field key for X-axis (for bar_chart and line_chart)",
+                    },
+                    yAxis: {
+                      type: "string",
+                      description: "Field key for Y-axis (for bar_chart and line_chart)",
+                    },
+                  },
+                  required: ["id", "type", "title", "field"],
+                },
+              },
+            },
+            required: ["collection_name", "widgets"],
+          },
+        },
+      },
     ];
 
     // First call: Check if AI wants to create a collection
-    const userPrompt = `Convert this process description into a workflow:\n\n"${description}"\n\nReturn a JSON object with "title", "description", and "steps" fields.\n\nIMPORTANT: Follow the NAMING RULES strictly:\n- Title must be 3-5 words, professional, action-oriented (e.g., "Candidate Resume Processing", NOT "Create a form for resume").\n- Description must be 1-2 sentences focusing on business outcome (e.g., "Automates the collection of candidate resumes, extracts key data using AI, and stores valid entries in the Candidates database.").\n- NEVER copy the user's prompt verbatim.\n- Match the language of the user's prompt (English or Persian).\n\nIf you need to create a new collection that doesn't exist, use the create_database_collection tool FIRST.`;
+    const userPrompt = `Convert this process description into a workflow:\n\n"${description}"\n\nReturn a JSON object with "title", "description", and "steps" fields.\n\nIMPORTANT: Follow the NAMING RULES strictly:\n- Title must be 3-5 words, professional, action-oriented (e.g., "Candidate Resume Processing", NOT "Create a form for resume").\n- Description must be 1-2 sentences focusing on business outcome (e.g., "Automates the collection of candidate resumes, extracts key data using AI, and stores valid entries in the Candidates database.").\n- NEVER copy the user's prompt verbatim.\n- Match the language of the user's prompt (English or Persian).\n\nIf you need to create a new collection that doesn't exist, use the create_database_collection tool FIRST, then immediately call generate_dashboard_layout for that collection.`;
 
     let messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       {
@@ -1035,6 +1156,73 @@ Rules:
       // Check if AI wants to call a tool
       if (message.tool_calls && message.tool_calls.length > 0) {
         for (const toolCall of message.tool_calls) {
+          if (toolCall.function.name === "generate_dashboard_layout") {
+            try {
+              const args = JSON.parse(toolCall.function.arguments);
+              console.log("[AI Generator] Generating dashboard layout for collection:", args.collection_name);
+
+              if (!createdCollection) {
+                throw new Error("No collection was created yet. Create a collection first.");
+              }
+
+              if (args.collection_name !== createdCollection.name) {
+                console.warn(`[AI Generator] Collection name mismatch: expected "${createdCollection.name}", got "${args.collection_name}". Using created collection.`);
+              }
+
+              // Validate widgets
+              if (!args.widgets || !Array.isArray(args.widgets) || args.widgets.length === 0) {
+                throw new Error("Widgets array is required and must contain at least one widget");
+              }
+
+              // Validate each widget
+              for (const widget of args.widgets) {
+                if (!widget.id || !widget.type || !widget.title || !widget.field) {
+                  throw new Error(`Widget is missing required fields: id, type, title, or field`);
+                }
+                if (!["stat_card", "bar_chart", "line_chart", "pie_chart"].includes(widget.type)) {
+                  throw new Error(`Invalid widget type: ${widget.type}`);
+                }
+                if (widget.type === "stat_card" && !widget.operation) {
+                  throw new Error(`stat_card widgets require an operation (sum, count, or avg)`);
+                }
+                if ((widget.type === "bar_chart" || widget.type === "line_chart") && (!widget.xAxis || !widget.yAxis)) {
+                  throw new Error(`${widget.type} widgets require both xAxis and yAxis`);
+                }
+              }
+
+              // Save dashboard layout to collection
+              await updateCollectionDashboardLayout(
+                createdCollection.id,
+                args.widgets
+              );
+
+              console.log(`[AI Generator] Dashboard layout created with ${args.widgets.length} widgets`);
+
+              // Add tool result to messages
+              messages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                content: JSON.stringify({
+                  success: true,
+                  collectionName: createdCollection.name,
+                  widgetsCount: args.widgets.length,
+                  message: `Dashboard layout generated successfully with ${args.widgets.length} widgets for collection "${createdCollection.name}".`,
+                }),
+              });
+            } catch (error: any) {
+              console.error("[AI Generator] Error generating dashboard layout:", error);
+              messages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                content: JSON.stringify({
+                  success: false,
+                  error: error.message || "Failed to generate dashboard layout",
+                }),
+              });
+            }
+            continue;
+          }
+          
           if (toolCall.function.name === "create_database_collection") {
             try {
               const args = JSON.parse(toolCall.function.arguments);
@@ -1086,6 +1274,7 @@ Rules:
                 staffContextSection,
                 collectionsSchemaText,
                 COLLECTION_CREATION_INSTRUCTION,
+                DASHBOARD_LAYOUT_INSTRUCTION,
                 ASSIGNMENT_INSTRUCTION,
                 GOOGLE_SHEET_INSTRUCTION,
                 METADATA_INSTRUCTION,
