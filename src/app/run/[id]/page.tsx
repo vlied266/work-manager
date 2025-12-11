@@ -55,11 +55,20 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
             ...data,
             startedAt: data.startedAt?.toDate() || new Date(),
             completedAt: data.completedAt?.toDate(),
+            triggerContext: data.triggerContext || undefined, // Ensure triggerContext is preserved
+            initialInput: data.initialInput || undefined, // Ensure initialInput is preserved
             logs: (data.logs || []).map((log: any) => ({
               ...log,
               timestamp: log.timestamp?.toDate() || new Date(),
             })),
           } as ActiveRun);
+          
+          // Debug: Log triggerContext to see if it's being loaded
+          if (data.triggerContext) {
+            console.log("[Run Page] ✅ Loaded triggerContext from Firestore:", Object.keys(data.triggerContext));
+          } else {
+            console.log("[Run Page] ⚠️ No triggerContext in Firestore data");
+          }
           
           if (data.procedureId) {
             const procUnsubscribe = onSnapshot(
