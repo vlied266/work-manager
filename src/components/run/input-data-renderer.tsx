@@ -180,11 +180,20 @@ export function InputDataRenderer({
       setResuming(true);
       try {
         // Prepare output data - ensure it's an object for proper variable resolution
-        // Use fieldLabel as key if available, otherwise use "value"
-        // Also check if there's a specific outputVariableName configured
-        const fieldKey = stepConfig.fieldLabel 
-          ? stepConfig.fieldLabel.toLowerCase().replace(/\s+/g, "_") 
-          : (stepConfig.outputVariableName || "value");
+        // Priority: outputVariableName > fieldLabel > "value"
+        // If outputVariableName is set, use it as the key (e.g., "result")
+        // Otherwise, derive from fieldLabel (e.g., "Log Call Outcome" -> "log_call_outcome")
+        let fieldKey: string;
+        if (stepConfig.outputVariableName) {
+          // Use the configured outputVariableName directly
+          fieldKey = stepConfig.outputVariableName;
+        } else if (stepConfig.fieldLabel) {
+          // Convert fieldLabel to snake_case
+          fieldKey = stepConfig.fieldLabel.toLowerCase().replace(/\s+/g, "_");
+        } else {
+          // Fallback to "value"
+          fieldKey = "value";
+        }
         
         let outputData: any;
         if (typeof output === "string" || typeof output === "number" || typeof output === "boolean") {
@@ -192,7 +201,13 @@ export function InputDataRenderer({
           outputData = { [fieldKey]: output };
         } else if (output && typeof output === "object") {
           // Already an object - use as is, but ensure it has the expected structure
-          outputData = output;
+          // If the object doesn't have the fieldKey, add it
+          if (!(fieldKey in output)) {
+            // Merge the fieldKey into the existing object
+            outputData = { ...output, [fieldKey]: output };
+          } else {
+            outputData = output;
+          }
         } else {
           // Fallback to empty object
           outputData = {};
@@ -201,6 +216,8 @@ export function InputDataRenderer({
         console.log("[InputDataRenderer] Preparing output data:", {
           rawOutput: output,
           fieldKey,
+          outputVariableName: stepConfig.outputVariableName,
+          fieldLabel: stepConfig.fieldLabel,
           outputData,
           outputType: typeof output,
         });
