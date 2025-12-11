@@ -16,6 +16,7 @@ import {
   ToggleLeft,
   List,
   Loader2,
+  BarChart3,
 } from "lucide-react";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { Collection, CollectionField } from "@/app/api/data/collections/route";
@@ -279,9 +280,20 @@ export default function SchemaBuilderPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            router.push(`/data/${collection.id}`);
+                          }}
+                          className="p-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/60 hover:bg-white/90 text-slate-600 hover:text-purple-600 transition-all shadow-sm hover:shadow-md"
+                          title="View Dashboard"
+                        >
+                          <BarChart3 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleEditCollection(collection);
                           }}
                           className="p-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/60 hover:bg-white/90 text-slate-600 hover:text-blue-600 transition-all shadow-sm hover:shadow-md"
+                          title="Edit Collection"
                         >
                           <Edit className="h-4 w-4" />
                         </button>
@@ -291,6 +303,7 @@ export default function SchemaBuilderPage() {
                             handleDeleteCollection(collection.id);
                           }}
                           className="p-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/60 hover:bg-white/90 text-slate-600 hover:text-red-600 transition-all shadow-sm hover:shadow-md"
+                          title="Delete Collection"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
