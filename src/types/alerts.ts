@@ -3,11 +3,12 @@ export interface AlertRule {
   collectionName: string;
   condition: string; // JavaScript-like condition, e.g., "record.total_amount > 5000"
   message: string; // Template message, e.g., "High value invoice detected: {{invoice_number}}"
-  action: 'email' | 'in_app'; // Default to 'in_app'
+  action: 'email' | 'in_app' | 'both'; // 'email', 'in_app', or 'both'
   organizationId: string;
   createdAt?: Date;
   updatedAt?: Date;
   isActive?: boolean; // Default to true
+  recipientEmail?: string; // Optional: specific email for this alert (overrides ADMIN_EMAIL)
 }
 
 export interface Notification {

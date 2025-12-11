@@ -694,7 +694,7 @@ Examples:
     collectionName,
     condition,
     message,
-    action: 'in_app',
+    action: 'in_app', // Default to in_app, user can change to 'email' or 'both' later
     organizationId: orgId,
     createdAt: now.toDate(),
     updatedAt: now.toDate(),

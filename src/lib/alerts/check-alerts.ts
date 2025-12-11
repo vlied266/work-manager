@@ -1,6 +1,7 @@
 import { getAdminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 import { AlertRule, Notification } from "@/types/alerts";
+import { sendAlertEmail } from "@/lib/email/send-alert";
 
 /**
  * Evaluates a JavaScript-like condition against a record
@@ -95,22 +96,55 @@ export async function checkAlertsForRecord(
           // Resolve message template
           const resolvedMessage = resolveMessageTemplate(alertRule.message, recordData);
 
-          // Create notification
-          const notification: Omit<Notification, 'id'> = {
-            alertRuleId: alertDoc.id,
-            collectionName: alertRule.collectionName,
-            recordId: recordId,
-            recordData: recordData,
-            message: resolvedMessage,
-            action: alertRule.action,
-            organizationId: organizationId,
-            createdAt: Timestamp.now().toDate(),
-            read: false,
-          };
+          // Create notification (for in_app or both actions)
+          if (alertRule.action === 'in_app' || alertRule.action === 'both') {
+            const notification: Omit<Notification, 'id'> = {
+              alertRuleId: alertDoc.id,
+              collectionName: alertRule.collectionName,
+              recordId: recordId,
+              recordData: recordData,
+              message: resolvedMessage,
+              action: alertRule.action,
+              organizationId: organizationId,
+              createdAt: Timestamp.now().toDate(),
+              read: false,
+            };
 
-          await db.collection("_notifications").add(notification);
+            await db.collection("_notifications").add(notification);
+            console.log(`[Alert Check] In-app notification created for alert rule: ${alertDoc.id}`);
+          }
 
-          console.log(`[Alert Check] Notification created for alert rule: ${alertDoc.id}`);
+          // Send email (for email or both actions)
+          if (alertRule.action === 'email' || alertRule.action === 'both') {
+            try {
+              // Determine recipient email
+              const recipientEmail = alertRule.recipientEmail || process.env.ADMIN_EMAIL;
+              
+              if (!recipientEmail) {
+                console.warn(`[Alert Check] No recipient email configured for alert rule ${alertDoc.id}. Skipping email.`);
+              } else {
+                const emailResult = await sendAlertEmail({
+                  to: recipientEmail,
+                  subject: `Alert: ${resolvedMessage}`,
+                  message: resolvedMessage,
+                  collectionName: alertRule.collectionName,
+                  recordId: recordId,
+                  recordData: recordData,
+                });
+
+                if (emailResult.success) {
+                  console.log(`[Alert Check] ✅ Email sent successfully for alert rule: ${alertDoc.id}`);
+                } else {
+                  console.error(`[Alert Check] ❌ Failed to send email for alert rule ${alertDoc.id}:`, emailResult.error);
+                  // Don't throw - email failure should not break the workflow
+                }
+              }
+            } catch (emailError) {
+              console.error(`[Alert Check] Exception sending email for alert rule ${alertDoc.id}:`, emailError);
+              // Don't throw - email failure should not break the workflow
+            }
+          }
+
           console.log(`[Alert Check] ALERT TRIGGERED: ${resolvedMessage}`);
         } else {
           console.log(`[Alert Check] Condition not met for alert rule: ${alertDoc.id}`);
