@@ -181,7 +181,7 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
             value={value}
             onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
             placeholder={`Enter ${field.label}`}
-            className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300/50 shadow-sm focus:shadow-md transition-all"
           />
         );
       case "number":
@@ -193,7 +193,7 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
               setFormData({ ...formData, [field.key]: parseFloat(e.target.value) || 0 })
             }
             placeholder={`Enter ${field.label}`}
-            className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300/50 shadow-sm focus:shadow-md transition-all"
           />
         );
       case "date":
@@ -202,7 +202,7 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
             type="date"
             value={value}
             onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
-            className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 px-4 py-3 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300/50 shadow-sm focus:shadow-md transition-all"
           />
         );
       case "boolean":
@@ -212,9 +212,9 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
               type="checkbox"
               checked={value || false}
               onChange={(e) => setFormData({ ...formData, [field.key]: e.target.checked })}
-              className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+              className="w-5 h-5 rounded border-white/60 text-blue-600 focus:ring-2 focus:ring-blue-500/50 bg-white/80 backdrop-blur-sm"
             />
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-semibold text-slate-700">
               {value ? "Yes" : "No"}
             </span>
           </label>
@@ -224,7 +224,7 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
           <select
             value={value}
             onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
-            className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 px-4 py-3 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300/50 shadow-sm focus:shadow-md transition-all"
           >
             <option value="">Select {field.label}</option>
             {field.options?.map((option) => (
@@ -241,7 +241,7 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
             value={value}
             onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
             placeholder={`Enter ${field.label}`}
-            className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300/50 shadow-sm focus:shadow-md transition-all"
           />
         );
     }
@@ -372,239 +372,266 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.push("/data/schema")}
-                className="p-2 rounded-lg hover:bg-white/80 transition-colors"
-              >
-                <ArrowLeft className="h-5 w-5 text-slate-600" />
-              </button>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50/40 via-white to-cyan-50/40 relative overflow-hidden font-sans">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-blue-100/20 blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 rounded-full bg-purple-100/20 blur-3xl" />
+      </div>
+
+      <div className="relative p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg">
-                  <Database className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-slate-900">{collection.name}</h1>
-                  <p className="text-sm text-slate-600 mt-1">
-                    {records.length} record{records.length !== 1 ? "s" : ""}
-                  </p>
+                <button
+                  onClick={() => router.push("/data/schema")}
+                  className="p-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/60 hover:bg-white/90 transition-all shadow-sm hover:shadow-md"
+                >
+                  <ArrowLeft className="h-5 w-5 text-slate-600" />
+                </button>
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-3xl blur-xl" />
+                    <div className="relative flex h-16 w-16 items-center justify-center rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg">
+                      <Database className="h-8 w-8 text-blue-600" />
+                    </div>
+                  </div>
+                  <div>
+                    <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 mb-2">{collection.name}</h1>
+                    <p className="text-sm text-slate-600 font-medium">
+                      {records.length} record{records.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
                 </div>
               </div>
+              <motion.button
+                onClick={handleAddRecord}
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg shadow-black/5 px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-xl"
+              >
+                <Plus className="h-5 w-5" />
+                Add Record
+              </motion.button>
             </div>
-            <motion.button
-              onClick={handleAddRecord}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3 text-white font-semibold shadow-lg hover:shadow-xl transition-all"
-            >
-              <Plus className="h-5 w-5" />
-              Add Record
-            </motion.button>
           </div>
-        </div>
 
         {/* Dashboard */}
         {collection.dashboardLayout && (
           <DynamicDashboard layout={collection.dashboardLayout as DashboardLayout} data={records} />
         )}
 
-        {/* Search and Export Controls */}
-        {records.length > 0 && (
-          <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
-            {/* Search Input */}
-            <div className="relative flex-1 max-w-md w-full">
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search records..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white pl-12 pr-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+          {/* Search and Export Controls */}
+          {records.length > 0 && (
+            <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
+              {/* Search Input */}
+              <div className="relative flex-1 max-w-md w-full">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-purple-50/50 rounded-2xl blur-xl opacity-50" />
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 z-10" />
+                  <input
+                    type="text"
+                    placeholder="Search records..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full rounded-2xl bg-white/70 backdrop-blur-xl border border-white/60 pl-12 pr-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300/50 shadow-sm focus:shadow-md transition-all"
+                  />
+                </div>
+              </div>
 
-            {/* Export Button */}
-            <motion.button
-              onClick={handleExportCSV}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
-            >
-              <Download className="h-4 w-4" />
-              Export CSV
-            </motion.button>
-          </div>
-        )}
-
-        {/* Table */}
-        {records.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200 p-12 text-center"
-          >
-            <Database className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-slate-900 mb-2">No Records Yet</h3>
-            <p className="text-slate-600 mb-6">Add your first record to get started</p>
-            <motion.button
-              onClick={handleAddRecord}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-white font-semibold"
-            >
-              <Plus className="h-5 w-5" />
-              Add Record
-            </motion.button>
-          </motion.div>
-        ) : (
-          <div className="rounded-2xl bg-white/80 backdrop-blur-xl border border-slate-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    {collection.fields.map((field) => (
-                      <th
-                        key={field.key}
-                        className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider"
-                      >
-                        {field.label}
-                      </th>
-                    ))}
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {filteredRecords.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={collection.fields.length + 1}
-                        className="px-6 py-12 text-center"
-                      >
-                        <div className="flex flex-col items-center">
-                          <Search className="h-12 w-12 text-slate-300 mb-4" />
-                          <p className="text-sm font-medium text-slate-600">
-                            No records match your search
-                          </p>
-                          <p className="text-xs text-slate-400 mt-1">
-                            Try adjusting your search query
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredRecords.map((record) => (
-                    <tr key={record.id} className="hover:bg-slate-50 transition-colors">
-                      {collection.fields.map((field) => (
-                        <td key={field.key} className="px-6 py-4 text-sm text-slate-900">
-                          {renderCellValue(field, record)}
-                        </td>
-                      ))}
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => router.push(`/data/${collectionId}/${record.id}`)}
-                            className="p-2 rounded-lg hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors"
-                            title="Edit Record"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteRecord(record.id)}
-                            className="p-2 rounded-lg hover:bg-red-50 text-slate-600 hover:text-red-600 transition-colors"
-                            title="Delete Record"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Add/Edit Modal */}
-        <AnimatePresence>
-          {showAddModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-              onClick={() => !saving && setShowAddModal(false)}
-            >
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+              {/* Export Button */}
+              <motion.button
+                onClick={handleExportCSV}
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-white/90 transition-all shadow-lg shadow-black/5 hover:shadow-xl"
               >
-                {/* Modal Header */}
-                <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                  <h2 className="text-xl font-bold text-slate-900">
-                    {editingRecord ? "Edit Record" : "Add Record"}
-                  </h2>
-                  <button
-                    onClick={() => !saving && setShowAddModal(false)}
-                    className="p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-
-                {/* Modal Content */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                  {collection.fields.map((field) => (
-                    <div key={field.key}>
-                      <label className="block text-sm font-semibold text-slate-900 mb-2">
-                        {field.label}
-                      </label>
-                      {renderFieldInput(field)}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Modal Footer */}
-                <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-200">
-                  <button
-                    onClick={() => !saving && setShowAddModal(false)}
-                    className="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSaveRecord}
-                    disabled={saving}
-                    className="flex items-center gap-2 px-6 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4" />
-                        Save Record
-                      </>
-                    )}
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
+                <Download className="h-4 w-4" />
+                Export CSV
+              </motion.button>
+            </div>
           )}
-        </AnimatePresence>
+
+          {/* Table */}
+          {records.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-12 text-center overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-purple-50/50 opacity-50" />
+              <div className="relative">
+                <div className="relative mb-6 inline-block">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-purple-100/50 rounded-3xl blur-2xl" />
+                  <div className="relative h-20 w-20 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 flex items-center justify-center shadow-lg mx-auto">
+                    <Database className="h-10 w-10 text-slate-400" />
+                  </div>
+                </div>
+                <h3 className="text-2xl font-extrabold text-slate-900 mb-2">No Records Yet</h3>
+                <p className="text-slate-600 mb-8 font-medium">Add your first record to get started</p>
+                <motion.button
+                  onClick={handleAddRecord}
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg shadow-black/5 px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 hover:shadow-xl"
+                >
+                  <Plus className="h-5 w-5" />
+                  Add Record
+                </motion.button>
+              </div>
+            </motion.div>
+          ) : (
+            <div className="relative rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-white/50 backdrop-blur-sm border-b border-white/60">
+                    <tr>
+                      {collection.fields.map((field) => (
+                        <th
+                          key={field.key}
+                          className="px-6 py-4 text-left text-xs font-extrabold text-slate-700 uppercase tracking-wider"
+                        >
+                          {field.label}
+                        </th>
+                      ))}
+                      <th className="px-6 py-4 text-right text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/60">
+                    {filteredRecords.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={collection.fields.length + 1}
+                          className="px-6 py-12 text-center"
+                        >
+                          <div className="flex flex-col items-center">
+                            <div className="relative mb-4">
+                              <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-purple-100/50 rounded-2xl blur-xl" />
+                              <div className="relative h-16 w-16 rounded-xl bg-white/80 backdrop-blur-sm border border-white/60 flex items-center justify-center shadow-lg mx-auto">
+                                <Search className="h-8 w-8 text-slate-400" />
+                              </div>
+                            </div>
+                            <p className="text-sm font-semibold text-slate-600">
+                              No records match your search
+                            </p>
+                            <p className="text-xs text-slate-400 mt-1 font-medium">
+                              Try adjusting your search query
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredRecords.map((record) => (
+                        <tr key={record.id} className="hover:bg-white/50 transition-colors">
+                          {collection.fields.map((field) => (
+                            <td key={field.key} className="px-6 py-4 text-sm text-slate-900 font-medium">
+                              {renderCellValue(field, record)}
+                            </td>
+                          ))}
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => router.push(`/data/${collectionId}/${record.id}`)}
+                                className="p-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/60 hover:bg-white/90 text-slate-600 hover:text-blue-600 transition-all shadow-sm hover:shadow-md"
+                                title="Edit Record"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteRecord(record.id)}
+                                className="p-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/60 hover:bg-white/90 text-slate-600 hover:text-red-600 transition-all shadow-sm hover:shadow-md"
+                                title="Delete Record"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Add/Edit Modal */}
+          <AnimatePresence>
+            {showAddModal && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/30 backdrop-blur-md z-50 flex items-center justify-center p-4"
+                onClick={() => !saving && setShowAddModal(false)}
+              >
+                <motion.div
+                  initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="relative rounded-3xl bg-white/80 backdrop-blur-xl border border-white/60 shadow-2xl shadow-black/20 w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+                >
+                  {/* Modal Header */}
+                  <div className="flex items-center justify-between p-6 border-b border-white/60 bg-white/50 backdrop-blur-sm">
+                    <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
+                      {editingRecord ? "Edit Record" : "Add Record"}
+                    </h2>
+                    <button
+                      onClick={() => !saving && setShowAddModal(false)}
+                      className="p-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/60 hover:bg-white/90 text-slate-600 transition-all shadow-sm hover:shadow-md"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  {/* Modal Content */}
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-white/50 to-white/30">
+                    {collection.fields.map((field) => (
+                      <div key={field.key}>
+                        <label className="block text-sm font-extrabold text-slate-900 mb-3 tracking-tight">
+                          {field.label}
+                        </label>
+                        {renderFieldInput(field)}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="flex items-center justify-end gap-3 p-6 border-t border-white/60 bg-white/50 backdrop-blur-sm">
+                    <button
+                      onClick={() => !saving && setShowAddModal(false)}
+                      className="px-4 py-2 rounded-full bg-white/70 backdrop-blur-sm border border-white/60 text-sm font-semibold text-slate-700 hover:bg-white/90 transition-all shadow-sm hover:shadow-md"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveRecord}
+                      disabled={saving}
+                      className="flex items-center gap-2 px-6 py-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 text-sm font-semibold text-slate-700 hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
+                    >
+                      {saving ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4" />
+                          Save Record
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );

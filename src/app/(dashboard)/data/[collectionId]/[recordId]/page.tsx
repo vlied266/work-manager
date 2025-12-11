@@ -121,7 +121,7 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
             value={value}
             onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
             placeholder={`Enter ${field.label}`}
-            className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300/50 shadow-sm focus:shadow-md transition-all"
           />
         );
       case "number":
@@ -133,7 +133,7 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
               setFormData({ ...formData, [field.key]: parseFloat(e.target.value) || 0 })
             }
             placeholder={`Enter ${field.label}`}
-            className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300/50 shadow-sm focus:shadow-md transition-all"
           />
         );
       case "date":
@@ -142,7 +142,7 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
             type="date"
             value={value}
             onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
-            className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 px-4 py-3 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300/50 shadow-sm focus:shadow-md transition-all"
           />
         );
       case "boolean":
@@ -152,9 +152,9 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
               type="checkbox"
               checked={value || false}
               onChange={(e) => setFormData({ ...formData, [field.key]: e.target.checked })}
-              className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+              className="w-5 h-5 rounded border-white/60 text-blue-600 focus:ring-2 focus:ring-blue-500/50 bg-white/80 backdrop-blur-sm"
             />
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-semibold text-slate-700">
               {value ? "Yes" : "No"}
             </span>
           </label>
@@ -164,7 +164,7 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
           <select
             value={value}
             onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
-            className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 px-4 py-3 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300/50 shadow-sm focus:shadow-md transition-all"
           >
             <option value="">Select {field.label}</option>
             {field.options?.map((option) => (
@@ -181,7 +181,7 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
             value={value}
             onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
             placeholder={`Enter ${field.label}`}
-            className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300/50 shadow-sm focus:shadow-md transition-all"
           />
         );
     }
@@ -240,21 +240,31 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50/40 via-white to-cyan-50/40 flex items-center justify-center">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-purple-100/50 rounded-3xl blur-2xl" />
+          <div className="relative rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 p-8">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!collection || !record) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
-        <div className="text-center">
-          <FileText className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-slate-900 mb-2">Record Not Found</h3>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50/40 via-white to-cyan-50/40 flex items-center justify-center">
+        <div className="relative rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5 p-12 text-center">
+          <div className="relative mb-6 inline-block">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-purple-100/50 rounded-3xl blur-2xl" />
+            <div className="relative h-20 w-20 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 flex items-center justify-center shadow-lg mx-auto">
+              <FileText className="h-10 w-10 text-slate-400" />
+            </div>
+          </div>
+          <h3 className="text-2xl font-extrabold text-slate-900 mb-2">Record Not Found</h3>
           <button
             onClick={() => router.push(`/data/${collectionId}`)}
-            className="text-blue-600 hover:text-blue-700 font-medium"
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-white/90 shadow-lg hover:shadow-xl"
           >
             Go back to Collection
           </button>
@@ -264,8 +274,14 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <div className="p-8">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50/40 via-white to-cyan-50/40 relative overflow-hidden font-sans">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-blue-100/20 blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 rounded-full bg-purple-100/20 blur-3xl" />
+      </div>
+
+      <div className="relative p-8">
         <div className="max-w-[1600px] mx-auto">
           {/* Header */}
           <div className="mb-6">
@@ -273,20 +289,20 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => router.push(`/data/${collectionId}`)}
-                  className="p-2 rounded-lg hover:bg-white/80 transition-colors"
+                  className="p-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/60 hover:bg-white/90 transition-all shadow-sm hover:shadow-md"
                 >
                   <ArrowLeft className="h-5 w-5 text-slate-600" />
                 </button>
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900">Edit Record</h1>
-                  <p className="text-sm text-slate-600 mt-1">{collection.name}</p>
+                  <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 mb-2">Edit Record</h1>
+                  <p className="text-sm text-slate-600 font-medium">{collection.name}</p>
                 </div>
               </div>
               
               {/* Verification Status Badge */}
               <div className="flex items-center gap-3">
                 <span
-                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold border ${getStatusBadge(
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-extrabold border backdrop-blur-sm shadow-sm ${getStatusBadge(
                     verificationStatus
                   )}`}
                 >
@@ -312,13 +328,21 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="h-full overflow-hidden flex flex-col bg-white rounded-lg shadow"
+              className="h-full overflow-hidden flex flex-col rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5"
             >
+              {/* Form Header */}
+              <div className="p-6 border-b border-white/60 bg-white/50 backdrop-blur-sm">
+                <h2 className="text-xl font-extrabold tracking-tight text-slate-900">Record Data</h2>
+                <p className="text-sm text-slate-600 font-medium mt-1">
+                  Verify and edit the extracted information
+                </p>
+              </div>
+
               {/* Scrollable Form Content */}
-              <div className="overflow-y-auto h-full p-4 space-y-6">
+              <div className="overflow-y-auto h-full p-6 space-y-6 bg-gradient-to-b from-white/50 to-white/30">
                 {collection.fields.map((field) => (
                   <div key={field.key}>
-                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    <label className="block text-sm font-extrabold text-slate-900 mb-3 tracking-tight">
                       {field.label}
                     </label>
                     {renderFieldInput(field)}
@@ -327,10 +351,10 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
               </div>
 
               {/* Form Footer - Fixed at bottom */}
-              <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3 flex-shrink-0">
+              <div className="p-6 border-t border-white/60 bg-white/50 backdrop-blur-sm flex items-center justify-between gap-3 flex-shrink-0">
                 <button
                   onClick={() => router.push(`/data/${collectionId}`)}
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+                  className="px-4 py-2 rounded-full bg-white/70 backdrop-blur-sm border border-white/60 text-sm font-semibold text-slate-700 hover:bg-white/90 transition-all shadow-sm hover:shadow-md"
                 >
                   Cancel
                 </button>
@@ -338,7 +362,7 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
                   <button
                     onClick={() => handleSave(false)}
                     disabled={saving}
-                    className="flex items-center gap-2 px-6 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center gap-2 px-6 py-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 text-sm font-semibold text-slate-700 hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
                   >
                     {saving ? (
                       <>
@@ -355,7 +379,7 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
                   <button
                     onClick={() => handleSave(true)}
                     disabled={saving || verificationStatus === "approved"}
-                    className="flex items-center gap-2 px-6 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center gap-2 px-6 py-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 text-sm font-semibold text-slate-700 hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
                   >
                     {verificationStatus === "approved" ? (
                       <>
