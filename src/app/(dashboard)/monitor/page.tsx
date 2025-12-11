@@ -12,6 +12,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useOrgQuery, useOrgId } from "@/hooks/useOrgData";
 import { ReassignModal } from "@/components/monitor/ReassignModal";
+import { fetchCollectionsStats, CollectionStats } from "@/lib/collections-stats";
+import { Database } from "lucide-react";
 
 // Prevent SSR/prerendering - this page requires client-side auth
 export const dynamic = 'force-dynamic';
@@ -32,6 +34,7 @@ export default function MonitorPage() {
   const [reassigningRunId, setReassigningRunId] = useState<string | null>(null);
   const [reassignModalOpen, setReassignModalOpen] = useState(false);
   const [selectedRunForReassign, setSelectedRunForReassign] = useState<ActiveRun | null>(null);
+  const [collectionsStats, setCollectionsStats] = useState<CollectionStats | null>(null);
   const orgId = useOrgId();
   
   // Query: Only IN_PROGRESS or FLAGGED runs
@@ -191,6 +194,12 @@ export default function MonitorPage() {
 
     return () => unsubscribe();
   }, [runsQuery]);
+
+  // Fetch collections stats
+  useEffect(() => {
+    if (!orgId) return;
+    fetchCollectionsStats(orgId).then(setCollectionsStats);
+  }, [orgId]);
 
   // Calculate time in current step (stall time)
   const getTimeInStep = (run: ActiveRun & { lastActivity: Date }): { hours: number; isStalled: boolean; display: string } => {
@@ -368,13 +377,20 @@ export default function MonitorPage() {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Active Processes</p>
-                  <p className="text-3xl font-extrabold text-slate-900">{runs.length}</p>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    {runs.length === 0 && collectionsStats ? "Total Records" : "Active Processes"}
+                  </p>
+                  <p className="text-3xl font-extrabold text-slate-900">
+                    {runs.length === 0 && collectionsStats ? collectionsStats.totalRecords : runs.length}
+                  </p>
                 </div>
                 <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
-                  <Clock className="h-7 w-7" />
+                  {runs.length === 0 && collectionsStats ? <Database className="h-7 w-7" /> : <Clock className="h-7 w-7" />}
                 </div>
               </div>
+              {runs.length === 0 && collectionsStats && (
+                <p className="mt-2 text-xs text-slate-500">{collectionsStats.totalCollections} collections</p>
+              )}
             </motion.div>
             <motion.div 
               initial={{ opacity: 0, y: 20 }}

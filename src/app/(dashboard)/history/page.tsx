@@ -8,7 +8,9 @@ import { FileText, Download, CheckCircle2, AlertTriangle, Clock, XCircle } from 
 import Link from "next/link";
 import { exportToCSV, generateRunCertificate, exportRunToCSV } from "@/lib/exporter";
 import { motion } from "framer-motion";
-import { useOrgQuery } from "@/hooks/useOrgData";
+import { useOrgQuery, useOrgId } from "@/hooks/useOrgData";
+import { fetchCollectionsStats, CollectionStats } from "@/lib/collections-stats";
+import { Database } from "lucide-react";
 
 // Prevent SSR/prerendering - this page requires client-side auth
 export const dynamic = 'force-dynamic';
@@ -18,6 +20,8 @@ export default function HistoryPage() {
   const [procedures, setProcedures] = useState<Record<string, Procedure>>({});
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [collectionsStats, setCollectionsStats] = useState<CollectionStats | null>(null);
+  const orgId = useOrgId();
 
   // Use organization-scoped query hook with additional filters
   // Note: We filter by status but sort client-side to avoid requiring a composite index
@@ -89,6 +93,12 @@ export default function HistoryPage() {
 
     return () => unsubscribe();
   }, [runsQuery]);
+
+  // Fetch collections stats
+  useEffect(() => {
+    if (!orgId) return;
+    fetchCollectionsStats(orgId).then(setCollectionsStats);
+  }, [orgId]);
 
   const handleExportAll = () => {
     setExporting(true);
@@ -179,7 +189,11 @@ export default function HistoryPage() {
           <div className="mb-8 flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Run History</h1>
-              <p className="mt-2 text-sm text-slate-600 font-medium">View and export completed processes</p>
+              <p className="mt-2 text-sm text-slate-600 font-medium">
+                {runs.length === 0 && collectionsStats 
+                  ? `View and manage ${collectionsStats.totalRecords} records across ${collectionsStats.totalCollections} collections`
+                  : "View and export completed processes"}
+              </p>
             </div>
             <button
               onClick={handleExportAll}
@@ -199,11 +213,35 @@ export default function HistoryPage() {
                   <div className="relative mb-6">
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-indigo-100/50 rounded-3xl blur-2xl" />
                     <div className="relative h-20 w-20 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 flex items-center justify-center shadow-lg">
-                      <Clock className="h-10 w-10 text-slate-400" />
+                      {collectionsStats && collectionsStats.totalRecords > 0 ? (
+                        <Database className="h-10 w-10 text-blue-500" />
+                      ) : (
+                        <Clock className="h-10 w-10 text-slate-400" />
+                      )}
                     </div>
                   </div>
-                  <p className="text-lg font-extrabold text-slate-900 mb-2">No completed runs yet</p>
-                  <p className="text-sm text-slate-600 font-medium">Completed processes will appear here</p>
+                  {collectionsStats && collectionsStats.totalRecords > 0 ? (
+                    <>
+                      <p className="text-lg font-extrabold text-slate-900 mb-2">
+                        {collectionsStats.totalRecords} Records Available
+                      </p>
+                      <p className="text-sm text-slate-600 font-medium mb-4">
+                        Across {collectionsStats.totalCollections} collections
+                      </p>
+                      <Link
+                        href="/data/schema"
+                        className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-md hover:bg-blue-700 hover:shadow-lg transition-all"
+                      >
+                        <Database className="h-4 w-4" />
+                        View Collections
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-lg font-extrabold text-slate-900 mb-2">No completed runs yet</p>
+                      <p className="text-sm text-slate-600 font-medium">Completed processes will appear here</p>
+                    </>
+                  )}
                 </div>
               </div>
             ) : (
