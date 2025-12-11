@@ -24,6 +24,7 @@ export async function GET(
       id: doc.id,
       collectionId: data.collectionId,
       data: data.data || {},
+      verificationStatus: data.verificationStatus || "pending",
       createdAt: data.createdAt?.toDate() || new Date(),
       updatedAt: data.updatedAt?.toDate() || new Date(),
     });
@@ -64,10 +65,20 @@ export async function PUT(
       );
     }
 
-    await docRef.update({
+    const updateData: any = {
       data,
       updatedAt: Timestamp.now(),
-    });
+    };
+
+    // Support verificationStatus update
+    if (body.verificationStatus !== undefined) {
+      const validStatuses = ["pending", "needs_review", "approved", "rejected"];
+      if (validStatuses.includes(body.verificationStatus)) {
+        updateData.verificationStatus = body.verificationStatus;
+      }
+    }
+
+    await docRef.update(updateData);
 
     const updatedDoc = await docRef.get();
     const updatedData = updatedDoc.data()!;
@@ -76,6 +87,7 @@ export async function PUT(
       id: updatedDoc.id,
       collectionId: updatedData.collectionId,
       data: updatedData.data || {},
+      verificationStatus: updatedData.verificationStatus || "pending",
       createdAt: updatedData.createdAt?.toDate() || new Date(),
       updatedAt: updatedData.updatedAt?.toDate() || new Date(),
     });

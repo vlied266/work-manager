@@ -385,14 +385,16 @@ export default function CollectionPage({ params: paramsPromise }: CollectionPage
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => handleEditRecord(record)}
+                            onClick={() => router.push(`/data/${collectionId}/${record.id}`)}
                             className="p-2 rounded-lg hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors"
+                            title="Edit Record"
                           >
                             <Edit className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteRecord(record.id)}
                             className="p-2 rounded-lg hover:bg-red-50 text-slate-600 hover:text-red-600 transition-colors"
+                            title="Delete Record"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
