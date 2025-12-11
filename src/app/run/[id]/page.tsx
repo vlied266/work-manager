@@ -185,7 +185,7 @@ export default function RunPage({ params }: { params: Promise<{ id: string }> })
 
   // Resolve config variables at runtime
   const resolvedConfig: ResolvedConfig | null = currentStep && run && procedure
-    ? resolveConfig(currentStep.config, run.logs || [], procedure.steps)
+    ? resolveConfig(currentStep.config, run.logs || [], procedure.steps, run.triggerContext)
     : null;
 
   const resolvedStep: AtomicStep | null = currentStep && resolvedConfig
