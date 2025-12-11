@@ -29,12 +29,27 @@ export function DynamicDashboard({ layout, data }: DynamicDashboardProps) {
     }
   };
 
+  // Separate widgets by type for better layout
+  const statCards = layout.widgets.filter((w) => w.type === "stat_card");
+  const charts = layout.widgets.filter((w) => w.type !== "stat_card");
+
   return (
     <div className="mb-8">
       <h2 className="text-xl font-bold text-slate-900 mb-6">Dashboard</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {layout.widgets.map((widget) => renderWidget(widget))}
-      </div>
+      
+      {/* Stat Cards Row */}
+      {statCards.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          {statCards.map((widget) => renderWidget(widget))}
+        </div>
+      )}
+
+      {/* Charts Row */}
+      {charts.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {charts.map((widget) => renderWidget(widget))}
+        </div>
+      )}
     </div>
   );
 }
