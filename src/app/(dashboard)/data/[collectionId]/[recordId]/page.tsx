@@ -11,11 +11,14 @@ import {
   AlertCircle,
   Clock,
   FileText,
+  Database,
+  MessageSquare,
 } from "lucide-react";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { Collection, CollectionField } from "@/app/api/data/collections/route";
 import { Record } from "@/app/api/data/records/route";
 import { DocumentViewer } from "@/components/records/DocumentViewer";
+import { RecordActivity } from "@/components/records/RecordActivity";
 
 interface RecordEditPageProps {
   params: Promise<{ collectionId: string; recordId: string }>;
@@ -25,7 +28,7 @@ type VerificationStatus = "pending" | "needs_review" | "approved" | "rejected";
 
 export default function RecordEditPage({ params: paramsPromise }: RecordEditPageProps) {
   const router = useRouter();
-  const { organizationId } = useOrganization();
+  const { organizationId, userProfile } = useOrganization();
   const { collectionId, recordId } = use(paramsPromise);
   const [collection, setCollection] = useState<Collection | null>(null);
   const [record, setRecord] = useState<Record | null>(null);
@@ -33,6 +36,7 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>("pending");
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<"data" | "activity">("data");
 
   useEffect(() => {
     if (!collectionId || !recordId || !organizationId) return;
@@ -71,7 +75,7 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
   };
 
   const handleSave = async (markAsApproved: boolean = false) => {
-    if (!collection || !record) return;
+    if (!collection || !record || !organizationId) return;
 
     try {
       setSaving(true);
@@ -96,6 +100,34 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
       
       // Update local state
       setRecord({ ...record, data: formData });
+      
+      // Add system log entry
+      try {
+        const { addDoc, collection, Timestamp } = await import("firebase/firestore");
+        const { db } = await import("@/lib/firebase");
+        
+        // Get current user profile
+        const currentUserProfile = userProfile || { displayName: "System", email: "system@atomicwork.com", uid: "system" };
+        const userName = currentUserProfile.displayName || currentUserProfile.email || "Unknown User";
+        
+        const logMessage = markAsApproved
+          ? `Record verified and saved by ${userName}`
+          : `Record updated by ${userName}`;
+        
+        await addDoc(collection(db, "comments"), {
+          recordId,
+          collectionId,
+          userId: currentUserProfile.uid || "system",
+          userName: "System",
+          message: logMessage,
+          type: "SYSTEM_LOG",
+          organizationId,
+          createdAt: Timestamp.now(),
+        });
+      } catch (logError) {
+        // Log error but don't fail the save operation
+        console.error("Error adding system log:", logError);
+      }
       
       if (markAsApproved) {
         alert("Record verified and saved successfully!");
@@ -324,76 +356,110 @@ export default function RecordEditPage({ params: paramsPromise }: RecordEditPage
               <DocumentViewer fileUrl={fileUrl} fileName={fileName} />
             </motion.div>
 
-            {/* Right Column: Edit Form */}
+            {/* Right Column: Tabs (Data & Activity) */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               className="h-full overflow-hidden flex flex-col rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/5"
             >
-              {/* Form Header */}
+              {/* Tab Header */}
               <div className="p-6 border-b border-white/60 bg-white/50 backdrop-blur-sm">
-                <h2 className="text-xl font-extrabold tracking-tight text-slate-900">Record Data</h2>
-                <p className="text-sm text-slate-600 font-medium mt-1">
-                  Verify and edit the extracted information
+                <div className="flex items-center gap-2 mb-4">
+                  <button
+                    onClick={() => setActiveTab("data")}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-extrabold transition-all ${
+                      activeTab === "data"
+                        ? "bg-white shadow-md text-slate-900"
+                        : "text-slate-600 hover:bg-white/50 hover:text-slate-900"
+                    }`}
+                  >
+                    <Database className="h-4 w-4" />
+                    Data
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("activity")}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-extrabold transition-all ${
+                      activeTab === "activity"
+                        ? "bg-white shadow-md text-slate-900"
+                        : "text-slate-600 hover:bg-white/50 hover:text-slate-900"
+                    }`}
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    Activity
+                  </button>
+                </div>
+                <p className="text-sm text-slate-600 font-medium">
+                  {activeTab === "data"
+                    ? "Verify and edit the extracted information"
+                    : "Discuss and track changes to this record"}
                 </p>
               </div>
 
-              {/* Scrollable Form Content */}
-              <div className="overflow-y-auto h-full p-6 space-y-6 bg-gradient-to-b from-white/50 to-white/30">
-                {collection.fields.map((field) => (
-                  <div key={field.key}>
-                    <label className="block text-sm font-extrabold text-slate-900 mb-3 tracking-tight">
-                      {field.label}
-                    </label>
-                    {renderFieldInput(field)}
-                  </div>
-                ))}
-              </div>
+              {/* Tab Content */}
+              <div className="flex-1 overflow-hidden">
+                {activeTab === "data" ? (
+                  <>
+                    {/* Scrollable Form Content */}
+                    <div className="overflow-y-auto h-full p-6 space-y-6 bg-gradient-to-b from-white/50 to-white/30">
+                      {collection.fields.map((field) => (
+                        <div key={field.key}>
+                          <label className="block text-sm font-extrabold text-slate-900 mb-3 tracking-tight">
+                            {field.label}
+                          </label>
+                          {renderFieldInput(field)}
+                        </div>
+                      ))}
+                    </div>
 
-              {/* Form Footer - Fixed at bottom */}
-              <div className="p-6 border-t border-white/60 bg-white/50 backdrop-blur-sm flex items-center justify-between gap-3 flex-shrink-0">
-                <button
-                  onClick={() => router.push(`/data/${collectionId}`)}
-                  className="px-4 py-2 rounded-full bg-white/70 backdrop-blur-sm border border-white/60 text-sm font-semibold text-slate-700 hover:bg-white/90 transition-all shadow-sm hover:shadow-md"
-                >
-                  Cancel
-                </button>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => handleSave(false)}
-                    disabled={saving}
-                    className="flex items-center gap-2 px-6 py-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 text-sm font-semibold text-slate-700 hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4" />
-                        Save
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => handleSave(true)}
-                    disabled={saving || verificationStatus === "approved"}
-                    className="flex items-center gap-2 px-6 py-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 text-sm font-semibold text-slate-700 hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
-                  >
-                    {verificationStatus === "approved" ? (
-                      <>
-                        <CheckCircle2 className="h-4 w-4" />
-                        Verified
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-4 w-4" />
-                        Verify & Save
-                      </>
-                    )}
-                  </button>
-                </div>
+                    {/* Form Footer - Fixed at bottom */}
+                    <div className="p-6 border-t border-white/60 bg-white/50 backdrop-blur-sm flex items-center justify-between gap-3 flex-shrink-0">
+                      <button
+                        onClick={() => router.push(`/data/${collectionId}`)}
+                        className="px-4 py-2 rounded-full bg-white/70 backdrop-blur-sm border border-white/60 text-sm font-semibold text-slate-700 hover:bg-white/90 transition-all shadow-sm hover:shadow-md"
+                      >
+                        Cancel
+                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleSave(false)}
+                          disabled={saving}
+                          className="flex items-center gap-2 px-6 py-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 text-sm font-semibold text-slate-700 hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
+                        >
+                          {saving ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="h-4 w-4" />
+                              Save
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleSave(true)}
+                          disabled={saving || verificationStatus === "approved"}
+                          className="flex items-center gap-2 px-6 py-2 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 text-sm font-semibold text-slate-700 hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
+                        >
+                          {verificationStatus === "approved" ? (
+                            <>
+                              <CheckCircle2 className="h-4 w-4" />
+                              Verified
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="h-4 w-4" />
+                              Verify & Save
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <RecordActivity recordId={recordId} collectionId={collectionId} />
+                )}
               </div>
             </motion.div>
           </div>
