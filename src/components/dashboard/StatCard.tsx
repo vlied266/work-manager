@@ -52,25 +52,35 @@ export function StatCard({ widget, data }: StatCardProps) {
   };
 
   return (
-    <div className="rounded-xl bg-white/80 backdrop-blur-xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
-          {widget.title}
-        </h3>
-        <div className="p-2 rounded-lg bg-blue-50 text-blue-600">{getIcon()}</div>
-      </div>
-      <div className="flex items-baseline gap-2">
-        <p className="text-3xl font-bold text-slate-900">{formattedValue}</p>
-        {widget.operation === "sum" && (
-          <span className="text-sm text-slate-500 font-medium">total</span>
+    <div className="relative rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 p-6 shadow-xl shadow-black/5 hover:shadow-2xl hover:shadow-black/10 transition-all group overflow-hidden">
+      {/* Gradient overlay on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/0 to-purple-50/0 group-hover:from-blue-50/30 group-hover:to-purple-50/30 transition-all duration-300" />
+      
+      <div className="relative">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xs font-extrabold text-slate-600 uppercase tracking-wider">
+            {widget.title}
+          </h3>
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl blur-lg group-hover:blur-xl transition-all" />
+            <div className="relative p-2.5 rounded-xl bg-white/80 backdrop-blur-sm border border-white/60 text-blue-600 shadow-sm">
+              {getIcon()}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <p className="text-4xl font-extrabold tracking-tight text-slate-900">{formattedValue}</p>
+          {widget.operation === "sum" && (
+            <span className="text-sm text-slate-500 font-semibold">total</span>
+          )}
+          {widget.operation === "avg" && (
+            <span className="text-sm text-slate-500 font-semibold">avg</span>
+          )}
+        </div>
+        {data.length === 0 && (
+          <p className="text-xs text-slate-400 mt-3 font-medium">No data available</p>
         )}
-        {widget.operation === "avg" && (
-          <span className="text-sm text-slate-500 font-medium">avg</span>
-        )}
       </div>
-      {data.length === 0 && (
-        <p className="text-xs text-slate-400 mt-2">No data available</p>
-      )}
     </div>
   );
 }

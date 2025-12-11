@@ -3,6 +3,7 @@
 import { DashboardLayout, DashboardWidget } from "@/types/dashboard";
 import { StatCard } from "./StatCard";
 import { SimpleBarChart, SimpleLineChart, SimplePieChart } from "./ChartRenderers";
+import { BarChart3 } from "lucide-react";
 
 interface DynamicDashboardProps {
   layout: DashboardLayout | null | undefined;
@@ -35,7 +36,15 @@ export function DynamicDashboard({ layout, data }: DynamicDashboardProps) {
 
   return (
     <div className="mb-8">
-      <h2 className="text-xl font-bold text-slate-900 mb-6">Dashboard</h2>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl" />
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-lg">
+            <BarChart3 className="h-5 w-5 text-blue-600" />
+          </div>
+        </div>
+        <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">Dashboard</h2>
+      </div>
       
       {/* Stat Cards Row */}
       {statCards.length > 0 && (

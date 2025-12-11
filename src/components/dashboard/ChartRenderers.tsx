@@ -22,8 +22,19 @@ interface ChartRendererProps {
   data: any[];
 }
 
-// Color palette for charts
+// Professional gradient color palette for charts
 const COLORS = [
+  "url(#gradientBlue)",
+  "url(#gradientGreen)",
+  "url(#gradientAmber)",
+  "url(#gradientRed)",
+  "url(#gradientPurple)",
+  "url(#gradientCyan)",
+  "url(#gradientPink)",
+  "url(#gradientLime)",
+];
+
+const SOLID_COLORS = [
   "#3b82f6", // blue
   "#10b981", // green
   "#f59e0b", // amber
@@ -37,8 +48,8 @@ const COLORS = [
 export function SimpleBarChart({ widget, data }: ChartRendererProps) {
   if (!widget.xAxis || !widget.yAxis) {
     return (
-      <div className="rounded-xl bg-white/80 backdrop-blur-xl border border-slate-200 p-6">
-        <p className="text-sm text-slate-500">Bar chart requires xAxis and yAxis</p>
+      <div className="relative rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 p-6 shadow-xl shadow-black/5">
+        <p className="text-sm text-slate-500 font-medium">Bar chart requires xAxis and yAxis</p>
       </div>
     );
   }
@@ -76,31 +87,53 @@ export function SimpleBarChart({ widget, data }: ChartRendererProps) {
   }
 
   return (
-    <div className="rounded-xl bg-white/80 backdrop-blur-xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-      <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-4">
-        {widget.title}
-      </h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis
-            dataKey="name"
-            stroke="#64748b"
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-          />
-          <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "white",
-              border: "1px solid #e2e8f0",
-              borderRadius: "8px",
-            }}
-          />
-          <Bar dataKey="value" fill="#3b82f6" radius={[8, 8, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="relative rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 p-6 shadow-xl shadow-black/5 hover:shadow-2xl hover:shadow-black/10 transition-all group overflow-hidden">
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/0 to-purple-50/0 group-hover:from-blue-50/20 group-hover:to-purple-50/20 transition-all duration-300" />
+      
+      <div className="relative">
+        <h3 className="text-sm font-extrabold text-slate-700 uppercase tracking-wider mb-6">
+          {widget.title}
+        </h3>
+        <ResponsiveContainer width="100%" height={320}>
+          <BarChart data={chartData}>
+            <defs>
+              <linearGradient id="gradientBlue" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
+                <stop offset="100%" stopColor="#2563eb" stopOpacity={0.8} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
+            <XAxis
+              dataKey="name"
+              stroke="#64748b"
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+              fontWeight={500}
+            />
+            <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} fontWeight={500} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "rgba(255, 255, 255, 0.9)",
+                backdropFilter: "blur(12px)",
+                border: "1px solid rgba(255, 255, 255, 0.6)",
+                borderRadius: "12px",
+                boxShadow: "0 10px 40px rgba(0, 0, 0, 0.1)",
+                fontWeight: 600,
+              }}
+              cursor={{ fill: "rgba(59, 130, 246, 0.1)" }}
+            />
+            <Bar 
+              dataKey="value" 
+              fill="url(#gradientBlue)" 
+              radius={[12, 12, 0, 0]}
+              stroke="#2563eb"
+              strokeWidth={1}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
@@ -108,8 +141,8 @@ export function SimpleBarChart({ widget, data }: ChartRendererProps) {
 export function SimpleLineChart({ widget, data }: ChartRendererProps) {
   if (!widget.xAxis || !widget.yAxis) {
     return (
-      <div className="rounded-xl bg-white/80 backdrop-blur-xl border border-slate-200 p-6">
-        <p className="text-sm text-slate-500">Line chart requires xAxis and yAxis</p>
+      <div className="relative rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 p-6 shadow-xl shadow-black/5">
+        <p className="text-sm text-slate-500 font-medium">Line chart requires xAxis and yAxis</p>
       </div>
     );
   }
@@ -144,51 +177,67 @@ export function SimpleLineChart({ widget, data }: ChartRendererProps) {
 
   if (chartData.length === 0) {
     return (
-      <div className="rounded-xl bg-white/80 backdrop-blur-xl border border-slate-200 p-6">
-        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-4">
+      <div className="relative rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 p-6 shadow-xl shadow-black/5">
+        <h3 className="text-sm font-extrabold text-slate-700 uppercase tracking-wider mb-4">
           {widget.title}
         </h3>
-        <p className="text-sm text-slate-400">No data available</p>
+        <p className="text-sm text-slate-400 font-medium">No data available</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl bg-white/80 backdrop-blur-xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-      <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-4">
-        {widget.title}
-      </h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis
-            dataKey="name"
-            stroke="#64748b"
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-            angle={-45}
-            textAnchor="end"
-            height={60}
-          />
-          <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "white",
-              border: "1px solid #e2e8f0",
-              borderRadius: "8px",
-            }}
-          />
-          <Line
-            type="monotone"
-            dataKey="value"
-            stroke="#3b82f6"
-            strokeWidth={2}
-            dot={{ fill: "#3b82f6", r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+    <div className="relative rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 p-6 shadow-xl shadow-black/5 hover:shadow-2xl hover:shadow-black/10 transition-all group overflow-hidden">
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/0 to-purple-50/0 group-hover:from-blue-50/20 group-hover:to-purple-50/20 transition-all duration-300" />
+      
+      <div className="relative">
+        <h3 className="text-sm font-extrabold text-slate-700 uppercase tracking-wider mb-6">
+          {widget.title}
+        </h3>
+        <ResponsiveContainer width="100%" height={320}>
+          <LineChart data={chartData}>
+            <defs>
+              <linearGradient id="gradientLine" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
+            <XAxis
+              dataKey="name"
+              stroke="#64748b"
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+              angle={-45}
+              textAnchor="end"
+              height={60}
+              fontWeight={500}
+            />
+            <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} fontWeight={500} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "rgba(255, 255, 255, 0.9)",
+                backdropFilter: "blur(12px)",
+                border: "1px solid rgba(255, 255, 255, 0.6)",
+                borderRadius: "12px",
+                boxShadow: "0 10px 40px rgba(0, 0, 0, 0.1)",
+                fontWeight: 600,
+              }}
+              cursor={{ stroke: "#3b82f6", strokeWidth: 1, strokeDasharray: "5 5" }}
+            />
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke="#3b82f6"
+              strokeWidth={3}
+              dot={{ fill: "#3b82f6", r: 5, strokeWidth: 2, stroke: "#fff" }}
+              activeDot={{ r: 7, stroke: "#fff", strokeWidth: 2 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
@@ -196,8 +245,8 @@ export function SimpleLineChart({ widget, data }: ChartRendererProps) {
 export function SimplePieChart({ widget, data }: ChartRendererProps) {
   if (!widget.field) {
     return (
-      <div className="rounded-xl bg-white/80 backdrop-blur-xl border border-slate-200 p-6">
-        <p className="text-sm text-slate-500">Pie chart requires a field</p>
+      <div className="relative rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 p-6 shadow-xl shadow-black/5">
+        <p className="text-sm text-slate-500 font-medium">Pie chart requires a field</p>
       </div>
     );
   }
@@ -220,45 +269,103 @@ export function SimplePieChart({ widget, data }: ChartRendererProps) {
 
   if (chartData.length === 0) {
     return (
-      <div className="rounded-xl bg-white/80 backdrop-blur-xl border border-slate-200 p-6">
-        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-4">
+      <div className="relative rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 p-6 shadow-xl shadow-black/5">
+        <h3 className="text-sm font-extrabold text-slate-700 uppercase tracking-wider mb-4">
           {widget.title}
         </h3>
-        <p className="text-sm text-slate-400">No data available</p>
+        <p className="text-sm text-slate-400 font-medium">No data available</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl bg-white/80 backdrop-blur-xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-      <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-4">
-        {widget.title}
-      </h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <PieChart>
-          <Pie
-            data={chartData}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-            outerRadius={100}
-            fill="#8884d8"
-            dataKey="value"
-          >
-            {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "white",
-              border: "1px solid #e2e8f0",
-              borderRadius: "8px",
-            }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
+    <div className="relative rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 p-6 shadow-xl shadow-black/5 hover:shadow-2xl hover:shadow-black/10 transition-all group overflow-hidden">
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/0 to-purple-50/0 group-hover:from-blue-50/20 group-hover:to-purple-50/20 transition-all duration-300" />
+      
+      <div className="relative">
+        <h3 className="text-sm font-extrabold text-slate-700 uppercase tracking-wider mb-6">
+          {widget.title}
+        </h3>
+        <ResponsiveContainer width="100%" height={320}>
+          <PieChart>
+            <defs>
+              <linearGradient id="gradientBlue" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
+                <stop offset="100%" stopColor="#2563eb" stopOpacity={0.8} />
+              </linearGradient>
+              <linearGradient id="gradientGreen" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
+                <stop offset="100%" stopColor="#059669" stopOpacity={0.8} />
+              </linearGradient>
+              <linearGradient id="gradientAmber" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#f59e0b" stopOpacity={1} />
+                <stop offset="100%" stopColor="#d97706" stopOpacity={0.8} />
+              </linearGradient>
+              <linearGradient id="gradientRed" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
+                <stop offset="100%" stopColor="#dc2626" stopOpacity={0.8} />
+              </linearGradient>
+              <linearGradient id="gradientPurple" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#8b5cf6" stopOpacity={1} />
+                <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.8} />
+              </linearGradient>
+              <linearGradient id="gradientCyan" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#06b6d4" stopOpacity={1} />
+                <stop offset="100%" stopColor="#0891b2" stopOpacity={0.8} />
+              </linearGradient>
+              <linearGradient id="gradientPink" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#ec4899" stopOpacity={1} />
+                <stop offset="100%" stopColor="#db2777" stopOpacity={0.8} />
+              </linearGradient>
+              <linearGradient id="gradientLime" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#84cc16" stopOpacity={1} />
+                <stop offset="100%" stopColor="#65a30d" stopOpacity={0.8} />
+              </linearGradient>
+            </defs>
+            <Pie
+              data={chartData}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              label={({ name, percent }) => 
+                percent > 0.05 ? `${name} ${(percent * 100).toFixed(0)}%` : ""
+              }
+              outerRadius={110}
+              innerRadius={40}
+              fill="#8884d8"
+              dataKey="value"
+              stroke="rgba(255, 255, 255, 0.8)"
+              strokeWidth={2}
+            >
+              {chartData.map((entry, index) => (
+                <Cell 
+                  key={`cell-${index}`} 
+                  fill={COLORS[index % COLORS.length]}
+                  style={{ filter: "drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))" }}
+                />
+              ))}
+            </Pie>
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "rgba(255, 255, 255, 0.9)",
+                backdropFilter: "blur(12px)",
+                border: "1px solid rgba(255, 255, 255, 0.6)",
+                borderRadius: "12px",
+                boxShadow: "0 10px 40px rgba(0, 0, 0, 0.1)",
+                fontWeight: 600,
+              }}
+            />
+            <Legend
+              wrapperStyle={{
+                fontSize: "12px",
+                fontWeight: 600,
+                paddingTop: "20px",
+              }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
