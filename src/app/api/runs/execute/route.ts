@@ -633,6 +633,20 @@ export async function POST(req: NextRequest) {
             const recordRef = await collectionRef.add(newRecord);
             console.log(`[DB_INSERT] Successfully inserted record: ${recordRef.id}`);
             
+            // Check alerts for this newly inserted record
+            try {
+              const { checkAlertsForRecord } = await import("@/lib/alerts/check-alerts");
+              await checkAlertsForRecord(
+                orgId,
+                currentStep.config.collectionName,
+                recordRef.id,
+                cleanData
+              );
+            } catch (alertError) {
+              // Log but don't fail the insert if alert checking fails
+              console.error(`[DB_INSERT] Error checking alerts (non-fatal):`, alertError);
+            }
+            
             executionResult = {
               success: true,
               inserted: true,

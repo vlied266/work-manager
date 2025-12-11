@@ -8,6 +8,7 @@ import { getAdminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 import { DEFAULT_ENGLISH_PROMPT } from "@/lib/ai/default-prompt";
 import OpenAI from "openai";
+import { AlertRule } from "@/types/alerts";
 
 const ATOMIC_ACTIONS: AtomicAction[] = [
   // Human Tasks
@@ -567,6 +568,82 @@ async function updateCollectionDashboardLayout(
   });
 
   console.log(`[AI Generator] Dashboard layout saved for collection ${collectionId} with ${widgets.length} widgets`);
+}
+
+/**
+ * Helper function to create an alert rule
+ */
+async function createAlertRule(
+  orgId: string,
+  collectionName: string,
+  conditionDescription: string,
+  messageTemplate?: string
+): Promise<{ id: string; collectionName: string; condition: string; message: string }> {
+  const adminDb = getAdminDb();
+  const now = Timestamp.now();
+
+  // Use AI to convert natural language description to JavaScript condition
+  // For now, we'll do a simple conversion. In production, you might want to use AI here too.
+  // Example: "amount is over 5k" -> "record.total_amount > 5000"
+  
+  // Simple pattern matching for common conditions
+  let condition = "";
+  const lowerDesc = conditionDescription.toLowerCase();
+  
+  // Pattern: "amount is over X" or "amount > X"
+  const overMatch = lowerDesc.match(/(?:amount|total|value|price|cost).*(?:over|greater|more than|above)\s*(\d+[k]?)/i);
+  if (overMatch) {
+    const value = overMatch[1].replace('k', '000');
+    condition = `record.total_amount > ${value}`;
+  }
+  // Pattern: "amount is under X" or "amount < X"
+  else if (lowerDesc.match(/(?:amount|total|value|price|cost).*(?:under|less than|below)\s*(\d+[k]?)/i)) {
+    const underMatch = lowerDesc.match(/(?:amount|total|value|price|cost).*(?:under|less than|below)\s*(\d+[k]?)/i);
+    if (underMatch) {
+      const value = underMatch[1].replace('k', '000');
+      condition = `record.total_amount < ${value}`;
+    }
+  }
+  // Pattern: "status is X" or "status == X"
+  else if (lowerDesc.match(/status.*(?:is|equals?|==)\s*['"]?(\w+)['"]?/i)) {
+    const statusMatch = lowerDesc.match(/status.*(?:is|equals?|==)\s*['"]?(\w+)['"]?/i);
+    if (statusMatch) {
+      const status = statusMatch[1];
+      condition = `record.status === '${status}'`;
+    }
+  }
+  // Default: try to extract field and operator
+  else {
+    // Fallback: create a simple condition based on description
+    // This is a basic implementation - in production, use AI to parse this better
+    condition = `record.total_amount > 0`; // Default fallback
+    console.warn(`[AI Generator] Could not parse condition from: "${conditionDescription}". Using fallback.`);
+  }
+
+  // Generate message template if not provided
+  const message = messageTemplate || `Alert: Condition met in ${collectionName} - ${conditionDescription}`;
+
+  const alertRule: Omit<AlertRule, 'id'> = {
+    collectionName,
+    condition,
+    message,
+    action: 'in_app',
+    organizationId: orgId,
+    createdAt: now.toDate(),
+    updatedAt: now.toDate(),
+    isActive: true,
+  };
+
+  const docRef = await adminDb.collection("_alerts").add(alertRule);
+
+  console.log(`[AI Generator] Alert rule created: ${docRef.id} for collection "${collectionName}"`);
+
+  return {
+    id: docRef.id,
+    collectionName,
+    condition,
+    message,
+  };
 }
 
 const CONFIGURATION_REFINEMENT_RULES = `
@@ -1141,10 +1218,35 @@ Example: For a collection with fields ["invoice_date", "total_amount", "vendor",
           },
         },
       },
+      {
+        type: "function",
+        function: {
+          name: "create_alert_rule",
+          description: "Creates an alert rule that triggers notifications when specific conditions are met in collection data. Use this when the user asks to be notified about certain conditions (e.g., 'Notify me when amount is over 5k', 'Alert if status is expired').",
+          parameters: {
+            type: "object",
+            properties: {
+              collection_name: {
+                type: "string",
+                description: "The name of the collection to monitor (e.g., 'Invoices', 'Contracts')",
+              },
+              condition_description: {
+                type: "string",
+                description: "Natural language description of the condition (e.g., 'amount is over 5000', 'status equals expired', 'total is greater than 10000')",
+              },
+              message_template: {
+                type: "string",
+                description: "Optional: Custom message template with variables (e.g., 'High value invoice detected: {{invoice_number}}'). If not provided, a default message will be generated.",
+              },
+            },
+            required: ["collection_name", "condition_description"],
+          },
+        },
+      },
     ];
 
-    // First call: Check if AI wants to create a collection
-    const userPrompt = `Convert this process description into a workflow:\n\n"${description}"\n\nReturn a JSON object with "title", "description", and "steps" fields.\n\nIMPORTANT: Follow the NAMING RULES strictly:\n- Title must be 3-5 words, professional, action-oriented (e.g., "Candidate Resume Processing", NOT "Create a form for resume").\n- Description must be 1-2 sentences focusing on business outcome (e.g., "Automates the collection of candidate resumes, extracts key data using AI, and stores valid entries in the Candidates database.").\n- NEVER copy the user's prompt verbatim.\n- Match the language of the user's prompt (English or Persian).\n\nIf you need to create a new collection that doesn't exist, use the create_database_collection tool FIRST, then immediately call generate_dashboard_layout for that collection.`;
+    // First call: Check if AI wants to create a collection or alert rule
+    const userPrompt = `Convert this process description into a workflow:\n\n"${description}"\n\nReturn a JSON object with "title", "description", and "steps" fields.\n\nIMPORTANT: Follow the NAMING RULES strictly:\n- Title must be 3-5 words, professional, action-oriented (e.g., "Candidate Resume Processing", NOT "Create a form for resume").\n- Description must be 1-2 sentences focusing on business outcome (e.g., "Automates the collection of candidate resumes, extracts key data using AI, and stores valid entries in the Candidates database.").\n- NEVER copy the user's prompt verbatim.\n- Match the language of the user's prompt (English or Persian).\n\nIf you need to create a new collection that doesn't exist, use the create_database_collection tool FIRST, then immediately call generate_dashboard_layout for that collection.\n\nIf the user asks to be notified when certain conditions are met (e.g., "Notify me when amount is over 5k", "Alert if status is expired"), use the create_alert_rule tool.`;
 
     let messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       {
@@ -1307,6 +1409,7 @@ Example: For a collection with fields ["invoice_date", "total_amount", "vendor",
                 collectionsSchemaText,
                 COLLECTION_CREATION_INSTRUCTION,
                 DASHBOARD_LAYOUT_INSTRUCTION,
+                ALERT_RULE_INSTRUCTION,
                 ASSIGNMENT_INSTRUCTION,
                 GOOGLE_SHEET_INSTRUCTION,
                 METADATA_INSTRUCTION,
