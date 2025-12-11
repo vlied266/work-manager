@@ -559,13 +559,13 @@ These rules ensure precise variable mapping and data flow between steps.
       * Use that noun as the **Key** (left side).
       * **Rule:** The Key MUST match the semantic meaning of the data being stored.
       * IF the value is \`{{step_1.output.email}}\`, the Key MUST be \`"email"\`.
-      * IF the value is \`{{step_1.output.customerName}}\`, the Key MUST be \`"customerName"\` or \`"name"\`.
-      * IF the value is \`{{step_1.output.invoiceDate}}\`, the Key MUST be \`"invoiceDate"\` or \`"date"\`.
-      * IF you extracted fields ["Invoice Date", "Total Amount"] in AI_PARSE, the Keys MUST be \`"invoiceDate"\` and \`"totalAmount"\`.
+      * IF the value is \`{{step_1.output.customer_name}}\`, the Key MUST be \`"customer_name"\` or \`"name"\`.
+      * IF the value is \`{{step_1.output.invoice_date}}\`, the Key MUST be \`"invoice_date"\` or \`"date"\`.
+      * IF you extracted fields ["Invoice Date", "Total Amount"] in AI_PARSE, the Keys MUST be \`"invoice_date"\` and \`"total_amount"\` (snake_case).
 
-   2. **FORMAT REQUIREMENTS:**
-      * Keys must be **camelCase** or **lowercase** English words.
-      * Keys must be meaningful, semantic names that describe the data (e.g., "address", "totalAmount", "phoneNumber").
+   2. **FORMAT REQUIREMENTS (CRITICAL):**
+      * Keys MUST be **snake_case** (lowercase with underscores). NEVER use camelCase or PascalCase.
+      * Keys must be meaningful, semantic names that describe the data (e.g., "address", "total_amount", "phone_number").
       * Keys must match the collection schema if provided, or use standard business terminology.
 
    3. **STRICTLY FORBIDDEN:**
@@ -593,14 +593,14 @@ These rules ensure precise variable mapping and data flow between steps.
        "collectionName": "Customers",
        "data": {
          "email": "{{step_1.output.email}}",
-         "fullName": "{{step_1.output.name}}",
-         "phoneNumber": "{{step_1.output.phone}}",
+         "full_name": "{{step_1.output.name}}",
+         "phone_number": "{{step_1.output.phone}}",
          "status": "New"
        }
      }
    }
    \`\`\`
-   ✅ **RIGHT:** Keys are meaningful English words (email, fullName, phoneNumber, status)
+   ✅ **RIGHT:** Keys are meaningful English words in snake_case (email, full_name, phone_number, status)
 
    **Example of WRONG Output (BANNED):**
    \`\`\`json
