@@ -168,14 +168,34 @@ If the user wants to SAVE/STORE data into a specific table/collection (e.g., "Sa
      * User asks for "Contract Number" → You MUST use key: "contract_number"
    - This applies to ALL keys in the \`data\` object, including those referencing previous step outputs.
 
-4. In the \`config\` object, you MUST include:
+4. **MANDATORY FILE URL FIELD:**
+   - You MUST ALWAYS include a "file_url" field in the \`data\` object.
+   - Map it to the source file URL:
+     * If triggered by file upload (ON_FILE_CREATED): use "{{trigger.fileUrl}}" or "{{trigger.file}}"
+     * If file comes from INPUT step: use "{{step_1.output.fileUrl}}" or "{{step_1.output.filePath}}"
+     * If file comes from AI_PARSE step: use "{{step_1.output.fileUrl}}" (if available) or fallback to trigger
+   - This field is REQUIRED for document verification UI functionality.
+   - Example:
+     \`\`\`json
+     {
+       "collectionName": "Contracts",
+       "data": {
+         "contract_date": "{{step_1.output.contract_date}}",
+         "parties": "{{step_1.output.parties}}",
+         "file_url": "{{trigger.fileUrl}}"
+       }
+     }
+     \`\`\`
+
+5. In the \`config\` object, you MUST include:
 
    {
      "collectionName": "Deals",  // Exact name from Available Tables
      "data": {
        "amount": "{{step_1.output.amount}}",
        "customer": "{{step_1.output.customerName}}",
-       "status": "{{step_1.output.status}}"
+       "status": "{{step_1.output.status}}",
+       "file_url": "{{trigger.fileUrl}}"  // MANDATORY: Always include file URL
      }
    }
 
@@ -491,6 +511,17 @@ async function createDatabaseCollection(
     if (!["text", "number", "date", "boolean", "select"].includes(field.type)) {
       throw new Error(`Invalid field type: ${field.type}`);
     }
+  }
+
+  // CRITICAL: Always ensure file_url field exists
+  const hasFileUrl = fields.some(f => f.key === "file_url");
+  if (!hasFileUrl) {
+    fields.push({
+      label: "File URL",
+      key: "file_url",
+      type: "text",
+    });
+    console.log("[AI Generator] Automatically added file_url field to collection:", name);
   }
 
   const collectionData = {
@@ -948,6 +979,7 @@ Rules:
 - Use snake_case for all field keys (e.g., "invoice_date", "total_amount", "contract_number").
 - Infer field types from context: dates → "date", numbers → "number", text → "text", yes/no → "boolean".
 - Create fields based on what the user wants to extract or store.
+- **MANDATORY:** You MUST ALWAYS include a "file_url" field (type: "text") in the fields array, even if the user didn't explicitly ask for it. This field stores the source document URL for verification purposes.
 - After creating the collection, proceed to generate the workflow targeting this new collection.
 `;
 
