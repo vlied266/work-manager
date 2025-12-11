@@ -1103,6 +1103,7 @@ Example: For a collection with fields ["invoice_date", "total_amount", "vendor",
       collectionsSchemaText, // Available collections/tables
       COLLECTION_CREATION_INSTRUCTION, // Auto-create collections instruction
       DASHBOARD_LAYOUT_INSTRUCTION, // Dashboard layout generation instruction
+      ALERT_RULE_INSTRUCTION, // Alert rule creation instruction
       ASSIGNMENT_INSTRUCTION, // Smart Mentions logic
       GOOGLE_SHEET_INSTRUCTION, // Smart Sheet Mapping logic
       METADATA_INSTRUCTION, // Professional Title & Description generation
