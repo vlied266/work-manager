@@ -81,22 +81,9 @@ export async function GET(request: NextRequest) {
       ...doc.data(),
     })) as any[];
 
-    // Group procedures by folder path and organization
-    const folderWatchers = new Map<string, any[]>();
-    for (const proc of procedures) {
-      const folderPath = proc.trigger?.config?.folderPath;
-      if (folderPath) {
-        const key = `${proc.organizationId}:${folderPath}`;
-        if (!folderWatchers.has(key)) {
-          folderWatchers.set(key, []);
-        }
-        folderWatchers.get(key)!.push(proc);
-      }
-    }
-
-    // CRITICAL: Also fetch ALL procedures (including inactive/unpublished) for lastPolledAt updates
-    // This ensures that even if a workflow is temporarily inactive, we still update its lastPolledAt
-    // when we check its folder, so the UI shows "Checked X ago" instead of "Never checked"
+    // CRITICAL: Fetch ALL procedures (including inactive/unpublished) FIRST
+    // This ensures we check ALL folders, not just folders with active workflows
+    // This way, even new workflows that haven't been activated yet will show "Checked X ago"
     const allProceduresSnapshot = await db
       .collection("procedures")
       .where("trigger.type", "==", "ON_FILE_CREATED")
@@ -107,7 +94,7 @@ export async function GET(request: NextRequest) {
       ...doc.data(),
     })) as any[];
 
-    // Create a map of all procedures by folder for lastPolledAt updates
+    // Create a map of ALL procedures by folder (for checking folders and updating lastPolledAt)
     const allProceduresByFolder = new Map<string, any[]>();
     for (const proc of allProcedures) {
       const folderPath = proc.trigger?.config?.folderPath;
@@ -117,6 +104,19 @@ export async function GET(request: NextRequest) {
           allProceduresByFolder.set(key, []);
         }
         allProceduresByFolder.get(key)!.push(proc);
+      }
+    }
+
+    // Group ONLY active procedures by folder path and organization (for triggering workflows)
+    const folderWatchers = new Map<string, any[]>();
+    for (const proc of procedures) {
+      const folderPath = proc.trigger?.config?.folderPath;
+      if (folderPath) {
+        const key = `${proc.organizationId}:${folderPath}`;
+        if (!folderWatchers.has(key)) {
+          folderWatchers.set(key, []);
+        }
+        folderWatchers.get(key)!.push(proc);
       }
     }
 
@@ -177,10 +177,14 @@ export async function GET(request: NextRequest) {
     // }
 
     // REAL IMPLEMENTATION: Connect to Google Drive and check for new files
-    for (const [key, procs] of folderWatchers.entries()) {
+    // CRITICAL: Iterate over ALL folders (from allProceduresByFolder), not just active ones
+    // This ensures we check and update lastPolledAt for ALL workflows, including new/inactive ones
+    for (const [key, allProcsForFolder] of allProceduresByFolder.entries()) {
+      // Get only active procedures for this folder (for triggering workflows)
+      const procs = folderWatchers.get(key) || [];
       const [orgId, folderPath] = key.split(":");
       console.log(
-        `[Cron] Checking folder: ${folderPath} (${procs.length} active workflow(s) for org ${orgId})`
+        `[Cron] Checking folder: ${folderPath} (${procs.length} active workflow(s), ${allProcsForFolder.length} total workflow(s) for org ${orgId})`
       );
 
       try {
