@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo } from "react";
 import { onSnapshot } from "firebase/firestore";
 import { ActiveRun } from "@/types/schema";
-import { useOrgQuery } from "@/hooks/useOrgData";
+import { useOrgQuery, useOrgId } from "@/hooks/useOrgData";
 import { format } from "date-fns";
+import { fetchCollectionsStats } from "@/lib/collections-stats";
 
 export interface AnalyticsData {
   totalRuns: number;
@@ -18,8 +19,18 @@ export interface AnalyticsData {
 export function useAnalytics() {
   const [runs, setRuns] = useState<ActiveRun[]>([]);
   const [loading, setLoading] = useState(true);
+  const [collectionsStats, setCollectionsStats] = useState<{ totalCollections: number; totalRecords: number } | null>(null);
+  const orgId = useOrgId();
 
   const runsQuery = useOrgQuery("active_runs");
+
+  // Fetch collections stats
+  useEffect(() => {
+    if (!orgId) return;
+    fetchCollectionsStats(orgId).then((stats) => {
+      setCollectionsStats(stats);
+    });
+  }, [orgId]);
 
   useEffect(() => {
     if (!runsQuery) {
@@ -56,11 +67,14 @@ export function useAnalytics() {
   }, [runsQuery]);
 
   const analytics = useMemo<AnalyticsData>(() => {
-    const totalRuns = runs.length;
-    const completed = runs.filter((r) => r.status === "COMPLETED").length;
-    const activeNow = runs.filter((r) => r.status === "IN_PROGRESS").length;
-    const flagged = runs.filter((r) => r.status === "FLAGGED").length;
-    const successRate = totalRuns > 0 ? (completed / totalRuns) * 100 : 0;
+    // If no runs, use collections stats
+    const useCollectionsStats = runs.length === 0 && collectionsStats && collectionsStats.totalRecords > 0;
+    
+    const totalRuns = useCollectionsStats ? collectionsStats!.totalRecords : runs.length;
+    const completed = useCollectionsStats ? collectionsStats!.totalRecords : runs.filter((r) => r.status === "COMPLETED").length;
+    const activeNow = useCollectionsStats ? 0 : runs.filter((r) => r.status === "IN_PROGRESS").length;
+    const flagged = useCollectionsStats ? 0 : runs.filter((r) => r.status === "FLAGGED").length;
+    const successRate = useCollectionsStats ? 100 : (totalRuns > 0 ? (completed / totalRuns) * 100 : 0);
 
     // Trend Data: Last 30 days
     const last30Days = Array.from({ length: 30 }, (_, i) => {
@@ -149,7 +163,7 @@ export function useAnalytics() {
       bottleneckData,
       statusDistribution,
     };
-  }, [runs]);
+  }, [runs, collectionsStats]);
 
   return { analytics, loading };
 }

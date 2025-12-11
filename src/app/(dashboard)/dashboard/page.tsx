@@ -12,8 +12,9 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useOrgQuery } from "@/hooks/useOrgData";
 import { useOrganization } from "@/contexts/OrganizationContext";
-import { Target } from "lucide-react";
+import { Target, Database } from "lucide-react";
 import ActiveWatchersList from "@/components/dashboard/active-watchers-list";
+import { fetchCollectionsStats, CollectionStats } from "@/lib/collections-stats";
 
 // Prevent SSR/prerendering - this page requires client-side auth
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "in_progress" | "completed" | "flagged">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [collectionsStats, setCollectionsStats] = useState<CollectionStats | null>(null);
+  const { organizationId } = useOrganization();
 
   // Use organization-scoped query hook (automatically filters by orgId)
   const runsQuery = useOrgQuery("active_runs");
@@ -92,6 +95,12 @@ export default function DashboardPage() {
     };
   }, [runsQuery]);
 
+  // Fetch collections stats
+  useEffect(() => {
+    if (!organizationId) return;
+    fetchCollectionsStats(organizationId).then(setCollectionsStats);
+  }, [organizationId]);
+
   // Calculate metrics
   const metrics = useMemo(() => {
     const totalRuns = activeRuns.length;
@@ -99,10 +108,13 @@ export default function DashboardPage() {
     const completedRuns = activeRuns.filter(r => r.status === "COMPLETED").length;
     const flaggedRuns = activeRuns.filter(r => r.status === "FLAGGED").length;
     
+    // If no runs, use collections stats
+    const useCollectionsStats = totalRuns === 0 && collectionsStats;
+    
     // Calculate completion rate
     const completionRate = totalRuns > 0 
       ? Math.round((completedRuns / totalRuns) * 100) 
-      : 0;
+      : useCollectionsStats && collectionsStats.totalRecords > 0 ? 100 : 0;
 
     // Calculate average completion time (for completed runs)
     const completedRunsWithTime = activeRuns.filter(r => 
@@ -116,14 +128,16 @@ export default function DashboardPage() {
       : 0;
 
     return {
-      totalRuns,
-      activeRunsCount,
-      completedRuns,
-      flaggedRuns,
+      totalRuns: useCollectionsStats ? collectionsStats!.totalRecords : totalRuns,
+      activeRunsCount: useCollectionsStats ? 0 : activeRunsCount,
+      completedRuns: useCollectionsStats ? collectionsStats!.totalRecords : completedRuns,
+      flaggedRuns: useCollectionsStats ? 0 : flaggedRuns,
       completionRate,
       avgCompletionTime: Math.round(avgCompletionTime),
+      collectionsCount: collectionsStats?.totalCollections || 0,
+      useCollectionsStats: !!useCollectionsStats,
     };
-  }, [activeRuns]);
+  }, [activeRuns, collectionsStats]);
 
   // Filter runs
   const filteredRuns = useMemo(() => {
@@ -234,16 +248,26 @@ export default function DashboardPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Runs</p>
-              <p className="mt-2 text-3xl font-extrabold text-slate-900">{metrics.activeRunsCount}</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                {metrics.useCollectionsStats ? "Total Records" : "Active Runs"}
+              </p>
+              <p className="mt-2 text-3xl font-extrabold text-slate-900">
+                {metrics.useCollectionsStats ? metrics.totalRuns : metrics.activeRunsCount}
+              </p>
             </div>
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
-              <Activity className="h-7 w-7" />
+              {metrics.useCollectionsStats ? <Database className="h-7 w-7" /> : <Activity className="h-7 w-7" />}
             </div>
           </div>
           <div className="mt-4 flex items-center gap-2 text-xs text-slate-600 font-medium">
-            <TrendingUp className="h-4 w-4 text-green-600" />
-            <span>{metrics.totalRuns} total runs</span>
+            {metrics.useCollectionsStats ? (
+              <span>{metrics.collectionsCount} collections</span>
+            ) : (
+              <>
+                <TrendingUp className="h-4 w-4 text-green-600" />
+                <span>{metrics.totalRuns} total runs</span>
+              </>
+            )}
           </div>
         </motion.div>
 
@@ -255,7 +279,9 @@ export default function DashboardPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Completed</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                {metrics.useCollectionsStats ? "Total Records" : "Completed"}
+              </p>
               <p className="mt-2 text-3xl font-extrabold text-slate-900">{metrics.completedRuns}</p>
             </div>
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg">
@@ -263,7 +289,11 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="mt-4 flex items-center gap-2 text-xs text-slate-600 font-medium">
-            <span>{metrics.completionRate}% completion rate</span>
+            {metrics.useCollectionsStats ? (
+              <span>All records stored</span>
+            ) : (
+              <span>{metrics.completionRate}% completion rate</span>
+            )}
           </div>
         </motion.div>
 
