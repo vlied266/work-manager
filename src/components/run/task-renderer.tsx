@@ -12,6 +12,7 @@ import { getContextValue, evaluateComparison } from "@/lib/engine";
 import { ResolvedConfig, getConfigSource } from "@/lib/engine/resolver";
 import { ValidateRenderer } from "./validate-renderer";
 import { AuthorizeRenderer } from "./authorize-renderer";
+import { ManualTaskRenderer } from "./manual-task-renderer";
 import { GenerateRenderer } from "./generate-renderer";
 import { TransmitRenderer } from "./transmit-renderer";
 import { StoreRenderer } from "./store-renderer";
@@ -215,8 +216,23 @@ export function TaskRenderer({
       break;
 
     case "AUTHORIZE":
+    case "APPROVAL":
       taskContent = (
         <AuthorizeRenderer
+          step={{ ...step, config: stepConfig }}
+          output={output}
+          setOutput={setOutput}
+          handleCompleteStep={handleCompleteWithEvidence}
+          submitting={submitting || (requiresEvidence && !evidenceUrl)}
+          runId={runId}
+          run={run}
+        />
+      );
+      break;
+
+    case "MANUAL_TASK":
+      taskContent = (
+        <ManualTaskRenderer
           step={{ ...step, config: stepConfig }}
           output={output}
           setOutput={setOutput}
