@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { AtomicStep } from "@/types/schema";
+import { AtomicStep, ActiveRun } from "@/types/schema";
 import { CheckCircle2, XCircle, PenTool, Loader2, Upload } from "lucide-react";
 import SignatureCanvas from "react-signature-canvas";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 interface AuthorizeRendererProps {
   step: AtomicStep;
@@ -15,6 +17,7 @@ interface AuthorizeRendererProps {
   handleCompleteStep: (outcome: "SUCCESS" | "FAILURE" | "FLAGGED") => void;
   submitting: boolean;
   runId?: string;
+  run?: ActiveRun; // The full run object to check status
 }
 
 export function AuthorizeRenderer({
@@ -24,13 +27,16 @@ export function AuthorizeRenderer({
   handleCompleteStep,
   submitting,
   runId,
+  run,
 }: AuthorizeRendererProps) {
+  const router = useRouter();
+  const { organizationId, userProfile } = useOrganization();
   const sigCanvasRef = useRef<SignatureCanvas>(null);
   const [signatureData, setSignatureData] = useState<string | null>(output?.signature || null);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(output?.signatureUrl || null);
   const [signerName, setSignerName] = useState(output?.signerName || "");
   const [uploading, setUploading] = useState(false);
-  const [organizationId] = useState("default-org"); // TODO: Get from auth context
+  const [resuming, setResuming] = useState(false);
 
   const handleClear = () => {
     sigCanvasRef.current?.clear();
@@ -74,7 +80,7 @@ export function AuthorizeRenderer({
     }
   };
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (step.config.requireSignature && !signatureUrl) {
       alert("Please save your signature before approving.");
       return;
@@ -83,7 +89,104 @@ export function AuthorizeRenderer({
       alert("Please enter your name.");
       return;
     }
+
+    // If run is in WAITING_FOR_USER status, use resume API
+    if (run?.status === "WAITING_FOR_USER" && runId && organizationId && userProfile?.uid) {
+      setResuming(true);
+      try {
+        const resumeResponse = await fetch("/api/runs/resume", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            runId,
+            stepId: step.id,
+            outcome: "SUCCESS",
+            output: {
+              ...output,
+              signature: signatureData,
+              signatureUrl,
+              signerName,
+              timestamp: new Date().toISOString(),
+            },
+            orgId: organizationId,
+            userId: userProfile.uid,
+          }),
+        });
+
+        if (!resumeResponse.ok) {
+          const errorData = await resumeResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to resume workflow");
+        }
+
+        const result = await resumeResponse.json();
+        console.log("[AuthorizeRenderer] Workflow resumed:", result);
+
+        // Show success message
+        alert("Task completed! Workflow is continuing...");
+
+        // Redirect to inbox or refresh the page
+        setTimeout(() => {
+          router.push("/inbox");
+        }, 1000);
+      } catch (error: any) {
+        console.error("[AuthorizeRenderer] Error resuming workflow:", error);
+        alert(`Failed to complete task: ${error.message || "Unknown error"}`);
+        setResuming(false);
+      }
+      return;
+    }
+
+    // Fallback to original handleCompleteStep for non-WAITING_FOR_USER scenarios
     handleCompleteStep("SUCCESS");
+  };
+
+  const handleReject = async () => {
+    // If run is in WAITING_FOR_USER status, use resume API
+    if (run?.status === "WAITING_FOR_USER" && runId && organizationId && userProfile?.uid) {
+      setResuming(true);
+      try {
+        const resumeResponse = await fetch("/api/runs/resume", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            runId,
+            stepId: step.id,
+            outcome: "FLAGGED",
+            output: {
+              ...output,
+              rejected: true,
+              rejectedAt: new Date().toISOString(),
+            },
+            orgId: organizationId,
+            userId: userProfile.uid,
+          }),
+        });
+
+        if (!resumeResponse.ok) {
+          const errorData = await resumeResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to resume workflow");
+        }
+
+        const result = await resumeResponse.json();
+        console.log("[AuthorizeRenderer] Workflow resumed (rejected):", result);
+
+        // Show success message
+        alert("Task rejected. Workflow updated.");
+
+        // Redirect to inbox or refresh the page
+        setTimeout(() => {
+          router.push("/inbox");
+        }, 1000);
+      } catch (error: any) {
+        console.error("[AuthorizeRenderer] Error resuming workflow:", error);
+        alert(`Failed to reject task: ${error.message || "Unknown error"}`);
+        setResuming(false);
+      }
+      return;
+    }
+
+    // Fallback to original handleCompleteStep
+    handleCompleteStep("FLAGGED");
   };
 
   return (
@@ -190,26 +293,44 @@ export function AuthorizeRenderer({
       <div className="flex gap-4 pt-6 border-t border-slate-200">
         <motion.button
           onClick={handleApprove}
-          disabled={submitting || (step.config.requireSignature && (!signatureUrl || !signerName.trim()))}
+          disabled={submitting || resuming || (step.config.requireSignature && (!signatureUrl || !signerName.trim()))}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className="flex-1 rounded-2xl bg-gradient-to-r from-green-600 to-green-700 px-8 py-5 text-base font-bold text-white shadow-lg shadow-green-500/30 transition-all hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           <div className="flex items-center justify-center gap-3">
-            <CheckCircle2 className="h-5 w-5" strokeWidth={2.5} />
-            <span>Approve & Continue</span>
+            {resuming ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" strokeWidth={2.5} />
+                <span>Processing...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-5 w-5" strokeWidth={2.5} />
+                <span>Approve & Continue</span>
+              </>
+            )}
           </div>
         </motion.button>
         <motion.button
-          onClick={() => handleCompleteStep("FLAGGED")}
-          disabled={submitting}
+          onClick={handleReject}
+          disabled={submitting || resuming}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className="rounded-2xl border-2 border-rose-300 bg-white px-8 py-5 text-base font-bold text-rose-700 transition-all hover:bg-rose-50 disabled:opacity-50"
         >
           <div className="flex items-center justify-center gap-3">
-            <XCircle className="h-5 w-5" strokeWidth={2.5} />
-            <span>Reject</span>
+            {resuming ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" strokeWidth={2.5} />
+                <span>Processing...</span>
+              </>
+            ) : (
+              <>
+                <XCircle className="h-5 w-5" strokeWidth={2.5} />
+                <span>Reject</span>
+              </>
+            )}
           </div>
         </motion.button>
       </div>

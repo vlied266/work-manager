@@ -219,6 +219,7 @@ export function TaskRenderer({
           handleCompleteStep={handleCompleteWithEvidence}
           submitting={submitting || (requiresEvidence && !evidenceUrl)}
           runId={runId}
+          run={run}
         />
       );
       break;
