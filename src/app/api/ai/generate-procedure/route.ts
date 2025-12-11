@@ -1291,7 +1291,7 @@ Example: For a collection with fields ["invoice_date", "total_amount", "vendor",
         type: "function",
         function: {
           name: "create_alert_rule",
-          description: "Creates an alert rule that triggers notifications when specific conditions are met in collection data. Use this when the user asks to be notified about certain conditions (e.g., 'Notify me when amount is over 5k', 'Alert if status is expired').",
+          description: "Creates an alert rule that triggers notifications when specific conditions are met in collection data. Use this when the user asks to be notified about certain conditions (e.g., 'Notify me when amount is over 5k', 'Alert if status is expired', 'Send email when total > 10000').",
           parameters: {
             type: "object",
             properties: {
@@ -1306,6 +1306,11 @@ Example: For a collection with fields ["invoice_date", "total_amount", "vendor",
               message_template: {
                 type: "string",
                 description: "Optional: Custom message template with variables (e.g., 'High value invoice detected: {{invoice_number}}'). If not provided, a default message will be generated.",
+              },
+              action: {
+                type: "string",
+                enum: ["in_app", "email", "both"],
+                description: "Optional: How to deliver the alert. 'in_app' (default) for in-app notifications, 'email' for email only, 'both' for both. If user says 'email me' or 'send email', use 'email' or 'both'.",
               },
             },
             required: ["collection_name", "condition_description"],
