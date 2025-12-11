@@ -13,29 +13,63 @@ interface NotificationBellProps {
   userId: string;
 }
 
+type CombinedNotification = SchemaNotification | (AlertNotification & { id: string; recipientId?: string; isRead?: boolean; type?: string; title?: string; triggerBy?: any });
+
 export function NotificationBell({ userId }: NotificationBellProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<CombinedNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
+  const { organizationId } = useOrganization();
 
   useEffect(() => {
     if (!userId) return;
 
-    // Query without orderBy to avoid needing a composite index
-    // We'll sort client-side instead
-    const q = query(
-      collection(db, "notifications"),
-      where("recipientId", "==", userId)
-    );
+    // Fetch both types of notifications
+    const fetchNotifications = async () => {
+      try {
+        // 1. Fetch schema notifications (workflow notifications)
+        const schemaQuery = query(
+          collection(db, "notifications"),
+          where("recipientId", "==", userId)
+        );
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const notifs = snapshot.docs.map((doc) => {
+        // 2. Fetch alert notifications (from _notifications collection)
+        const alertQuery = organizationId
+          ? query(
+              collection(db, "_notifications"),
+              where("organizationId", "==", organizationId),
+              where("read", "==", false) // Only unread alerts
+            )
+          : null;
+
+        // Combine both queries
+        const [schemaSnapshot, alertSnapshot] = await Promise.all([
+          new Promise<any>((resolve) => {
+            const unsubscribe = onSnapshot(schemaQuery, resolve, (error) => {
+              console.error("Error fetching schema notifications:", error);
+              resolve({ docs: [] });
+            });
+            // Return unsubscribe in a way that works with Promise.all
+            setTimeout(() => {}, 0);
+          }),
+          alertQuery
+            ? new Promise<any>((resolve) => {
+                const unsubscribe = onSnapshot(alertQuery, resolve, (error) => {
+                  console.error("Error fetching alert notifications:", error);
+                  resolve({ docs: [] });
+                });
+                setTimeout(() => {}, 0);
+              })
+            : Promise.resolve({ docs: [] }),
+        ]);
+
+        const allNotifications: CombinedNotification[] = [];
+
+        // Process schema notifications
+        schemaSnapshot.docs?.forEach((doc: any) => {
           const data = doc.data();
           let createdAt: Date;
           
-          // Handle different timestamp formats
           if (data.createdAt) {
             if (data.createdAt.toDate && typeof data.createdAt.toDate === 'function') {
               createdAt = data.createdAt.toDate();
@@ -52,15 +86,52 @@ export function NotificationBell({ userId }: NotificationBellProps) {
             createdAt = new Date();
           }
           
-          return {
+          allNotifications.push({
             id: doc.id,
             ...data,
             createdAt,
-          } as Notification;
+          } as SchemaNotification);
+        });
+
+        // Process alert notifications
+        alertSnapshot.docs?.forEach((doc: any) => {
+          const data = doc.data();
+          let createdAt: Date;
+          
+          if (data.createdAt) {
+            if (data.createdAt.toDate && typeof data.createdAt.toDate === 'function') {
+              createdAt = data.createdAt.toDate();
+            } else if (data.createdAt instanceof Date) {
+              createdAt = data.createdAt;
+            } else if (typeof data.createdAt === 'number') {
+              createdAt = new Date(data.createdAt);
+            } else if (data.createdAt.seconds) {
+              createdAt = new Date(data.createdAt.seconds * 1000);
+            } else {
+              createdAt = new Date();
+            }
+          } else {
+            createdAt = new Date();
+          }
+          
+          allNotifications.push({
+            id: doc.id,
+            collectionName: data.collectionName,
+            recordId: data.recordId,
+            message: data.message,
+            action: data.action,
+            organizationId: data.organizationId,
+            createdAt,
+            read: data.read || false,
+            // Add fields for display compatibility
+            type: "ALERT",
+            title: data.message || "Alert",
+            isRead: data.read || false,
+          } as CombinedNotification);
         });
         
         // Sort by createdAt descending (newest first) and limit to 20
-        const sorted = notifs
+        const sorted = allNotifications
           .sort((a, b) => {
             const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
             const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
@@ -69,26 +140,102 @@ export function NotificationBell({ userId }: NotificationBellProps) {
           .slice(0, 20);
         
         setNotifications(sorted);
-      },
-      (error) => {
+      } catch (error) {
         console.error("Error fetching notifications:", error);
-        // Don't show error to user, just log it
       }
+    };
+
+    fetchNotifications();
+
+    // Set up real-time listeners
+    const schemaUnsubscribe = onSnapshot(
+      query(collection(db, "notifications"), where("recipientId", "==", userId)),
+      () => fetchNotifications(),
+      (error) => console.error("Error in schema notifications listener:", error)
     );
 
-    return () => unsubscribe();
-  }, [userId]);
+    const alertUnsubscribe = organizationId
+      ? onSnapshot(
+          query(
+            collection(db, "_notifications"),
+            where("organizationId", "==", organizationId),
+            where("read", "==", false)
+          ),
+          () => fetchNotifications(),
+          (error) => console.error("Error in alert notifications listener:", error)
+        )
+      : () => {};
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+    return () => {
+      schemaUnsubscribe();
+      alertUnsubscribe();
+    };
+  }, [userId, organizationId]);
 
-  const handleNotificationClick = async (notification: Notification) => {
-    if (!notification.isRead) {
-      await updateDoc(doc(db, "notifications", notification.id), {
-        isRead: true,
-      });
-    }
+  const unreadCount = notifications.filter((n) => {
+    // Check both isRead (schema) and read (alert) fields
+    return !(n.isRead || (n as any).read);
+  }).length;
+
+  const handleNotificationClick = async (notification: CombinedNotification) => {
     setIsOpen(false);
-    router.push(notification.link);
+
+    // Check if it's an alert notification (has collectionName and recordId)
+    if ('collectionName' in notification && 'recordId' in notification && notification.collectionName && notification.recordId) {
+      // Mark as read
+      if (!notification.read) {
+        try {
+          await updateDoc(doc(db, "_notifications", notification.id), {
+            read: true,
+          });
+        } catch (error) {
+          console.error("Error marking alert notification as read:", error);
+        }
+      }
+
+      // Navigate to record detail page
+      // First, we need to get the collectionId from collectionName
+      try {
+        if (organizationId) {
+          const collectionsQuery = query(
+            collection(db, "collections"),
+            where("orgId", "==", organizationId),
+            where("name", "==", notification.collectionName)
+          );
+          const collectionsSnapshot = await getDocs(collectionsQuery);
+          
+          if (!collectionsSnapshot.empty) {
+            const collectionId = collectionsSnapshot.docs[0].id;
+            router.push(`/data/${collectionId}/${notification.recordId}`);
+          } else {
+            console.error(`Collection "${notification.collectionName}" not found`);
+            // Fallback: try to navigate to schema page
+            router.push(`/data/schema`);
+          }
+        } else {
+          console.error("Organization ID not available");
+        }
+      } catch (error) {
+        console.error("Error navigating to record:", error);
+      }
+    } else {
+      // Handle schema notifications (workflow notifications)
+      const schemaNotif = notification as SchemaNotification;
+      if (!schemaNotif.isRead) {
+        try {
+          await updateDoc(doc(db, "notifications", schemaNotif.id), {
+            isRead: true,
+          });
+        } catch (error) {
+          console.error("Error marking notification as read:", error);
+        }
+      }
+      
+      // Navigate using the link field if available
+      if (schemaNotif.link) {
+        router.push(schemaNotif.link);
+      }
+    }
   };
 
   const formatTime = (timestamp: any) => {
@@ -120,7 +267,14 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     return "Just now";
   };
 
-  const getNotificationIcon = (type: Notification["type"]) => {
+  const getNotificationIcon = (notification: CombinedNotification) => {
+    // Check if it's an alert notification
+    if ('collectionName' in notification && notification.collectionName) {
+      return "🚨"; // Alert icon
+    }
+    
+    // Schema notification types
+    const type = (notification as SchemaNotification).type;
     switch (type) {
       case "ASSIGNMENT":
         return "📋";
@@ -196,58 +350,86 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-100">
-                    {notifications.map((notification) => (
-                      <button
-                        key={notification.id}
-                        onClick={() => handleNotificationClick(notification)}
-                        className={`w-full text-left px-4 py-3 transition-colors hover:bg-slate-50 ${
-                          !notification.isRead ? "bg-blue-50/50" : ""
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          {/* Trigger User Avatar */}
-                          <div className="flex-shrink-0">
-                            {notification.triggerBy?.avatar ? (
-                              <img
-                                src={notification.triggerBy.avatar}
-                                alt={notification.triggerBy.name}
-                                className="h-8 w-8 rounded-full object-cover border border-slate-200"
-                              />
-                            ) : (
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white text-xs font-semibold border border-slate-200">
-                                {notification.triggerBy?.name?.charAt(0).toUpperCase() || "?"}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className={`text-sm font-medium ${
-                                !notification.isRead ? "text-slate-900" : "text-slate-700"
-                              }`}>
-                                {notification.title}
-                              </p>
-                              {!notification.isRead && (
-                                <div className="h-2 w-2 rounded-full bg-blue-500" />
+                    {notifications.map((notification) => {
+                      const isRead = notification.isRead || (notification as any).read || false;
+                      const isAlert = 'collectionName' in notification && notification.collectionName;
+                      const title = isAlert 
+                        ? (notification as any).message || "Alert" 
+                        : (notification as SchemaNotification).title;
+                      const message = isAlert 
+                        ? undefined 
+                        : (notification as SchemaNotification).message;
+                      
+                      return (
+                        <button
+                          key={notification.id}
+                          onClick={() => handleNotificationClick(notification)}
+                          className={`w-full text-left px-4 py-3 transition-all cursor-pointer hover:bg-slate-100 active:bg-slate-200 ${
+                            !isRead ? "bg-blue-50/50" : ""
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            {/* Icon or Avatar */}
+                            <div className="flex-shrink-0">
+                              {isAlert ? (
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-rose-600 text-white text-sm font-semibold border border-slate-200">
+                                  {getNotificationIcon(notification)}
+                                </div>
+                              ) : (
+                                <>
+                                  {notification.triggerBy?.avatar ? (
+                                    <img
+                                      src={notification.triggerBy.avatar}
+                                      alt={notification.triggerBy.name}
+                                      className="h-8 w-8 rounded-full object-cover border border-slate-200"
+                                    />
+                                  ) : (
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white text-xs font-semibold border border-slate-200">
+                                      {notification.triggerBy?.name?.charAt(0).toUpperCase() || "?"}
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </div>
-                            {notification.message && (
-                              <p className="text-xs text-slate-600 line-clamp-2">
-                                {notification.message}
-                              </p>
-                            )}
-                            <div className="flex items-center gap-2 mt-1">
-                              <p className="text-xs text-slate-500">
-                                {notification.triggerBy?.name && `by ${notification.triggerBy.name}`}
-                              </p>
-                              <span className="text-xs text-slate-400">•</span>
-                              <p className="text-xs text-slate-400">
-                                {formatTime(notification.createdAt)}
-                              </p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className={`text-sm font-medium ${
+                                  !isRead ? "text-slate-900" : "text-slate-700"
+                                }`}>
+                                  {title}
+                                </p>
+                                {!isRead && (
+                                  <div className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
+                                )}
+                              </div>
+                              {message && (
+                                <p className="text-xs text-slate-600 line-clamp-2">
+                                  {message}
+                                </p>
+                              )}
+                              {isAlert && (
+                                <p className="text-xs text-slate-500 mt-1">
+                                  {notification.collectionName} • Record #{notification.recordId?.slice(0, 8)}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-2 mt-1">
+                                {!isAlert && notification.triggerBy?.name && (
+                                  <>
+                                    <p className="text-xs text-slate-500">
+                                      by {notification.triggerBy.name}
+                                    </p>
+                                    <span className="text-xs text-slate-400">•</span>
+                                  </>
+                                )}
+                                <p className="text-xs text-slate-400">
+                                  {formatTime(notification.createdAt)}
+                                </p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
