@@ -76,39 +76,73 @@ export async function POST(req: NextRequest) {
 
     const stepType = getStepExecutionType(currentStep.action);
 
+    // CRITICAL: Reload run from database to get latest logs (in case this is a recursive execution after resume)
+    // This ensures we have the updated output from previous HUMAN steps
+    const freshRunDoc = await db.collection("active_runs").doc(runId).get();
+    const freshRun = freshRunDoc.exists ? (freshRunDoc.data() as ActiveRun) : run;
+    const currentLogs = freshRun.logs || run.logs || [];
+    const triggerContext = freshRun.triggerContext || run.triggerContext;
+    
+    console.log(`[Execute] Using ${currentLogs.length} logs (reloaded from DB)`);
+    console.log(`[Execute] Current logs:`, currentLogs.map(l => ({ 
+      stepId: l.stepId, 
+      hasOutput: !!l.output && typeof l.output === 'object' && Object.keys(l.output || {}).length > 0,
+      outputKeys: l.output && typeof l.output === 'object' ? Object.keys(l.output) : []
+    })));
+    console.log(`[Execute] Has triggerContext:`, !!triggerContext, triggerContext ? Object.keys(triggerContext) : []);
+
     // Build run context for variable resolution (include trigger context)
-    const runContext = (run.logs || []).reduce((acc: any, log, idx) => {
-      const step = procedure.steps[idx];
+    const runContext = currentLogs.reduce((acc: any, log, idx) => {
+      const step = procedure.steps.find(s => s.id === log.stepId);
       if (step) {
-        const varName = step.config.outputVariableName || `step_${idx + 1}_output`;
+        const stepIndex = procedure.steps.findIndex(s => s.id === log.stepId);
+        const varName = step.config.outputVariableName || `step_${stepIndex + 1}_output`;
         acc[varName] = log.output;
-        acc[`step_${idx + 1}_output`] = log.output;
-        acc[`step_${idx + 1}`] = { output: log.output };
+        acc[`step_${stepIndex + 1}_output`] = log.output;
+        acc[`step_${stepIndex + 1}`] = { output: log.output };
       }
       return acc;
     }, {});
     
     // Add trigger context if available
-    if (run.triggerContext) {
-      runContext.trigger = run.triggerContext;
+    if (triggerContext) {
+      runContext.trigger = triggerContext;
+      console.log(`[Execute] Added trigger context to runContext:`, Object.keys(triggerContext));
     }
-    if (run.initialInput) {
-      runContext.initialInput = run.initialInput;
+    if (freshRun.initialInput || run.initialInput) {
+      runContext.initialInput = freshRun.initialInput || run.initialInput;
     }
     
-    // Add log entry
-    const newLog = {
-      stepId: currentStep.id,
-      stepTitle: currentStep.title,
-      action: currentStep.action,
-      output: output || {},
-      timestamp: Timestamp.now(),
-      outcome,
-      executedBy: userId,
-      executionType: stepType,
-    };
-
-    const updatedLogs = [...(run.logs || []), newLog];
+    // Check if log entry already exists for this step (e.g., from a previous HUMAN step execution)
+    const existingLogIndex = currentLogs.findIndex((log) => log.stepId === stepId);
+    
+    let updatedLogs: any[];
+    if (existingLogIndex >= 0 && stepType === "HUMAN") {
+      // Update existing log entry (for HUMAN steps that were paused and are now being resumed)
+      console.log(`[Execute] Updating existing log entry for HUMAN step ${stepId}`);
+      updatedLogs = [...currentLogs];
+      updatedLogs[existingLogIndex] = {
+        ...updatedLogs[existingLogIndex],
+        output: output !== null && output !== undefined ? output : updatedLogs[existingLogIndex].output,
+        outcome,
+        executedBy: userId,
+        executionType: stepType,
+        completedAt: Timestamp.now(),
+      };
+    } else {
+      // Create new log entry (for AUTO steps or first-time HUMAN steps)
+      const newLog = {
+        stepId: currentStep.id,
+        stepTitle: currentStep.title,
+        action: currentStep.action,
+        output: output || {},
+        timestamp: Timestamp.now(),
+        outcome,
+        executedBy: userId,
+        executionType: stepType,
+      };
+      updatedLogs = [...currentLogs, newLog];
+    }
 
     // Calculate next step index
     let nextStepIndex = run.currentStepIndex + 1;
