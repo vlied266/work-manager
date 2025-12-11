@@ -199,40 +199,53 @@ export function InputDataRenderer({
         if (typeof output === "string" || typeof output === "number" || typeof output === "boolean") {
           // Simple value - wrap in object with field key
           outputData = { [fieldKey]: output };
-        } else if (output && typeof output === "object") {
-          // Already an object - use as is, but ensure it has the expected structure
-          // If the object doesn't have the fieldKey, add it
-          if (!(fieldKey in output)) {
-            // Merge the fieldKey into the existing object
-            outputData = { ...output, [fieldKey]: output };
+        } else if (output && typeof output === "object" && output !== null) {
+          // Already an object - use as is
+          // If the object doesn't have the fieldKey, add it with the value from the first property
+          // (This handles cases where output is an object but we want to ensure fieldKey exists)
+          if (!(fieldKey in output) && Object.keys(output).length > 0) {
+            // Get the first value from the object
+            const firstValue = Object.values(output)[0];
+            outputData = { ...output, [fieldKey]: firstValue };
           } else {
             outputData = output;
           }
         } else {
-          // Fallback to empty object
+          // Fallback to empty object (shouldn't happen if validation passed)
+          console.warn("[InputDataRenderer] ⚠️ Output is null/undefined, using empty object");
           outputData = {};
         }
         
-        console.log("[InputDataRenderer] Preparing output data:", {
+        console.log("[InputDataRenderer] 📤 Preparing output data for resume API:", {
           rawOutput: output,
+          rawOutputType: typeof output,
           fieldKey,
           outputVariableName: stepConfig.outputVariableName,
           fieldLabel: stepConfig.fieldLabel,
           outputData,
-          outputType: typeof output,
+          outputDataType: typeof outputData,
+          outputDataKeys: outputData && typeof outputData === 'object' ? Object.keys(outputData) : [],
+          outputDataStringified: JSON.stringify(outputData),
         });
 
+        const resumePayload = {
+          runId,
+          stepId: step.id,
+          outcome: "SUCCESS" as const,
+          output: outputData,
+          orgId: organizationId,
+          userId: userProfile.uid,
+        };
+        
+        console.log("[InputDataRenderer] 🚀 Sending resume request:", {
+          ...resumePayload,
+          outputStringified: JSON.stringify(resumePayload.output),
+        });
+        
         const resumeResponse = await fetch("/api/runs/resume", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            runId,
-            stepId: step.id,
-            outcome: "SUCCESS",
-            output: outputData,
-            orgId: organizationId,
-            userId: userProfile.uid,
-          }),
+          body: JSON.stringify(resumePayload),
         });
 
         if (!resumeResponse.ok) {

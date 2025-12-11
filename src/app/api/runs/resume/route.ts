@@ -29,6 +29,20 @@ export async function POST(req: NextRequest) {
     const body: ResumeRunRequest = await req.json();
     const { runId, stepId, outcome, output, orgId, userId } = body;
 
+    // CRITICAL: Log the incoming payload to debug output structure
+    console.log(`[Resume] 📥 Incoming payload:`, {
+      runId,
+      stepId,
+      outcome,
+      output,
+      outputType: typeof output,
+      outputIsObject: output && typeof output === 'object',
+      outputKeys: output && typeof output === 'object' ? Object.keys(output) : [],
+      outputStringified: JSON.stringify(output),
+      orgId,
+      userId,
+    });
+
     if (!runId || !stepId || !orgId || !userId) {
       return NextResponse.json(
         { error: "Missing required fields: runId, stepId, orgId, userId" },
@@ -108,20 +122,31 @@ export async function POST(req: NextRequest) {
     let updatedLogs = [...(run.logs || [])];
     const existingLogIndex = updatedLogs.findIndex((log) => log.stepId === stepId);
     
+    console.log(`[Resume] 🔍 Finding log entry for step ${stepId}:`, {
+      totalLogs: updatedLogs.length,
+      existingLogIndex,
+      existingLog: existingLogIndex >= 0 ? updatedLogs[existingLogIndex] : null,
+      existingOutput: existingLogIndex >= 0 ? updatedLogs[existingLogIndex].output : null,
+    });
+    
     // CRITICAL: If output is explicitly provided (not null/undefined), REPLACE the existing output
     // Otherwise, keep the existing output if available
+    // IMPORTANT: output can be an empty object {}, so we check for null/undefined specifically
     const finalOutput = output !== null && output !== undefined 
       ? output 
       : (existingLogIndex >= 0 ? updatedLogs[existingLogIndex].output : {});
     
-    console.log(`[Resume] Updating log for step ${stepId}:`, {
+    console.log(`[Resume] 📝 Preparing to update log for step ${stepId}:`, {
       hasProvidedOutput: output !== null && output !== undefined,
       providedOutput: output,
+      providedOutputType: typeof output,
+      providedOutputIsObject: output && typeof output === 'object',
+      providedOutputKeys: output && typeof output === 'object' ? Object.keys(output) : [],
       finalOutput,
+      finalOutputType: typeof finalOutput,
+      finalOutputIsObject: finalOutput && typeof finalOutput === 'object',
+      finalOutputKeys: finalOutput && typeof finalOutput === 'object' ? Object.keys(finalOutput) : [],
       existingOutput: existingLogIndex >= 0 ? updatedLogs[existingLogIndex].output : null,
-      outputType: typeof output,
-      outputIsObject: output && typeof output === 'object',
-      outputKeys: output && typeof output === 'object' ? Object.keys(output) : [],
     });
     
     if (existingLogIndex >= 0) {
@@ -224,7 +249,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // CRITICAL: Update Firestore with the new logs BEFORE executing next step
+    console.log(`[Resume] 💾 Updating Firestore with logs:`, {
+      runId,
+      logsCount: updatedLogs.length,
+      logForStep: updatedLogs.find(l => l.stepId === stepId),
+      updateDataKeys: Object.keys(updateData),
+    });
+    
     await db.collection("active_runs").doc(runId).update(updateData);
+    
+    // Verify the update was successful by reloading the run
+    const verifyDoc = await db.collection("active_runs").doc(runId).get();
+    if (verifyDoc.exists()) {
+      const verifyData = verifyDoc.data() as ActiveRun;
+      const verifyLog = verifyData.logs?.find(l => l.stepId === stepId);
+      console.log(`[Resume] ✅ Verified Firestore update:`, {
+        stepId,
+        logExists: !!verifyLog,
+        logOutput: verifyLog?.output,
+        logOutputKeys: verifyLog?.output && typeof verifyLog.output === 'object' ? Object.keys(verifyLog.output) : [],
+      });
+    }
 
     // If next step is AUTO, execute it immediately
     if (nextStepType === "AUTO") {
