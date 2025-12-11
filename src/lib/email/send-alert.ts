@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { getAdminDb } from "@/lib/firebase-admin";
 
 // Initialize Resend client
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -35,14 +36,27 @@ export async function sendAlertEmail({
     }
 
     // Get the base URL for the record link
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL 
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL 
       ? `https://${process.env.VERCEL_URL}` 
-      : "https://theatomicwork.com";
+      : "https://theatomicwork.com");
 
-    // Build record URL (we'll need collectionId, but for now use collectionName)
-    // In production, you might want to fetch collectionId from collectionName
-    const recordUrl = `${baseUrl}/data/schema`; // Fallback to schema page
-    // TODO: In a future update, we can fetch collectionId and use: `/data/${collectionId}/${recordId}`
+    // Fetch collectionId from collectionName
+    let recordUrl = `${baseUrl}/data/schema`; // Fallback to schema page
+    try {
+      const db = getAdminDb();
+      const collectionsSnapshot = await db
+        .collection("collections")
+        .where("name", "==", collectionName)
+        .limit(1)
+        .get();
+      
+      if (!collectionsSnapshot.empty) {
+        const collectionId = collectionsSnapshot.docs[0].id;
+        recordUrl = `${baseUrl}/data/${collectionId}/${recordId}`;
+      }
+    } catch (error) {
+      console.warn("[Email] Could not fetch collectionId, using fallback URL:", error);
+    }
 
     // Create HTML email template
     const html = `

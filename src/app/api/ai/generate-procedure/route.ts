@@ -578,7 +578,8 @@ async function createAlertRule(
   orgId: string,
   collectionName: string,
   conditionDescription: string,
-  messageTemplate?: string
+  messageTemplate?: string,
+  action: 'email' | 'in_app' | 'both' = 'in_app'
 ): Promise<{ id: string; collectionName: string; condition: string; message: string }> {
   const adminDb = getAdminDb();
   const now = Timestamp.now();
@@ -694,7 +695,7 @@ Examples:
     collectionName,
     condition,
     message,
-    action: 'in_app', // Default to in_app, user can change to 'email' or 'both' later
+    action: action, // Use provided action
     organizationId: orgId,
     createdAt: now.toDate(),
     updatedAt: now.toDate(),
