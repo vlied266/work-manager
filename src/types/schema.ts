@@ -291,9 +291,17 @@ export interface ActiveRun {
   lastActivity?: Date; // Last update timestamp for sorting in Monitor
   // Trigger context for automated workflows
   triggerContext?: {
+    // File trigger context
     file?: string;
     fileUrl?: string;
     filePath?: string;
+    fileId?: string;
+    // Webhook trigger context
+    body?: any; // Request body accessible via {{trigger.body.field_name}}
+    headers?: Record<string, string>; // Request headers accessible via {{trigger.headers.header_name}}
+    method?: string;
+    url?: string;
+    timestamp?: string;
   };
   // Initial input for workflows (from trigger or manual start)
   initialInput?: {

@@ -394,6 +394,50 @@ export function TaskRenderer({
       );
       break;
 
+    case "SEND_EMAIL":
+      // SEND_EMAIL is an AUTO step, but if it's being shown in UI, display the config
+      taskContent = (
+        <div className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100">
+                <FileText className="h-6 w-6 text-blue-600" strokeWidth={2} />
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-slate-900 mb-2 tracking-tight">{step.title || "Send Email"}</h3>
+              {stepConfig.instruction && (
+                <p className="text-sm text-slate-600 font-medium mb-4">{stepConfig.instruction}</p>
+              )}
+              <div className="space-y-2 text-sm">
+                {resolvedConfig?.to || resolvedConfig?.recipient ? (
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-700">To:</span>
+                    <span className="text-slate-600">{resolvedConfig.to || resolvedConfig.recipient}</span>
+                  </div>
+                ) : null}
+                {resolvedConfig?.subject ? (
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-700">Subject:</span>
+                    <span className="text-slate-600">{resolvedConfig.subject}</span>
+                  </div>
+                ) : null}
+                {resolvedConfig?.body || resolvedConfig?.emailBody ? (
+                  <div className="mt-3 p-3 rounded-lg bg-white border border-slate-200">
+                    <p className="text-xs font-semibold text-slate-500 mb-1">Email Body:</p>
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{resolvedConfig.body || resolvedConfig.emailBody}</p>
+                  </div>
+                ) : null}
+              </div>
+              <p className="mt-4 text-xs text-slate-500 italic">
+                This is an automated step. It will execute automatically when the workflow runs.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+      break;
+
     default:
       taskContent = (
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-6">

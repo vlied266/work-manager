@@ -120,9 +120,16 @@ export function resolveConfig(
     const env: Record<string, any> = {};
     
     // 2. Add trigger context FIRST (if available) - this allows {{trigger.body.*}} and {{trigger.headers.*}}
-    if (triggerContext && typeof triggerContext === 'object') {
+    if (triggerContext && typeof triggerContext === 'object' && triggerContext !== null) {
       env.trigger = triggerContext;
-      console.log("[Context Builder] Added trigger context to environment:", Object.keys(triggerContext));
+      console.log("[Context Builder] ✅ Added trigger context to environment:", Object.keys(triggerContext));
+      console.log("[Context Builder] Trigger context content:", JSON.stringify(triggerContext, null, 2));
+    } else {
+      console.log("[Context Builder] ⚠️ No trigger context available:", {
+        hasTriggerContext: !!triggerContext,
+        type: typeof triggerContext,
+        value: triggerContext
+      });
     }
     
     // 3. Iterate strictly over existing logs
