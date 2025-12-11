@@ -341,7 +341,7 @@ export function SimplePieChart({ widget, data }: ChartRendererProps) {
               {chartData.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 
-                  fill={COLORS[index % COLORS.length]}
+                  fill={SOLID_COLORS[index % SOLID_COLORS.length]}
                   style={{ filter: "drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))" }}
                 />
               ))}
