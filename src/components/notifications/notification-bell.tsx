@@ -24,136 +24,111 @@ export function NotificationBell({ userId }: NotificationBellProps) {
   useEffect(() => {
     if (!userId) return;
 
-    // Fetch both types of notifications
-    const fetchNotifications = async () => {
-      try {
-        // 1. Fetch schema notifications (workflow notifications)
-        const schemaQuery = query(
-          collection(db, "notifications"),
-          where("recipientId", "==", userId)
-        );
+    const allNotifications: CombinedNotification[] = [];
 
-        // 2. Fetch alert notifications (from _notifications collection)
-        const alertQuery = organizationId
-          ? query(
-              collection(db, "_notifications"),
-              where("organizationId", "==", organizationId),
-              where("read", "==", false) // Only unread alerts
-            )
-          : null;
-
-        // Combine both queries
-        const [schemaSnapshot, alertSnapshot] = await Promise.all([
-          new Promise<any>((resolve) => {
-            const unsubscribe = onSnapshot(schemaQuery, resolve, (error) => {
-              console.error("Error fetching schema notifications:", error);
-              resolve({ docs: [] });
-            });
-            // Return unsubscribe in a way that works with Promise.all
-            setTimeout(() => {}, 0);
-          }),
-          alertQuery
-            ? new Promise<any>((resolve) => {
-                const unsubscribe = onSnapshot(alertQuery, resolve, (error) => {
-                  console.error("Error fetching alert notifications:", error);
-                  resolve({ docs: [] });
-                });
-                setTimeout(() => {}, 0);
-              })
-            : Promise.resolve({ docs: [] }),
-        ]);
-
-        const allNotifications: CombinedNotification[] = [];
-
-        // Process schema notifications
-        schemaSnapshot.docs?.forEach((doc: any) => {
-          const data = doc.data();
-          let createdAt: Date;
-          
-          if (data.createdAt) {
-            if (data.createdAt.toDate && typeof data.createdAt.toDate === 'function') {
-              createdAt = data.createdAt.toDate();
-            } else if (data.createdAt instanceof Date) {
-              createdAt = data.createdAt;
-            } else if (typeof data.createdAt === 'number') {
-              createdAt = new Date(data.createdAt);
-            } else if (data.createdAt.seconds) {
-              createdAt = new Date(data.createdAt.seconds * 1000);
-            } else {
-              createdAt = new Date();
-            }
-          } else {
-            createdAt = new Date();
-          }
-          
-          allNotifications.push({
-            id: doc.id,
-            ...data,
-            createdAt,
-          } as SchemaNotification);
-        });
-
-        // Process alert notifications
-        alertSnapshot.docs?.forEach((doc: any) => {
-          const data = doc.data();
-          let createdAt: Date;
-          
-          if (data.createdAt) {
-            if (data.createdAt.toDate && typeof data.createdAt.toDate === 'function') {
-              createdAt = data.createdAt.toDate();
-            } else if (data.createdAt instanceof Date) {
-              createdAt = data.createdAt;
-            } else if (typeof data.createdAt === 'number') {
-              createdAt = new Date(data.createdAt);
-            } else if (data.createdAt.seconds) {
-              createdAt = new Date(data.createdAt.seconds * 1000);
-            } else {
-              createdAt = new Date();
-            }
-          } else {
-            createdAt = new Date();
-          }
-          
-          allNotifications.push({
-            id: doc.id,
-            collectionName: data.collectionName,
-            recordId: data.recordId,
-            message: data.message,
-            action: data.action,
-            organizationId: data.organizationId,
-            createdAt,
-            read: data.read || false,
-            // Add fields for display compatibility
-            type: "ALERT",
-            title: data.message || "Alert",
-            isRead: data.read || false,
-          } as CombinedNotification);
-        });
-        
-        // Sort by createdAt descending (newest first) and limit to 20
-        const sorted = allNotifications
-          .sort((a, b) => {
-            const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
-            const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
-            return bTime - aTime; // Descending
-          })
-          .slice(0, 20);
-        
-        setNotifications(sorted);
-      } catch (error) {
-        console.error("Error fetching notifications:", error);
+    const processSchemaNotification = (doc: any) => {
+      const data = doc.data();
+      let createdAt: Date;
+      
+      if (data.createdAt) {
+        if (data.createdAt.toDate && typeof data.createdAt.toDate === 'function') {
+          createdAt = data.createdAt.toDate();
+        } else if (data.createdAt instanceof Date) {
+          createdAt = data.createdAt;
+        } else if (typeof data.createdAt === 'number') {
+          createdAt = new Date(data.createdAt);
+        } else if (data.createdAt.seconds) {
+          createdAt = new Date(data.createdAt.seconds * 1000);
+        } else {
+          createdAt = new Date();
+        }
+      } else {
+        createdAt = new Date();
       }
+      
+      return {
+        id: doc.id,
+        ...data,
+        createdAt,
+      } as SchemaNotification;
     };
 
-    fetchNotifications();
+    const processAlertNotification = (doc: any) => {
+      const data = doc.data();
+      let createdAt: Date;
+      
+      if (data.createdAt) {
+        if (data.createdAt.toDate && typeof data.createdAt.toDate === 'function') {
+          createdAt = data.createdAt.toDate();
+        } else if (data.createdAt instanceof Date) {
+          createdAt = data.createdAt;
+        } else if (typeof data.createdAt === 'number') {
+          createdAt = new Date(data.createdAt);
+        } else if (data.createdAt.seconds) {
+          createdAt = new Date(data.createdAt.seconds * 1000);
+        } else {
+          createdAt = new Date();
+        }
+      } else {
+        createdAt = new Date();
+      }
+      
+      return {
+        id: doc.id,
+        collectionName: data.collectionName,
+        recordId: data.recordId,
+        message: data.message,
+        action: data.action,
+        organizationId: data.organizationId,
+        createdAt,
+        read: data.read || false,
+        // Add fields for display compatibility
+        type: "ALERT",
+        title: data.message || "Alert",
+        isRead: data.read || false,
+      } as CombinedNotification;
+    };
 
-    // Set up real-time listeners
+    const updateNotifications = () => {
+      const combined: CombinedNotification[] = [...allNotifications];
+      
+      // Sort by createdAt descending (newest first) and limit to 20
+      const sorted = combined
+        .sort((a, b) => {
+          const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+          const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+          return bTime - aTime; // Descending
+        })
+        .slice(0, 20);
+      
+      setNotifications(sorted);
+    };
+
+    // Set up real-time listener for schema notifications
     const schemaUnsubscribe = onSnapshot(
       query(collection(db, "notifications"), where("recipientId", "==", userId)),
-      () => fetchNotifications(),
+      (snapshot) => {
+        // Clear existing schema notifications
+        const schemaIndices: number[] = [];
+        allNotifications.forEach((n, idx) => {
+          if (!('collectionName' in n) || !n.collectionName) {
+            schemaIndices.push(idx);
+          }
+        });
+        // Remove in reverse order to maintain indices
+        schemaIndices.reverse().forEach(idx => allNotifications.splice(idx, 1));
+        
+        // Add new schema notifications
+        snapshot.docs.forEach((doc) => {
+          allNotifications.push(processSchemaNotification(doc));
+        });
+        
+        updateNotifications();
+      },
       (error) => console.error("Error in schema notifications listener:", error)
     );
 
+    // Set up real-time listener for alert notifications
     const alertUnsubscribe = organizationId
       ? onSnapshot(
           query(
@@ -161,7 +136,24 @@ export function NotificationBell({ userId }: NotificationBellProps) {
             where("organizationId", "==", organizationId),
             where("read", "==", false)
           ),
-          () => fetchNotifications(),
+          (snapshot) => {
+            // Clear existing alert notifications
+            const alertIndices: number[] = [];
+            allNotifications.forEach((n, idx) => {
+              if ('collectionName' in n && n.collectionName) {
+                alertIndices.push(idx);
+              }
+            });
+            // Remove in reverse order to maintain indices
+            alertIndices.reverse().forEach(idx => allNotifications.splice(idx, 1));
+            
+            // Add new alert notifications
+            snapshot.docs.forEach((doc) => {
+              allNotifications.push(processAlertNotification(doc));
+            });
+            
+            updateNotifications();
+          },
           (error) => console.error("Error in alert notifications listener:", error)
         )
       : () => {};
