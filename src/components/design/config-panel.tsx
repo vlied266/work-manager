@@ -2061,3 +2061,215 @@ function renderFlowLogic(
   );
 }
 
+// Options List Builder Component (for Select/Checkbox)
+interface OptionsListBuilderProps {
+  options: Array<{ label: string; value: string }> | string[];
+  onChange: (options: Array<{ label: string; value: string }> | undefined) => void;
+}
+
+function OptionsListBuilder({ options, onChange }: OptionsListBuilderProps) {
+  const [newOption, setNewOption] = useState("");
+
+  // Convert options to array of strings
+  const optionStrings = options.map(o => typeof o === "string" ? o : o.label);
+
+  const handleAddOption = () => {
+    if (!newOption.trim()) return;
+    
+    const updatedOptions = [
+      ...optionStrings,
+      newOption.trim()
+    ];
+    
+    onChange(updatedOptions.map(o => ({ label: o, value: o })));
+    setNewOption("");
+  };
+
+  const handleRemoveOption = (index: number) => {
+    const updatedOptions = optionStrings.filter((_, i) => i !== index);
+    onChange(updatedOptions.length > 0 ? updatedOptions.map(o => ({ label: o, value: o })) : undefined);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddOption();
+    }
+  };
+
+  return (
+    <div>
+      <label className="block text-sm font-semibold text-slate-900 mb-2">
+        Options <span className="text-rose-500">*</span>
+      </label>
+      
+      {/* Input + Add Button */}
+      <div className="flex items-center gap-2 mb-3">
+        <input
+          type="text"
+          value={newOption}
+          onChange={(e) => setNewOption(e.target.value)}
+          onKeyPress={handleKeyPress}
+          className="flex-1 rounded-xl border-0 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+          placeholder="Enter an option..."
+        />
+        <button
+          type="button"
+          onClick={handleAddOption}
+          disabled={!newOption.trim()}
+          className="flex-shrink-0 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+        >
+          <Plus className="h-4 w-4" />
+          Add
+        </button>
+      </div>
+
+      {/* Options as Tags/Chips */}
+      {optionStrings.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {optionStrings.map((option, index) => (
+            <div
+              key={index}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-sm font-medium text-blue-800"
+            >
+              <span>{option}</span>
+              <button
+                type="button"
+                onClick={() => handleRemoveOption(index)}
+                className="text-blue-600 hover:text-blue-800 transition-colors"
+                title="Remove option"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-slate-400 italic">No options added yet. Add options above.</p>
+      )}
+    </div>
+  );
+}
+
+// File Restrictions Builder Component (for File Upload)
+interface FileRestrictionsBuilderProps {
+  allowedExtensions: string[];
+  onChange: (extensions: string[]) => void;
+}
+
+function FileRestrictionsBuilder({ allowedExtensions, onChange }: FileRestrictionsBuilderProps) {
+  const [customExtensions, setCustomExtensions] = useState("");
+  const [useCustom, setUseCustom] = useState(false);
+
+  // Predefined file type groups
+  const fileTypeGroups = [
+    { label: "Images", extensions: ["jpg", "jpeg", "png", "gif", "webp"] },
+    { label: "Documents", extensions: ["pdf", "docx", "doc", "txt"] },
+    { label: "Spreadsheets", extensions: ["xlsx", "xls", "csv"] },
+  ];
+
+  // Check if a group is selected (all extensions in group are present)
+  const isGroupSelected = (group: typeof fileTypeGroups[0]) => {
+    return group.extensions.every(ext => allowedExtensions.includes(ext));
+  };
+
+  // Toggle a file type group
+  const toggleGroup = (group: typeof fileTypeGroups[0]) => {
+    const isSelected = isGroupSelected(group);
+    
+    if (isSelected) {
+      // Remove all extensions from this group
+      onChange(allowedExtensions.filter(ext => !group.extensions.includes(ext)));
+    } else {
+      // Add all extensions from this group (avoid duplicates)
+      const newExtensions = [...new Set([...allowedExtensions, ...group.extensions])];
+      onChange(newExtensions);
+    }
+  };
+
+  // Handle custom extensions
+  useEffect(() => {
+    if (useCustom && customExtensions.trim()) {
+      const customExts = customExtensions.split(",").map(e => e.trim().replace(/^\./, "")).filter(e => e);
+      // Merge with existing extensions (avoid duplicates)
+      const merged = [...new Set([...allowedExtensions, ...customExts])];
+      onChange(merged);
+    }
+  }, [customExtensions, useCustom]);
+
+  return (
+    <div>
+      <label className="block text-sm font-semibold text-slate-900 mb-2">
+        Allowed File Types
+      </label>
+      
+      {/* Multi-Select Checkbox Group */}
+      <div className="space-y-2 mb-3">
+        {fileTypeGroups.map((group) => (
+          <label
+            key={group.label}
+            className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer transition-colors"
+          >
+            <input
+              type="checkbox"
+              checked={isGroupSelected(group)}
+              onChange={() => toggleGroup(group)}
+              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+            />
+            <span className="text-sm font-medium text-slate-900">
+              {group.label} ({group.extensions.map(e => `.${e}`).join(", ")})
+            </span>
+          </label>
+        ))}
+        
+        {/* Custom Option */}
+        <label className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer transition-colors">
+          <input
+            type="checkbox"
+            checked={useCustom}
+            onChange={(e) => {
+              setUseCustom(e.target.checked);
+              if (!e.target.checked) {
+                setCustomExtensions("");
+              }
+            }}
+            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+          />
+          <span className="text-sm font-medium text-slate-900">Custom</span>
+        </label>
+      </div>
+
+      {/* Custom Extensions Input (shown when Custom is checked) */}
+      {useCustom && (
+        <div className="mb-3">
+          <input
+            type="text"
+            value={customExtensions}
+            onChange={(e) => setCustomExtensions(e.target.value)}
+            className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+            placeholder="e.g., zip, rar, 7z"
+          />
+          <p className="mt-1 text-xs text-slate-500">Enter comma-separated extensions (e.g., zip, rar, 7z)</p>
+        </div>
+      )}
+
+      {/* Display Selected Extensions */}
+      {allowedExtensions.length > 0 && (
+        <div className="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+          <p className="text-xs font-semibold text-slate-700 mb-2">Selected Extensions:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {allowedExtensions.map((ext, index) => (
+              <span
+                key={index}
+                className="inline-flex items-center px-2 py-1 rounded-md bg-blue-100 text-blue-800 text-xs font-medium"
+              >
+                .{ext}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
