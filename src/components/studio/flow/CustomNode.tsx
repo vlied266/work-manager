@@ -87,8 +87,8 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
           {step.title || "Untitled Step"}
         </h3>
 
-        {/* Output Variable (for INPUT steps) */}
-        {step.action === "INPUT" && step.config?.outputVariableName && (
+        {/* Output Variable (for INPUT and APPROVAL steps) */}
+        {(step.action === "INPUT" || step.action === "APPROVAL") && step.config?.outputVariableName && (
           <p className="text-[10px] font-mono text-purple-600 font-semibold">
             Var: {step.config.outputVariableName}
           </p>
@@ -108,7 +108,7 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
       </div>
 
       {/* Source Handles (Bottom) */}
-      {(step.action === "VALIDATE" || step.action === "COMPARE") ? (
+      {(step.action === "VALIDATE" || step.action === "COMPARE" || step.action === "APPROVAL") ? (
         <>
           {/* Success Handle (Left) - Labeled */}
           <div className="relative">
@@ -125,7 +125,7 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
               className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 text-[10px] font-semibold text-green-600 whitespace-nowrap pointer-events-none"
               style={{ left: "30%" }}
             >
-              {step.action === "COMPARE" ? "Match" : "Pass"}
+              {step.action === "COMPARE" ? "Match" : step.action === "APPROVAL" ? "Approved" : "Pass"}
             </div>
           </div>
           {/* Failure Handle (Right) - Labeled */}
@@ -143,7 +143,7 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
               className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 text-[10px] font-semibold text-red-600 whitespace-nowrap pointer-events-none"
               style={{ left: "70%" }}
             >
-              {step.action === "COMPARE" ? "Mismatch" : "Fail"}
+              {step.action === "COMPARE" ? "Mismatch" : step.action === "APPROVAL" ? "Rejected" : "Fail"}
             </div>
           </div>
         </>

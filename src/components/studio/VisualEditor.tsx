@@ -222,8 +222,8 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
         }
         // NO FALLBACK - If no defaultNextStepId configured, no edge is created
       } 
-      // VALIDATE/COMPARE: Use routes (onSuccessStepId, onFailureStepId)
-      else if ((step.action === "VALIDATE" || step.action === "COMPARE") && step.routes) {
+      // VALIDATE/COMPARE/APPROVAL: Use routes (onSuccessStepId, onFailureStepId)
+      else if ((step.action === "VALIDATE" || step.action === "COMPARE" || step.action === "APPROVAL") && step.routes) {
         if (step.routes.onSuccessStepId && step.routes.onSuccessStepId !== "COMPLETED") {
           edgesArray.push({
             id: `${sourceId}-success`,
@@ -232,7 +232,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
             target: step.routes.onSuccessStepId,
             animated: true,
             style: { stroke: "#10B981", strokeWidth: 2.5 },
-            label: "True",
+            label: step.action === "APPROVAL" ? "Approved" : step.action === "COMPARE" ? "Match" : "True",
             labelStyle: { 
               fill: "#10B981", 
               fontWeight: 600,
@@ -256,7 +256,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
             target: step.routes.onFailureStepId,
             animated: true,
             style: { stroke: "#EF4444", strokeWidth: 2.5 },
-            label: "False",
+            label: step.action === "APPROVAL" ? "Rejected" : step.action === "COMPARE" ? "Mismatch" : "False",
             labelStyle: { 
               fill: "#EF4444", 
               fontWeight: 600,
@@ -272,7 +272,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
           });
         }
         
-        // Default next step for VALIDATE/COMPARE - ONLY if explicitly configured
+        // Default next step for VALIDATE/COMPARE/APPROVAL - ONLY if explicitly configured
         if (step.routes.defaultNextStepId && step.routes.defaultNextStepId !== "COMPLETED") {
           edgesArray.push({
             id: `${sourceId}-default`,

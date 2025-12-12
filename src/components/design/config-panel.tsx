@@ -432,6 +432,90 @@ function renderActionConfigBasic(
       );
 
     case "APPROVAL":
+      const approvalRoutes = step.routes || {};
+      const approvalOtherSteps = allSteps.filter((s) => s.id !== step.id);
+      
+      return (
+        <div className="space-y-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Instruction <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                value={config.instruction || ""}
+                onChange={(e) =>
+                  onUpdate({ config: { ...config, instruction: e.target.value } })
+                }
+                rows={6}
+                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
+                placeholder="Enter detailed instructions for the approver..."
+              />
+            </div>
+          </div>
+
+          {/* Routing Section */}
+          <div className="pt-4 border-t border-slate-200">
+            <h3 className="text-sm font-semibold text-slate-900 mb-4">Flow Logic</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  On Approve (Success) → Go To
+                </label>
+                <select
+                  value={approvalRoutes.onSuccessStepId || ""}
+                  onChange={(e) =>
+                    onUpdate({
+                      routes: { ...approvalRoutes, onSuccessStepId: e.target.value || undefined },
+                    })
+                  }
+                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                >
+                  <option value="">Next Step (Default)</option>
+                  <option value="COMPLETED">Complete Process</option>
+                  {approvalOtherSteps.map((s) => {
+                    const stepNum = allSteps.findIndex(st => st.id === s.id) + 1;
+                    return (
+                      <option key={s.id} value={s.id}>
+                        Step {stepNum}: {s.title || "Untitled Step"}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  On Reject (Failure) → Go To
+                </label>
+                <select
+                  value={approvalRoutes.onFailureStepId || ""}
+                  onChange={(e) =>
+                    onUpdate({
+                      routes: { ...approvalRoutes, onFailureStepId: e.target.value || undefined },
+                    })
+                  }
+                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                >
+                  <option value="">Next Step (Default)</option>
+                  <option value="COMPLETED">Complete Process</option>
+                  {approvalOtherSteps.map((s) => {
+                    const stepNum = allSteps.findIndex(st => st.id === s.id) + 1;
+                    return (
+                      <option key={s.id} value={s.id}>
+                        Step {stepNum}: {s.title || "Untitled Step"}
+                      </option>
+                    );
+                  })}
+                </select>
+                <p className="mt-1 text-xs text-slate-500">
+                  Route to a step that handles rejection (e.g., request revision or notify requester)
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
     case "NEGOTIATE":
     case "INSPECT":
       return (
@@ -1347,12 +1431,13 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
   // Determine if Logic tab should be shown
-  // Hide Logic tab for INPUT (branching should be handled by connecting to GATEWAY on canvas)
+  // Hide Logic tab for INPUT and APPROVAL (branching handled in Basic tab or by connecting to GATEWAY on canvas)
   const shouldShowLogicTab = step && (
     step.action !== "GATEWAY" && 
     step.action !== "VALIDATE" && 
     step.action !== "COMPARE" &&
-    step.action !== "INPUT"
+    step.action !== "INPUT" &&
+    step.action !== "APPROVAL"
   );
   
   const [activeTab, setActiveTab] = useState<"basic" | "settings" | "logic">("basic");

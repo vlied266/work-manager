@@ -417,8 +417,8 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
       if (selectedStepIndex !== -1) {
         const selectedStep = updatedSteps[selectedStepIndex];
         
-        // Case 1: Selected node is VALIDATE or COMPARE (branching node)
-        if (selectedStep.action === "VALIDATE" || selectedStep.action === "COMPARE") {
+        // Case 1: Selected node is VALIDATE, COMPARE, or APPROVAL (branching node)
+        if (selectedStep.action === "VALIDATE" || selectedStep.action === "COMPARE" || selectedStep.action === "APPROVAL") {
           // Ensure routes object exists
           const routes = selectedStep.routes || {};
           
@@ -501,11 +501,11 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
         }
       }
     }
-    // Fallback: If no step is selected, use old logic (connect to last step if it's VALIDATE/COMPARE)
+    // Fallback: If no step is selected, use old logic (connect to last step if it's VALIDATE/COMPARE/APPROVAL)
     else if (updatedSteps.length >= 2 && !wasConnectedToBranchingNode) {
       const previousStep = updatedSteps[updatedSteps.length - 2];
       
-      if (previousStep.action === "VALIDATE" || previousStep.action === "COMPARE") {
+      if (previousStep.action === "VALIDATE" || previousStep.action === "COMPARE" || previousStep.action === "APPROVAL") {
         const hasSuccessConnection = previousStep.routes?.onSuccessStepId;
         const hasFailureConnection = previousStep.routes?.onFailureStepId;
         
@@ -623,8 +623,8 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
           // Default path disconnected successfully
         }
       }
-      // Scenario B: VALIDATE/COMPARE - Remove success/failure paths
-      else if (sourceStep.action === "VALIDATE" || sourceStep.action === "COMPARE") {
+      // Scenario B: VALIDATE/COMPARE/APPROVAL - Remove success/failure paths
+      else if (sourceStep.action === "VALIDATE" || sourceStep.action === "COMPARE" || sourceStep.action === "APPROVAL") {
         if (sourceHandle === "success" || !sourceHandle) {
           sourceStepCopy.routes = {
             ...sourceStepCopy.routes,
@@ -681,8 +681,8 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
         // Default path connected successfully
       }
     }
-    // Scenario B: VALIDATE/COMPARE - Handle success/failure paths
-    else if (sourceStep.action === "VALIDATE" || sourceStep.action === "COMPARE") {
+    // Scenario B: VALIDATE/COMPARE/APPROVAL - Handle success/failure paths
+    else if (sourceStep.action === "VALIDATE" || sourceStep.action === "COMPARE" || sourceStep.action === "APPROVAL") {
       if (sourceHandle === "success" || !sourceHandle) {
         // Update onSuccessStepId
         sourceStepCopy.routes = {
