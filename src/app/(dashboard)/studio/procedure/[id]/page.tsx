@@ -664,7 +664,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
             ...sourceStepCopy.config,
             conditions,
           };
-          alert(`✅ Connected condition ${conditionIndex + 1} of "${sourceTitle}" to "${targetTitle}"`);
+          // Condition connected successfully
         }
       } else if (sourceHandle === "default") {
         // Update defaultNextStepId
@@ -672,7 +672,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
           ...sourceStepCopy.config,
           defaultNextStepId: targetStepId,
         };
-        alert(`✅ Connected default path of "${sourceTitle}" to "${targetTitle}"`);
+        // Default path connected successfully
       }
     }
     // Scenario B: VALIDATE/COMPARE - Handle success/failure paths
@@ -683,14 +683,14 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
           ...sourceStepCopy.routes,
           onSuccessStepId: targetStepId,
         };
-        alert(`✅ Connected success path of "${sourceTitle}" to "${targetTitle}"`);
+          // Success path connected successfully
       } else if (sourceHandle === "failure") {
         // Update onFailureStepId
         sourceStepCopy.routes = {
           ...sourceStepCopy.routes,
           onFailureStepId: targetStepId,
         };
-        alert(`✅ Connected failure path of "${sourceTitle}" to "${targetTitle}"`);
+          // Failure path connected successfully
       }
     }
     // Scenario C: Standard Step - Update defaultNextStepId
@@ -699,7 +699,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
         ...sourceStepCopy.routes,
         defaultNextStepId: targetStepId,
       };
-      alert(`✅ Connected "${sourceTitle}" to "${targetTitle}"`);
+      // Step connected successfully
     }
 
     updatedSteps[sourceStepIndex] = sourceStepCopy;
