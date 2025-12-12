@@ -36,20 +36,35 @@ function DraggableActionCard({ action }: DraggableActionCardProps) {
     ? "bg-gradient-to-br from-purple-500 to-violet-600"
     : "bg-gradient-to-br from-blue-500 to-blue-600";
 
-  // HTML5 Drag handlers for React Flow canvas
-  const handleDragStart = (e: React.DragEvent) => {
+  // HTML5 Drag handlers for React Flow canvas (separate from dnd-kit)
+  const handleHTML5DragStart = (e: React.DragEvent) => {
+    // Stop dnd-kit from interfering
+    e.stopPropagation();
+    
+    // Set data for React Flow
     e.dataTransfer.setData("application/reactflow", action);
     e.dataTransfer.effectAllowed = "move";
-    console.log("[DraggableSidebar] Drag started:", action);
+    
+    console.log("[DraggableSidebar] HTML5 Drag started:", action);
+  };
+
+  // Combined drag handler that works with both systems
+  const handleDragStart = (e: React.DragEvent) => {
+    // For HTML5 drag (React Flow canvas)
+    handleHTML5DragStart(e);
+    
+    // Also allow dnd-kit to handle it for List View compatibility
+    // The dnd-kit listeners will handle their own drag
   };
 
   return (
     <motion.div
       ref={setNodeRef}
       style={style}
-      {...listeners}
       {...attributes}
-      draggable
+      // Don't use dnd-kit listeners for HTML5 drag - they interfere with native drag
+      // {...listeners} // Commented out to allow HTML5 drag & drop
+      draggable={true}
       onDragStart={handleDragStart}
       className={`group relative cursor-grab active:cursor-grabbing rounded-2xl bg-white shadow-sm border border-slate-100 p-4 transition-all duration-200 ${
         isDragging ? "shadow-xl opacity-90 scale-105 ring-1 ring-black/5" : "hover:shadow-md hover:-translate-y-1"

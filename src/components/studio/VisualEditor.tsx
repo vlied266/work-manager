@@ -457,10 +457,15 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
     setNodesState(layoutedNodes);
   }, [layoutedNodes, setNodesState]);
 
-  // Handle drop from sidebar
+  // Handle drop from sidebar (HTML5 drag & drop for React Flow)
   const onDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
+    // Only handle if it's a React Flow drag (not dnd-kit)
+    const hasReactFlowData = event.dataTransfer.types.includes("application/reactflow");
+    if (hasReactFlowData) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = "move";
+    }
   }, []);
 
   const onDrop = useCallback(
@@ -468,11 +473,25 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
       event.preventDefault();
       event.stopPropagation();
 
+      // Check if this is a React Flow drag
       const action = event.dataTransfer.getData("application/reactflow");
-      console.log("[VisualEditor] Drop event:", { action, hasOnAddStep: !!onAddStep });
+      console.log("[VisualEditor] Drop event:", { 
+        action, 
+        hasOnAddStep: !!onAddStep,
+        dataTransferTypes: event.dataTransfer.types,
+        allData: Array.from(event.dataTransfer.types).map(type => ({
+          type,
+          data: event.dataTransfer.getData(type)
+        }))
+      });
       
-      if (!action || !onAddStep) {
-        console.warn("[VisualEditor] Drop failed - missing action or onAddStep:", { action, hasOnAddStep: !!onAddStep });
+      if (!action) {
+        console.warn("[VisualEditor] No React Flow action data found in drop event");
+        return;
+      }
+
+      if (!onAddStep) {
+        console.warn("[VisualEditor] onAddStep callback is not provided");
         return;
       }
 
