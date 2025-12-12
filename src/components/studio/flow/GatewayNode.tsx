@@ -42,6 +42,7 @@ export const GatewayNode = memo((props: NodeProps<Node<GatewayNodeData>>) => {
       <Handle
         type="target"
         position={Position.Top}
+        isConnectable={true}
         className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white !rounded-full !cursor-crosshair"
       />
 
@@ -148,6 +149,7 @@ export const GatewayNode = memo((props: NodeProps<Node<GatewayNodeData>>) => {
             type="source"
             position={Position.Bottom}
             id="default"
+            isConnectable={true}
             className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white !rounded-full !cursor-crosshair"
             style={{
               left: conditionCount > 0 ? "85%" : "50%",
@@ -169,6 +171,7 @@ export const GatewayNode = memo((props: NodeProps<Node<GatewayNodeData>>) => {
         <Handle
           type="source"
           position={Position.Bottom}
+          isConnectable={true}
           className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white !rounded-full !cursor-crosshair"
         />
       )}

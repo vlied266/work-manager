@@ -46,6 +46,7 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
       <Handle
         type="target"
         position={Position.Top}
+        isConnectable={true}
         className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white !rounded-full !cursor-crosshair"
       />
 
@@ -125,6 +126,7 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
               type="source"
               position={Position.Bottom}
               id="failure"
+              isConnectable={true}
               className="!w-3 !h-3 !bg-red-500 !border-2 !border-white !rounded-full !cursor-crosshair"
               style={{ left: "70%", bottom: "-6px" }}
             />
@@ -141,6 +143,7 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
         <Handle
           type="source"
           position={Position.Bottom}
+          isConnectable={true}
           className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white !rounded-full !cursor-crosshair"
         />
       )}

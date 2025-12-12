@@ -737,7 +737,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
         }))}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        connectionMode={ConnectionMode.Loose}
+        connectionMode={ConnectionMode.Strict}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
         onEdgeClick={(event, edge) => {
