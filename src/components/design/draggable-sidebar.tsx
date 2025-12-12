@@ -36,12 +36,20 @@ function DraggableActionCard({ action }: DraggableActionCardProps) {
     ? "bg-gradient-to-br from-purple-500 to-violet-600"
     : "bg-gradient-to-br from-blue-500 to-blue-600";
 
+  // HTML5 Drag handlers for React Flow canvas
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData("application/reactflow", action);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
   return (
     <motion.div
       ref={setNodeRef}
       style={style}
       {...listeners}
       {...attributes}
+      draggable
+      onDragStart={handleDragStart}
       className={`group relative cursor-grab active:cursor-grabbing rounded-2xl bg-white shadow-sm border border-slate-100 p-4 transition-all duration-200 ${
         isDragging ? "shadow-xl opacity-90 scale-105 ring-1 ring-black/5" : "hover:shadow-md hover:-translate-y-1"
       }`}

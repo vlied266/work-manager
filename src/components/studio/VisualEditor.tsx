@@ -15,6 +15,9 @@ import {
   Connection,
   addEdge,
   useEdgesState,
+  useNodesState,
+  NodeChange,
+  applyNodeChanges,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import dagre from "@dagrejs/dagre";
@@ -30,6 +33,7 @@ interface VisualEditorProps {
   onNodeUpdate?: (nodeId: string, data: any) => void;
   onNodeSelect?: (nodeId: string | null) => void;
   onConnect?: (connection: Connection, sourceStep: AtomicStep, targetStepId: string) => void;
+  onAddStep?: (action: string, position: { x: number; y: number }) => void;
   procedureTrigger?: Procedure["trigger"];
 }
 
@@ -79,9 +83,9 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction: "TB" | "LR
   return { nodes: layoutedNodes, edges };
 };
 
-function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, procedureTrigger }: VisualEditorProps) {
+function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onAddStep, procedureTrigger }: VisualEditorProps) {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const { setNodes, getNodes } = useReactFlow();
+  const { setNodes, getNodes, screenToFlowPosition } = useReactFlow();
   
   // Create edges based on actual routing logic
   const initialEdges: Edge[] = useMemo(() => {
@@ -445,6 +449,38 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, pro
     setEdges(initialEdges);
   }, [initialEdges, setEdges]);
 
+  // Initialize nodes state for drag & drop
+  const [nodes, setNodesState, onNodesChange] = useNodesState(layoutedNodes);
+
+  // Update nodes when layoutedNodes change
+  useEffect(() => {
+    setNodesState(layoutedNodes);
+  }, [layoutedNodes, setNodesState]);
+
+  // Handle drop from sidebar
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }, []);
+
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+
+      const action = event.dataTransfer.getData("application/reactflow");
+      if (!action || !onAddStep) return;
+
+      // Get drop position in flow coordinates
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+
+      onAddStep(action, position);
+    },
+    [screenToFlowPosition, onAddStep]
+  );
+
   // Handle connection (drag-to-connect)
   const handleConnect = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target) return;
@@ -490,14 +526,17 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, pro
   return (
     <div className="h-full w-full rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 overflow-hidden relative">
       <ReactFlow
-        nodes={layoutedNodes}
+        nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         connectionMode={ConnectionMode.Loose}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
         onConnect={handleConnect}
+        onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
         fitView
         fitViewOptions={{ padding: 0.2, maxZoom: 1.5 }}
         className="bg-gradient-to-br from-slate-50/50 to-blue-50/30"
@@ -505,6 +544,9 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, pro
           type: "smoothstep",
           animated: true,
         }}
+        nodesDraggable={true}
+        nodesConnectable={true}
+        elementsSelectable={true}
       >
         <Background color="#E2E8F0" gap={20} size={1} />
         <Controls className="!bg-white/80 !backdrop-blur-xl !border !border-white/60 !rounded-xl !shadow-lg" />
@@ -535,10 +577,10 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, pro
   );
 }
 
-export function VisualEditor({ tasks, onNodeUpdate, onNodeSelect, onConnect, procedureTrigger }: VisualEditorProps) {
+export function VisualEditor({ tasks, onNodeUpdate, onNodeSelect, onConnect, onAddStep, procedureTrigger }: VisualEditorProps) {
   return (
     <ReactFlowProvider>
-      <VisualEditorContent tasks={tasks} onNodeUpdate={onNodeUpdate} onNodeSelect={onNodeSelect} onConnect={onConnect} procedureTrigger={procedureTrigger} />
+      <VisualEditorContent tasks={tasks} onNodeUpdate={onNodeUpdate} onNodeSelect={onNodeSelect} onConnect={onConnect} onAddStep={onAddStep} procedureTrigger={procedureTrigger} />
     </ReactFlowProvider>
   );
 }

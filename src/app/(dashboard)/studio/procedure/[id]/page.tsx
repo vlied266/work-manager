@@ -40,7 +40,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [previewMode, setPreviewMode] = useState(false); // false = Edit Mode, true = Preview Mode
-  const [viewMode, setViewMode] = useState<"list" | "canvas">("list"); // "list" = List View, "canvas" = Flow View
+  const [viewMode, setViewMode] = useState<"list" | "canvas">("canvas"); // "list" = List View, "canvas" = Flow View (default)
   const [isTriggerModalOpen, setIsTriggerModalOpen] = useState(false);
 
 
