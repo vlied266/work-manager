@@ -15,6 +15,7 @@ interface VariableOption {
 interface MagicInputProps {
   value: string;
   onChange: (value: string) => void;
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
   placeholder?: string;
   availableVariables: VariableOption[];
   className?: string;
@@ -135,6 +136,7 @@ export function MagicInput({
             type="text"
             value={inputValue}
             onChange={handleInputChange}
+            onBlur={onBlur}
             placeholder={placeholder}
             className="flex-1 bg-transparent outline-none text-sm font-medium text-slate-900 placeholder:text-slate-400"
           />

@@ -13,6 +13,7 @@ import { useOrgId, useOrgQuery } from "@/hooks/useOrgData";
 import { isHumanStep } from "@/lib/constants";
 import { KeyValueBuilder } from "./key-value-builder";
 import { VariableInput } from "@/components/studio/variable-input";
+import { CreatableSelect } from "./creatable-select";
 
 // Helper function to get available variables
 function getAvailableVariables(allSteps: AtomicStep[], currentStepId: string) {
@@ -125,43 +126,40 @@ function renderActionConfigBasic(
       );
 
     case "DB_INSERT":
+      const collectionOptions = collections.map((col) => ({
+        value: col.name,
+        label: col.name,
+      }));
+      
+      // Add common collection suggestions if collections list is empty
+      const commonCollections = [
+        { value: "invoices", label: "invoices" },
+        { value: "requests", label: "requests" },
+        { value: "users", label: "users" },
+        { value: "orders", label: "orders" },
+        { value: "employees", label: "employees" },
+        { value: "deals", label: "deals" },
+      ];
+      
+      const allCollectionOptions = collectionOptions.length > 0 
+        ? collectionOptions 
+        : commonCollections;
+      
       return (
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Collection Name <span className="text-rose-500">*</span>
             </label>
-            {collections.length > 0 ? (
-              <select
-                value={config.collectionName || ""}
-                onChange={(e) =>
-                  onUpdate({ config: { ...config, collectionName: e.target.value || undefined } })
-                }
-                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-              >
-                <option value="">Select a collection...</option>
-                {collections.map((col) => (
-                  <option key={col.id} value={col.name}>
-                    {col.name}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                type="text"
-                value={config.collectionName || ""}
-                onChange={(e) =>
-                  onUpdate({ config: { ...config, collectionName: e.target.value || undefined } })
-                }
-                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-                placeholder="e.g., Deals, Employees, Orders"
-              />
-            )}
-            <p className="mt-1 text-xs text-slate-500">
-              {collections.length > 0 
-                ? "Select an existing collection"
-                : "Type the collection name (must match an existing collection)"}
-            </p>
+            <CreatableSelect
+              value={config.collectionName || ""}
+              onChange={(value) =>
+                onUpdate({ config: { ...config, collectionName: value || undefined } })
+              }
+              options={allCollectionOptions}
+              placeholder="Select an existing collection or type a new name..."
+              helperText="Select an existing collection or type a new name to create one."
+            />
           </div>
 
           {/* Show KeyValueBuilder only after collection is selected */}
@@ -200,14 +198,20 @@ function renderActionConfigBasic(
         sourceOptions.push({ label: "⚡️ Start Trigger (Automated File)", value: "TRIGGER_EVENT" });
       }
       
-      // Add previous INPUT steps with file type
+      // Add previous INPUT steps with file type (with step index and title)
       const currentStepIndex = allSteps.findIndex((s) => s.id === step.id);
       const previousFileInputSteps = allSteps
         .filter((s) => {
           const stepIndex = allSteps.findIndex((st) => st.id === s.id);
           return s.action === "INPUT" && s.config.inputType === "file" && stepIndex < currentStepIndex;
         })
-        .map((s) => ({ label: s.title, value: s.id }));
+        .map((s) => {
+          const stepIndex = allSteps.findIndex((st) => st.id === s.id) + 1;
+          return { 
+            label: `Step ${stepIndex}: ${s.title || "Untitled Step"}`, 
+            value: s.id 
+          };
+        });
       
       sourceOptions.push(...previousFileInputSteps);
       
@@ -330,6 +334,29 @@ function renderActionConfigBasic(
       );
 
     case "GOOGLE_SHEET":
+      // Helper function to extract Google Sheet ID from URL
+      const extractSheetId = (input: string): string => {
+        // If it's a variable reference, return as-is
+        if (input.includes("{{") && input.includes("}}")) {
+          return input;
+        }
+        
+        // Try to extract ID from Google Sheets URL
+        const urlPattern = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
+        const match = input.match(urlPattern);
+        if (match && match[1]) {
+          return match[1];
+        }
+        
+        // If it looks like just an ID (alphanumeric with dashes/underscores), return as-is
+        if (/^[a-zA-Z0-9-_]+$/.test(input)) {
+          return input;
+        }
+        
+        // Otherwise return the input (might be invalid, but let user handle it)
+        return input;
+      };
+      
       return (
         <div className="space-y-4">
           <div>
@@ -338,12 +365,25 @@ function renderActionConfigBasic(
             </label>
             <MagicInput
               value={config.spreadsheetId || ""}
-              onChange={(value) =>
-                onUpdate({ config: { ...config, spreadsheetId: value || undefined } })
-              }
-              placeholder="Spreadsheet ID or {{step_1.sheetId}}"
+              onChange={(value) => {
+                const extractedId = extractSheetId(value);
+                onUpdate({ config: { ...config, spreadsheetId: extractedId || undefined } });
+              }}
+              onBlur={(e) => {
+                const value = e.target.value;
+                if (value && !value.includes("{{")) {
+                  const extractedId = extractSheetId(value);
+                  if (extractedId !== value) {
+                    onUpdate({ config: { ...config, spreadsheetId: extractedId || undefined } });
+                  }
+                }
+              }}
+              placeholder="Spreadsheet ID or full URL or {{step_1.sheetId}}"
               availableVariables={availableVariables}
             />
+            <p className="mt-1 text-xs text-slate-500">
+              Paste the full Google Sheet URL or just the ID. The ID will be extracted automatically.
+            </p>
           </div>
 
           <div>
@@ -772,8 +812,14 @@ function renderActionConfigBasic(
           </div>
 
           {/* Routing Section */}
-          <div className="pt-4 border-t border-slate-200">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4">Routing</h3>
+          <div className="pt-6 mt-6 border-t-2 border-slate-300 bg-slate-50/50 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap className="h-4 w-4 text-blue-600" />
+              <h3 className="text-sm font-bold text-slate-900">Flow Logic</h3>
+            </div>
+            <p className="text-xs text-slate-600 mb-4">
+              Define where the workflow should go based on comparison results
+            </p>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
@@ -1867,11 +1913,14 @@ function renderFlowLogic(
         >
           <option value="">Auto (Next in sequence)</option>
           <option value="COMPLETED">Complete Process</option>
-          {otherSteps.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.title}
-            </option>
-          ))}
+          {otherSteps.map((s) => {
+            const stepNum = allSteps.findIndex((st) => st.id === s.id) + 1;
+            return (
+              <option key={s.id} value={s.id}>
+                Step {stepNum}: {s.title || "Untitled Step"}
+              </option>
+            );
+          })}
         </select>
       </div>
 
@@ -1893,11 +1942,14 @@ function renderFlowLogic(
             >
               <option value="">Use Default Next Step</option>
               <option value="COMPLETED">Complete Process</option>
-              {otherSteps.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.title}
-                </option>
-              ))}
+              {otherSteps.map((s) => {
+                const stepNum = allSteps.findIndex((st) => st.id === s.id) + 1;
+                return (
+                  <option key={s.id} value={s.id}>
+                    Step {stepNum}: {s.title || "Untitled Step"}
+                  </option>
+                );
+              })}
             </select>
           </div>
           <div>
@@ -1915,11 +1967,14 @@ function renderFlowLogic(
             >
               <option value="">Use Default Next Step</option>
               <option value="COMPLETED">Complete Process</option>
-              {otherSteps.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.title}
-                </option>
-              ))}
+              {otherSteps.map((s) => {
+                const stepNum = allSteps.findIndex((st) => st.id === s.id) + 1;
+                return (
+                  <option key={s.id} value={s.id}>
+                    Step {stepNum}: {s.title || "Untitled Step"}
+                  </option>
+                );
+              })}
             </select>
             <p className="mt-1 text-xs text-slate-500">
               Useful for error loops: send user back to correction step
