@@ -457,7 +457,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
   const handleConnect = async (
     connection: { source: string; target: string; sourceHandle?: string | null },
     sourceStep: AtomicStep,
-    targetStepId: string
+    targetStepId: string | null
   ) => {
     if (!procedure) return;
 
@@ -470,9 +470,66 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
 
     // Get step titles for notification
     const sourceTitle = sourceStep.title || "Untitled Step";
-    const targetStep = procedure.steps.find((s) => s.id === targetStepId);
+    const targetStep = targetStepId ? procedure.steps.find((s) => s.id === targetStepId) : null;
     const targetTitle = targetStep?.title || "Untitled Step";
 
+    // Handle disconnection (targetStepId is null)
+    if (!targetStepId) {
+      // Scenario A: GATEWAY - Remove condition or default path
+      if (sourceStep.action === "GATEWAY") {
+        if (sourceHandle && sourceHandle.startsWith("condition-")) {
+          const conditionIndex = parseInt(sourceHandle.replace("condition-", ""));
+          const conditions = [...(sourceStepCopy.config?.conditions || [])];
+          if (conditions[conditionIndex]) {
+            conditions[conditionIndex] = {
+              ...conditions[conditionIndex],
+              nextStepId: undefined,
+            };
+            sourceStepCopy.config = {
+              ...sourceStepCopy.config,
+              conditions,
+            };
+            alert(`Disconnected condition ${conditionIndex + 1} of "${sourceTitle}"`);
+          }
+        } else if (sourceHandle === "default") {
+          sourceStepCopy.config = {
+            ...sourceStepCopy.config,
+            defaultNextStepId: undefined,
+          };
+          alert(`Disconnected default path of "${sourceTitle}"`);
+        }
+      }
+      // Scenario B: VALIDATE/COMPARE - Remove success/failure paths
+      else if (sourceStep.action === "VALIDATE" || sourceStep.action === "COMPARE") {
+        if (sourceHandle === "success" || !sourceHandle) {
+          sourceStepCopy.routes = {
+            ...sourceStepCopy.routes,
+            onSuccessStepId: undefined,
+          };
+          alert(`Disconnected success path of "${sourceTitle}"`);
+        } else if (sourceHandle === "failure") {
+          sourceStepCopy.routes = {
+            ...sourceStepCopy.routes,
+            onFailureStepId: undefined,
+          };
+          alert(`Disconnected failure path of "${sourceTitle}"`);
+        }
+      }
+      // Scenario C: Standard Step - Remove defaultNextStepId
+      else {
+        sourceStepCopy.routes = {
+          ...sourceStepCopy.routes,
+          defaultNextStepId: undefined,
+        };
+        alert(`Disconnected "${sourceTitle}"`);
+      }
+
+      updatedSteps[sourceStepIndex] = sourceStepCopy;
+      await handleStepsChange(updatedSteps);
+      return;
+    }
+
+    // Handle connection (targetStepId is provided)
     // Scenario A: GATEWAY - Handle condition or default paths
     if (sourceStep.action === "GATEWAY") {
       if (sourceHandle && sourceHandle.startsWith("condition-")) {
@@ -489,7 +546,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
             ...sourceStepCopy.config,
             conditions,
           };
-          alert(`Connected condition ${conditionIndex + 1} of "${sourceTitle}" to "${targetTitle}"`);
+          alert(`✅ Connected condition ${conditionIndex + 1} of "${sourceTitle}" to "${targetTitle}"`);
         }
       } else if (sourceHandle === "default") {
         // Update defaultNextStepId
@@ -497,7 +554,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
           ...sourceStepCopy.config,
           defaultNextStepId: targetStepId,
         };
-        alert(`Connected default path of "${sourceTitle}" to "${targetTitle}"`);
+        alert(`✅ Connected default path of "${sourceTitle}" to "${targetTitle}"`);
       }
     }
     // Scenario B: VALIDATE/COMPARE - Handle success/failure paths
@@ -508,14 +565,14 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
           ...sourceStepCopy.routes,
           onSuccessStepId: targetStepId,
         };
-        alert(`Connected success path of "${sourceTitle}" to "${targetTitle}"`);
+        alert(`✅ Connected success path of "${sourceTitle}" to "${targetTitle}"`);
       } else if (sourceHandle === "failure") {
         // Update onFailureStepId
         sourceStepCopy.routes = {
           ...sourceStepCopy.routes,
           onFailureStepId: targetStepId,
         };
-        alert(`Connected failure path of "${sourceTitle}" to "${targetTitle}"`);
+        alert(`✅ Connected failure path of "${sourceTitle}" to "${targetTitle}"`);
       }
     }
     // Scenario C: Standard Step - Update defaultNextStepId
@@ -524,7 +581,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
         ...sourceStepCopy.routes,
         defaultNextStepId: targetStepId,
       };
-      alert(`Connected "${sourceTitle}" to "${targetTitle}"`);
+      alert(`✅ Connected "${sourceTitle}" to "${targetTitle}"`);
     }
 
     updatedSteps[sourceStepIndex] = sourceStepCopy;

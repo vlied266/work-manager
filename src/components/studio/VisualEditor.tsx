@@ -18,6 +18,8 @@ import {
   useNodesState,
   NodeChange,
   applyNodeChanges,
+  EdgeChange,
+  applyEdgeChanges,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import dagre from "@dagrejs/dagre";
@@ -32,7 +34,7 @@ interface VisualEditorProps {
   tasks: AtomicStep[];
   onNodeUpdate?: (nodeId: string, data: any) => void;
   onNodeSelect?: (nodeId: string | null) => void;
-  onConnect?: (connection: Connection, sourceStep: AtomicStep, targetStepId: string) => void;
+  onConnect?: (connection: Connection, sourceStep: AtomicStep, targetStepId: string | null) => void;
   onAddStep?: (action: string, position: { x: number; y: number }) => void;
   procedureTrigger?: Procedure["trigger"];
 }
@@ -449,6 +451,43 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
     setEdges(initialEdges);
   }, [initialEdges, setEdges]);
 
+  // Handle edge changes (including deletion)
+  const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
+    // Handle edge deletion BEFORE applying changes (so we can access the edge)
+    const deletedEdges = changes.filter((change) => change.type === "remove");
+    
+    if (deletedEdges.length > 0 && onConnect) {
+      // Get current edges before deletion
+      setEdges((currentEdges) => {
+        deletedEdges.forEach((change) => {
+          const deletedEdgeId = change.id;
+          if (deletedEdgeId) {
+            const deletedEdge = currentEdges.find((e) => e.id === deletedEdgeId);
+            if (deletedEdge && deletedEdge.source && deletedEdge.target) {
+              // Find source step
+              const sourceStep = tasks.find((s) => s.id === deletedEdge.source);
+              if (sourceStep) {
+                // Call onConnect with null target to disconnect
+                const connection: Connection = {
+                  source: deletedEdge.source,
+                  target: deletedEdge.target,
+                  sourceHandle: deletedEdge.sourceHandle || undefined,
+                };
+                // Pass null to indicate disconnection
+                onConnect(connection, sourceStep, null);
+              }
+            }
+          }
+        });
+        // Apply the changes
+        return applyEdgeChanges(changes, currentEdges);
+      });
+    } else {
+      // Apply changes to edges state (for non-deletion changes)
+      setEdges((eds) => applyEdgeChanges(changes, eds));
+    }
+  }, [tasks, onConnect, setEdges]);
+
   // Initialize nodes state for drag & drop
   const [nodes, setNodesState, onNodesChange] = useNodesState(layoutedNodes);
 
@@ -574,7 +613,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
         onPaneClick={handlePaneClick}
         onConnect={handleConnect}
         onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
+        onEdgesChange={handleEdgesChange}
         onPaneDragOver={onDragOver}
         onPaneDrop={onDrop}
         fitView
@@ -587,6 +626,8 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
         nodesDraggable={true}
         nodesConnectable={true}
         elementsSelectable={true}
+        edgesDeletable={true}
+        deleteKeyCode="Delete"
       >
         <Background color="#E2E8F0" gap={20} size={1} />
         <Controls className="!bg-white/80 !backdrop-blur-xl !border !border-white/60 !rounded-xl !shadow-lg" />
