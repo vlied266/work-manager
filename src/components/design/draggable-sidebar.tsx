@@ -36,8 +36,8 @@ function DraggableActionCard({ action }: DraggableActionCardProps) {
     ? "bg-gradient-to-br from-purple-500 to-violet-600"
     : "bg-gradient-to-br from-blue-500 to-blue-600";
 
-  // HTML5 Drag handlers for React Flow canvas (separate from dnd-kit)
-  const handleHTML5DragStart = (e: React.DragEvent) => {
+  // HTML5 Drag handlers for React Flow canvas
+  const handleDragStart = (e: React.DragEvent) => {
     // Stop dnd-kit from interfering
     e.stopPropagation();
     
@@ -45,16 +45,13 @@ function DraggableActionCard({ action }: DraggableActionCardProps) {
     e.dataTransfer.setData("application/reactflow", action);
     e.dataTransfer.effectAllowed = "move";
     
-    console.log("[DraggableSidebar] HTML5 Drag started:", action);
-  };
-
-  // Combined drag handler that works with both systems
-  const handleDragStart = (e: React.DragEvent) => {
-    // For HTML5 drag (React Flow canvas)
-    handleHTML5DragStart(e);
+    // Also set as text/plain as fallback
+    e.dataTransfer.setData("text/plain", action);
     
-    // Also allow dnd-kit to handle it for List View compatibility
-    // The dnd-kit listeners will handle their own drag
+    console.log("[DraggableSidebar] HTML5 Drag started:", action, {
+      types: Array.from(e.dataTransfer.types),
+      effectAllowed: e.dataTransfer.effectAllowed
+    });
   };
 
   return (
