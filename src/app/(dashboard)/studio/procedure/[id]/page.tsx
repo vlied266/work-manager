@@ -452,6 +452,83 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
     await handleStepsChange(updatedSteps);
   };
 
+  const handleConnect = async (
+    connection: { source: string; target: string; sourceHandle?: string | null },
+    sourceStep: AtomicStep,
+    targetStepId: string
+  ) => {
+    if (!procedure) return;
+
+    const sourceStepIndex = procedure.steps.findIndex((s) => s.id === sourceStep.id);
+    if (sourceStepIndex === -1) return;
+
+    const updatedSteps = [...procedure.steps];
+    const sourceStepCopy = { ...updatedSteps[sourceStepIndex] };
+    const sourceHandle = connection.sourceHandle;
+
+    // Get step titles for notification
+    const sourceTitle = sourceStep.title || "Untitled Step";
+    const targetStep = procedure.steps.find((s) => s.id === targetStepId);
+    const targetTitle = targetStep?.title || "Untitled Step";
+
+    // Scenario A: GATEWAY - Handle condition or default paths
+    if (sourceStep.action === "GATEWAY") {
+      if (sourceHandle && sourceHandle.startsWith("condition-")) {
+        // Update specific condition's nextStepId
+        const conditionIndex = parseInt(sourceHandle.replace("condition-", ""));
+        const conditions = [...(sourceStepCopy.config?.conditions || [])];
+        
+        if (conditions[conditionIndex]) {
+          conditions[conditionIndex] = {
+            ...conditions[conditionIndex],
+            nextStepId: targetStepId,
+          };
+          sourceStepCopy.config = {
+            ...sourceStepCopy.config,
+            conditions,
+          };
+          alert(`Connected condition ${conditionIndex + 1} of "${sourceTitle}" to "${targetTitle}"`);
+        }
+      } else if (sourceHandle === "default") {
+        // Update defaultNextStepId
+        sourceStepCopy.config = {
+          ...sourceStepCopy.config,
+          defaultNextStepId: targetStepId,
+        };
+        alert(`Connected default path of "${sourceTitle}" to "${targetTitle}"`);
+      }
+    }
+    // Scenario B: VALIDATE/COMPARE - Handle success/failure paths
+    else if (sourceStep.action === "VALIDATE" || sourceStep.action === "COMPARE") {
+      if (sourceHandle === "success" || !sourceHandle) {
+        // Update onSuccessStepId
+        sourceStepCopy.routes = {
+          ...sourceStepCopy.routes,
+          onSuccessStepId: targetStepId,
+        };
+        alert(`Connected success path of "${sourceTitle}" to "${targetTitle}"`);
+      } else if (sourceHandle === "failure") {
+        // Update onFailureStepId
+        sourceStepCopy.routes = {
+          ...sourceStepCopy.routes,
+          onFailureStepId: targetStepId,
+        };
+        alert(`Connected failure path of "${sourceTitle}" to "${targetTitle}"`);
+      }
+    }
+    // Scenario C: Standard Step - Update defaultNextStepId
+    else {
+      sourceStepCopy.routes = {
+        ...sourceStepCopy.routes,
+        defaultNextStepId: targetStepId,
+      };
+      alert(`Connected "${sourceTitle}" to "${targetTitle}"`);
+    }
+
+    updatedSteps[sourceStepIndex] = sourceStepCopy;
+    await handleStepsChange(updatedSteps);
+  };
+
   const handleDeleteStep = async (stepId: string) => {
     if (!procedure) return;
     
@@ -881,6 +958,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                           }
                         }}
                         onNodeSelect={handleStepSelect}
+                        onConnect={handleConnect}
                         procedureTrigger={procedure?.trigger}
                       />
                     </div>

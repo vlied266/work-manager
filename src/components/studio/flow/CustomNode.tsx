@@ -76,12 +76,33 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
         </div>
       </div>
 
-      {/* Source Handle (Bottom) */}
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white !rounded-full"
-      />
+      {/* Source Handles (Bottom) */}
+      {(step.action === "VALIDATE" || step.action === "COMPARE") ? (
+        <>
+          {/* Success Handle (Left) */}
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="success"
+            className="!w-3 !h-3 !bg-green-500 !border-2 !border-white !rounded-full"
+            style={{ left: "30%" }}
+          />
+          {/* Failure Handle (Right) */}
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="failure"
+            className="!w-3 !h-3 !bg-red-500 !border-2 !border-white !rounded-full"
+            style={{ left: "70%" }}
+          />
+        </>
+      ) : (
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white !rounded-full"
+        />
+      )}
     </div>
   );
 });

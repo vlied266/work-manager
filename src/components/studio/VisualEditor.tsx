@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -12,6 +12,9 @@ import {
   ConnectionMode,
   MarkerType,
   useReactFlow,
+  Connection,
+  addEdge,
+  useEdgesState,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import dagre from "@dagrejs/dagre";
@@ -26,6 +29,7 @@ interface VisualEditorProps {
   tasks: AtomicStep[];
   onNodeUpdate?: (nodeId: string, data: any) => void;
   onNodeSelect?: (nodeId: string | null) => void;
+  onConnect?: (connection: Connection, sourceStep: AtomicStep, targetStepId: string) => void;
   procedureTrigger?: Procedure["trigger"];
 }
 
@@ -75,101 +79,10 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction: "TB" | "LR
   return { nodes: layoutedNodes, edges };
 };
 
-function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, procedureTrigger }: VisualEditorProps) {
+function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, procedureTrigger }: VisualEditorProps) {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const { setNodes, getNodes } = useReactFlow();
-
-  // Convert tasks to nodes (initial positions will be set by dagre)
-  const initialNodes: Node[] = useMemo(() => {
-    const nodes: Node[] = [];
-
-    // Add Trigger Node if there's an automated trigger
-    if (procedureTrigger && (procedureTrigger.type === "ON_FILE_CREATED" || procedureTrigger.type === "WEBHOOK")) {
-      nodes.push({
-        id: "trigger",
-        type: "trigger",
-        position: { x: 0, y: 0 },
-        width: 128,
-        height: 128,
-        data: {
-          triggerType: procedureTrigger.type,
-          label: procedureTrigger.type === "ON_FILE_CREATED" ? "File Upload" : "Webhook",
-        },
-      });
-    }
-
-    // Add step nodes
-    tasks.forEach((step, index) => {
-      let nodeType = "custom";
-      
-      if (step.action === "GOOGLE_SHEET_APPEND") {
-        nodeType = "googleSheet";
-      } else if (step.action === "GATEWAY") {
-        nodeType = "gateway";
-      }
-      
-      nodes.push({
-        id: step.id || `step-${index}`,
-        type: nodeType,
-        position: { x: 0, y: 0 }, // Will be set by dagre
-        width: nodeType === "gateway" ? 180 : 280,
-        height: nodeType === "gateway" ? 120 : 120,
-        data: step.action === "GOOGLE_SHEET_APPEND" 
-          ? {
-              fileName: step.config?.fileName,
-              sheetId: step.config?.sheetId,
-              mapping: step.config?.mapping || { A: "", B: "", C: "" },
-            }
-          : {
-              step,
-              stepIndex: index,
-            },
-      });
-    });
-
-    return nodes;
-  }, [tasks, procedureTrigger]);
-
-  const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
-    setSelectedNode(node);
-    // Call parent callback to select the step
-    if (onNodeSelect) {
-      onNodeSelect(node.id);
-    }
-  }, [onNodeSelect]);
-
-  const handlePaneClick = useCallback(() => {
-    setSelectedNode(null);
-    // Deselect step in parent
-    if (onNodeSelect) {
-      onNodeSelect(null);
-    }
-  }, [onNodeSelect]);
-
-  const updateNodeData = useCallback((nodeId: string, data: any) => {
-    setNodes((nds) =>
-      nds.map((node) => {
-        if (node.id === nodeId) {
-          return { ...node, data: { ...node.data, ...data } };
-        }
-        return node;
-      })
-    );
-
-    // Update selected node
-    setSelectedNode((prev) => {
-      if (prev && prev.id === nodeId) {
-        return { ...prev, data: { ...prev.data, ...data } };
-      }
-      return prev;
-    });
-
-    // Call parent callback if provided
-    if (onNodeUpdate) {
-      onNodeUpdate(nodeId, data);
-    }
-  }, [setNodes, onNodeUpdate]);
-
+  
   // Create edges based on actual routing logic
   const initialEdges: Edge[] = useMemo(() => {
     const edgesArray: Edge[] = [];
@@ -293,6 +206,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, procedureTrigg
           edgesArray.push({
             id: `${sourceId}-success`,
             source: sourceId,
+            sourceHandle: "success",
             target: step.routes.onSuccessStepId,
             animated: true,
             style: { stroke: "#10B981", strokeWidth: 2.5 },
@@ -316,6 +230,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, procedureTrigg
           edgesArray.push({
             id: `${sourceId}-failure`,
             source: sourceId,
+            sourceHandle: "failure",
             target: step.routes.onFailureStepId,
             animated: true,
             style: { stroke: "#EF4444", strokeWidth: 2.5 },
@@ -399,24 +314,121 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, procedureTrigg
     return edgesArray;
   }, [tasks, procedureTrigger]);
 
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // Convert tasks to nodes (initial positions will be set by dagre)
+  const initialNodes: Node[] = useMemo(() => {
+    const nodes: Node[] = [];
+
+    // Add Trigger Node if there's an automated trigger
+    if (procedureTrigger && (procedureTrigger.type === "ON_FILE_CREATED" || procedureTrigger.type === "WEBHOOK")) {
+      nodes.push({
+        id: "trigger",
+        type: "trigger",
+        position: { x: 0, y: 0 },
+        width: 128,
+        height: 128,
+        data: {
+          triggerType: procedureTrigger.type,
+          label: procedureTrigger.type === "ON_FILE_CREATED" ? "File Upload" : "Webhook",
+        },
+      });
+    }
+
+    // Add step nodes
+    tasks.forEach((step, index) => {
+      let nodeType = "custom";
+      
+      if (step.action === "GOOGLE_SHEET_APPEND") {
+        nodeType = "googleSheet";
+      } else if (step.action === "GATEWAY") {
+        nodeType = "gateway";
+      }
+      
+      nodes.push({
+        id: step.id || `step-${index}`,
+        type: nodeType,
+        position: { x: 0, y: 0 }, // Will be set by dagre
+        width: nodeType === "gateway" ? 180 : 280,
+        height: nodeType === "gateway" ? 120 : 120,
+        data: step.action === "GOOGLE_SHEET_APPEND" 
+          ? {
+              fileName: step.config?.fileName,
+              sheetId: step.config?.sheetId,
+              mapping: step.config?.mapping || { A: "", B: "", C: "" },
+            }
+          : {
+              step,
+              stepIndex: index,
+            },
+      });
+    });
+
+    return nodes;
+  }, [tasks, procedureTrigger]);
+
+  const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    setSelectedNode(node);
+    // Call parent callback to select the step
+    if (onNodeSelect) {
+      onNodeSelect(node.id);
+    }
+  }, [onNodeSelect]);
+
+  const handlePaneClick = useCallback(() => {
+    setSelectedNode(null);
+    // Deselect step in parent
+    if (onNodeSelect) {
+      onNodeSelect(null);
+    }
+  }, [onNodeSelect]);
+
+  const updateNodeData = useCallback((nodeId: string, data: any) => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === nodeId) {
+          return { ...node, data: { ...node.data, ...data } };
+        }
+        return node;
+      })
+    );
+
+    // Update selected node
+    setSelectedNode((prev) => {
+      if (prev && prev.id === nodeId) {
+        return { ...prev, data: { ...prev.data, ...data } };
+      }
+      return prev;
+    });
+
+    // Call parent callback if provided
+    if (onNodeUpdate) {
+      onNodeUpdate(nodeId, data);
+    }
+  }, [setNodes, onNodeUpdate]);
+
+
   // Apply dagre layout to nodes and edges
-  const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
+  const { nodes: layoutedNodes } = useMemo(() => {
     if (initialNodes.length === 0) {
-      return { nodes: initialNodes, edges: initialEdges };
+      return { nodes: initialNodes };
     }
     
-    // If no edges, create sequential edges for layout calculation
-    const edgesToLayout = initialEdges.length > 0 
-      ? initialEdges 
-      : initialNodes.slice(0, -1).map((node, idx) => ({
-          id: `${node.id}-${initialNodes[idx + 1].id}`,
-          source: node.id,
-          target: initialNodes[idx + 1].id,
-        }));
+    // Use current edges for layout calculation
+    const edgesToLayout = edges.length > 0 
+      ? edges 
+      : initialEdges.length > 0
+        ? initialEdges
+        : initialNodes.slice(0, -1).map((node, idx) => ({
+            id: `${node.id}-${initialNodes[idx + 1].id}`,
+            source: node.id,
+            target: initialNodes[idx + 1].id,
+          }));
     
     // Only apply layout if we have edges or multiple nodes
     if (edgesToLayout.length > 0 || initialNodes.length > 1) {
-      return getLayoutedElements(initialNodes, edgesToLayout, "TB");
+      const layouted = getLayoutedElements(initialNodes, edgesToLayout, "TB");
+      return { nodes: layouted.nodes };
     }
     
     // Single node - center it
@@ -425,9 +437,44 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, procedureTrigg
         ...node,
         position: { x: 400, y: 300 },
       })),
-      edges: [],
     };
-  }, [initialNodes, initialEdges]);
+  }, [initialNodes, edges]);
+
+  // Update edges when initialEdges change
+  useEffect(() => {
+    setEdges(initialEdges);
+  }, [initialEdges, setEdges]);
+
+  // Handle connection (drag-to-connect)
+  const handleConnect = useCallback((connection: Connection) => {
+    if (!connection.source || !connection.target) return;
+    
+    // Prevent self-connections
+    if (connection.source === connection.target) {
+      alert("Cannot connect a step to itself.");
+      return;
+    }
+
+    // Find source and target steps
+    const sourceStep = tasks.find(s => s.id === connection.source);
+    const targetStepId = connection.target;
+    
+    if (!sourceStep) {
+      // Handle trigger connections
+      if (connection.source === "trigger" && onConnect) {
+        // Trigger connections are handled differently - they don't update step config
+        // Just show a message
+        alert("Trigger connections are automatic. The trigger connects to the first step.");
+        return;
+      }
+      return;
+    }
+
+    // Call parent callback to update procedure
+    if (onConnect) {
+      onConnect(connection, sourceStep, targetStepId);
+    }
+  }, [tasks, onConnect]);
 
   if (tasks.length === 0) {
     return (
@@ -444,11 +491,13 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, procedureTrigg
     <div className="h-full w-full rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 overflow-hidden relative">
       <ReactFlow
         nodes={layoutedNodes}
-        edges={layoutedEdges}
+        edges={edges}
         nodeTypes={nodeTypes}
         connectionMode={ConnectionMode.Loose}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
+        onConnect={handleConnect}
+        onEdgesChange={onEdgesChange}
         fitView
         fitViewOptions={{ padding: 0.2, maxZoom: 1.5 }}
         className="bg-gradient-to-br from-slate-50/50 to-blue-50/30"
@@ -486,10 +535,10 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, procedureTrigg
   );
 }
 
-export function VisualEditor({ tasks, onNodeUpdate, onNodeSelect, procedureTrigger }: VisualEditorProps) {
+export function VisualEditor({ tasks, onNodeUpdate, onNodeSelect, onConnect, procedureTrigger }: VisualEditorProps) {
   return (
     <ReactFlowProvider>
-      <VisualEditorContent tasks={tasks} onNodeUpdate={onNodeUpdate} onNodeSelect={onNodeSelect} procedureTrigger={procedureTrigger} />
+      <VisualEditorContent tasks={tasks} onNodeUpdate={onNodeUpdate} onNodeSelect={onNodeSelect} onConnect={onConnect} procedureTrigger={procedureTrigger} />
     </ReactFlowProvider>
   );
 }
