@@ -26,6 +26,7 @@ interface MagicInputProps {
 export function MagicInput({
   value,
   onChange,
+  onBlur,
   placeholder = "Enter value or select variable...",
   availableVariables,
   className = "",
@@ -136,7 +137,7 @@ export function MagicInput({
             type="text"
             value={inputValue}
             onChange={handleInputChange}
-            onBlur={onBlur}
+            {...(onBlur && { onBlur })}
             placeholder={placeholder}
             className="flex-1 bg-transparent outline-none text-sm font-medium text-slate-900 placeholder:text-slate-400"
           />
