@@ -526,40 +526,58 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
     // Handle edge deletion BEFORE applying changes (so we can access the edge)
     const deletedEdges = changes.filter((change) => change.type === "remove");
     
-    if (deletedEdges.length > 0 && onConnect) {
-      // Get current edges before deletion
-      setEdges((currentEdges) => {
-        deletedEdges.forEach((change) => {
-          const deletedEdgeId = change.id;
-          if (deletedEdgeId) {
-            const deletedEdge = currentEdges.find((e) => e.id === deletedEdgeId);
-            if (deletedEdge && deletedEdge.source && deletedEdge.target) {
-              // Find source step
-              const sourceStep = tasks.find((s) => s.id === deletedEdge.source);
-              if (sourceStep) {
-                // Optimistic update: Remove edge immediately
-                // The edge is already being removed by applyEdgeChanges below
-                
-                // Call onConnect with null target to disconnect (persist to Firestore)
-                const connection: Connection = {
-                  source: deletedEdge.source,
-                  target: deletedEdge.target,
-                  sourceHandle: deletedEdge.sourceHandle || undefined,
-                };
-                // Pass null to indicate disconnection
-                onConnect(connection, sourceStep, null);
+    if (deletedEdges.length > 0) {
+      // If onEdgesDelete is provided, use it (direct handler)
+      if (onEdgesDelete) {
+        // Get current edges before deletion
+        setEdges((currentEdges) => {
+          const edgesToDelete = deletedEdges
+            .map((change) => {
+              if (change.id) {
+                return currentEdges.find((e) => e.id === change.id);
+              }
+              return null;
+            })
+            .filter((e): e is Edge => e !== null);
+          
+          if (edgesToDelete.length > 0) {
+            onEdgesDelete(edgesToDelete);
+          }
+          
+          // Apply the changes (remove edges from state)
+          return applyEdgeChanges(changes, currentEdges);
+        });
+      } else if (onConnect) {
+        // Fallback to onConnect if onEdgesDelete not provided
+        setEdges((currentEdges) => {
+          deletedEdges.forEach((change) => {
+            const deletedEdgeId = change.id;
+            if (deletedEdgeId) {
+              const deletedEdge = currentEdges.find((e) => e.id === deletedEdgeId);
+              if (deletedEdge && deletedEdge.source && deletedEdge.target) {
+                const sourceStep = tasks.find((s) => s.id === deletedEdge.source);
+                if (sourceStep) {
+                  const connection: Connection = {
+                    source: deletedEdge.source,
+                    target: deletedEdge.target,
+                    sourceHandle: deletedEdge.sourceHandle || undefined,
+                  };
+                  onConnect(connection, sourceStep, null);
+                }
               }
             }
-          }
+          });
+          return applyEdgeChanges(changes, currentEdges);
         });
-        // Apply the changes (remove edges from state)
-        return applyEdgeChanges(changes, currentEdges);
-      });
+      } else {
+        // Just apply changes if no handler provided
+        setEdges((eds) => applyEdgeChanges(changes, eds));
+      }
     } else {
       // Apply changes to edges state (for non-deletion changes like selection)
       setEdges((eds) => applyEdgeChanges(changes, eds));
     }
-  }, [tasks, onConnect, setEdges]);
+  }, [tasks, onConnect, onEdgesDelete, setEdges]);
 
   // Initialize nodes state for drag & drop
   const [nodes, setNodesState, onNodesChange] = useNodesState(layoutedNodes);

@@ -409,6 +409,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
 
     // Smart Branching Logic: Connect based on selectedStepId (not last step)
     let updatedSteps = [...procedure.steps, newStep];
+    let wasConnectedToBranchingNode = false;
     
     // If a step is selected, try to connect to it intelligently
     if (selectedStepId) {
@@ -430,6 +431,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                 onSuccessStepId: newStep.id,
               },
             };
+            wasConnectedToBranchingNode = true;
           } 
           // ELSE IF Failure slot empty? -> Assign onFailureStepId
           else if (!routes.onFailureStepId) {
@@ -440,6 +442,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                 onFailureStepId: newStep.id,
               },
             };
+            wasConnectedToBranchingNode = true;
           }
           // ELSE -> Do NOT connect (just place on canvas). Do NOT chain to the child.
         }
@@ -465,6 +468,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                 },
               };
               connectedToCondition = true;
+              wasConnectedToBranchingNode = true;
               break;
             }
           }
@@ -478,10 +482,12 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                 defaultNextStepId: newStep.id,
               },
             };
+            wasConnectedToBranchingNode = true;
           }
         }
         // Case 3: Selected node is Standard Step (Input, Email, etc.)
-        else {
+        // Only connect if NOT already connected to a branching node
+        else if (!wasConnectedToBranchingNode) {
           // Connect to defaultNextStepId if not set
           if (!selectedStep.routes?.defaultNextStepId) {
             updatedSteps[selectedStepIndex] = {
@@ -496,7 +502,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
       }
     }
     // Fallback: If no step is selected, use old logic (connect to last step if it's VALIDATE/COMPARE)
-    else if (updatedSteps.length >= 2) {
+    else if (updatedSteps.length >= 2 && !wasConnectedToBranchingNode) {
       const previousStep = updatedSteps[updatedSteps.length - 2];
       
       if (previousStep.action === "VALIDATE" || previousStep.action === "COMPARE") {
