@@ -727,6 +727,15 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
         connectionMode={ConnectionMode.Loose}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
+        onEdgeClick={(event, edge) => {
+          // Select edge on click
+          setEdges((eds) =>
+            eds.map((e) => ({
+              ...e,
+              selected: e.id === edge.id,
+            }))
+          );
+        }}
         onConnect={handleConnect}
         onNodesChange={onNodesChange}
         onNodeDragStop={handleNodeDragStop}
@@ -744,12 +753,18 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
             type: MarkerType.ArrowClosed,
             color: "#94a3b8",
           },
+          deletable: true,
+          selectable: true,
+          focusable: true,
         }}
         nodesDraggable={true}
         nodesConnectable={true}
         elementsSelectable={true}
         edgesDeletable={true}
+        edgesFocusable={true}
+        edgesUpdatable={false}
         deleteKeyCode="Delete"
+        multiSelectionKeyCode="Shift"
       >
         <Background variant="dots" gap={12} size={1} color="#CBD5E1" />
         <Controls className="!bg-white/90 !backdrop-blur-xl !border !border-slate-200 !rounded-xl !shadow-lg" />
