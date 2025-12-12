@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { X, Plus } from "lucide-react";
-import { MagicInput } from "@/components/studio/magic-input";
+import { VariableInput } from "@/components/studio/variable-input";
+import { AtomicStep, Procedure } from "@/types/schema";
 
 interface KeyValuePair {
   key: string;
@@ -18,6 +19,10 @@ interface KeyValueBuilderProps {
   valueLabel?: string;
   availableVariables?: Array<{ variableName: string; label: string }>;
   allowEmpty?: boolean;
+  // New props for VariableInput integration
+  allSteps?: AtomicStep[];
+  currentStepId?: string;
+  procedureTrigger?: Procedure["trigger"];
 }
 
 export function KeyValueBuilder({
@@ -29,6 +34,9 @@ export function KeyValueBuilder({
   valueLabel = "Value",
   availableVariables = [],
   allowEmpty = false,
+  allSteps = [],
+  currentStepId = "",
+  procedureTrigger,
 }: KeyValueBuilderProps) {
   // Convert object to array of pairs
   const [pairs, setPairs] = useState<KeyValuePair[]>(() => {
@@ -152,19 +160,16 @@ export function KeyValueBuilder({
               />
             </div>
             <div className="flex-1">
-              {availableVariables.length > 0 ? (
-                <MagicInput
+              {allSteps.length > 0 && currentStepId ? (
+                <VariableInput
+                  type="input"
                   value={pair.value}
                   onChange={(val) => updatePair(index, "value", val || "")}
                   placeholder={valuePlaceholder}
-                  availableVariables={availableVariables.map((v) => ({
-                    id: v.variableName,
-                    variableName: v.variableName,
-                    label: v.label,
-                    type: "step" as const,
-                  }))}
-                  label=""
-                  helpText=""
+                  allSteps={allSteps}
+                  currentStepId={currentStepId}
+                  procedureTrigger={procedureTrigger}
+                  className="font-mono text-sm"
                 />
               ) : (
                 <input

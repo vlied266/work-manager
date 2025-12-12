@@ -179,6 +179,9 @@ function renderActionConfigBasic(
                   variableName: v.variableName,
                   label: v.label,
                 }))}
+                allSteps={allSteps}
+                currentStepId={step.id}
+                procedureTrigger={procedureTrigger}
               />
             </div>
           )}
@@ -288,16 +291,19 @@ function renderActionConfigBasic(
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               To (Recipient) <span className="text-rose-500">*</span>
             </label>
-            <MagicInput
+            <VariableInput
+              type="input"
               value={config.to || config.recipient || ""}
               onChange={(value) =>
                 onUpdate({ config: { ...config, to: value || undefined, recipient: value || undefined } })
               }
               placeholder="email@example.com or {{step_1.output.email}}"
-              availableVariables={availableVariables}
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
             />
             <p className="mt-1 text-xs text-slate-500">
-              Use variables like <code className="bg-slate-100 px-1 rounded">{`{{step_1.output.email}}`}</code> or <code className="bg-slate-100 px-1 rounded">{`{{trigger.body.email}}`}</code>
+              Click the <Zap className="inline h-3 w-3" /> button to insert variables.
             </p>
           </div>
 
@@ -305,16 +311,19 @@ function renderActionConfigBasic(
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Subject <span className="text-rose-500">*</span>
             </label>
-            <MagicInput
+            <VariableInput
+              type="input"
               value={config.subject || ""}
               onChange={(value) =>
                 onUpdate({ config: { ...config, subject: value || undefined } })
               }
               placeholder="Email subject or {{step_1.output.title}}"
-              availableVariables={availableVariables}
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
             />
             <p className="mt-1 text-xs text-slate-500">
-              Use variables like <code className="bg-slate-100 px-1 rounded">{`{{step_1.output.name}}`}</code>
+              Click the <Zap className="inline h-3 w-3" /> button to insert variables.
             </p>
           </div>
         </div>
@@ -470,6 +479,159 @@ function renderActionConfigBasic(
         </div>
       );
 
+    case "CALCULATE":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Formula <span className="text-rose-500">*</span>
+            </label>
+            <VariableInput
+              type="input"
+              value={config.formula || ""}
+              onChange={(value) =>
+                onUpdate({ config: { ...config, formula: value || undefined } })
+              }
+              placeholder="e.g., {{step_1.output.amount}} * 1.1"
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
+              className="font-mono"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Mathematical formula using variables. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+            </p>
+          </div>
+        </div>
+      );
+
+    case "COMPARE":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Target A <span className="text-rose-500">*</span>
+            </label>
+            <VariableInput
+              type="input"
+              value={config.targetA || ""}
+              onChange={(value) =>
+                onUpdate({ config: { ...config, targetA: value || undefined } })
+              }
+              placeholder="e.g., {{step_1.output.amount}}"
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              First value to compare. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Target B <span className="text-rose-500">*</span>
+            </label>
+            <VariableInput
+              type="input"
+              value={config.targetB || ""}
+              onChange={(value) =>
+                onUpdate({ config: { ...config, targetB: value || undefined } })
+              }
+              placeholder="e.g., {{step_2.output.amount}}"
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Second value to compare. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Comparison Type <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={config.comparisonType || "exact"}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, comparisonType: e.target.value as any } })
+              }
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+            >
+              <option value="exact">Exact Match</option>
+              <option value="fuzzy">Fuzzy Match</option>
+              <option value="numeric">Numeric Comparison</option>
+              <option value="date">Date Comparison</option>
+            </select>
+          </div>
+        </div>
+      );
+
+    case "VALIDATE":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Validation Rule <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={config.rule || "EQUAL"}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, rule: e.target.value as any } })
+              }
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+            >
+              <option value="GREATER_THAN">Greater Than</option>
+              <option value="LESS_THAN">Less Than</option>
+              <option value="EQUAL">Equal</option>
+              <option value="CONTAINS">Contains</option>
+              <option value="REGEX">Regex Match</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Target <span className="text-rose-500">*</span>
+            </label>
+            <VariableInput
+              type="input"
+              value={config.target || ""}
+              onChange={(value) =>
+                onUpdate({ config: { ...config, target: value || undefined } })
+              }
+              placeholder="e.g., {{step_1.output.amount}}"
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Variable or value to validate. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Expected Value <span className="text-rose-500">*</span>
+            </label>
+            <VariableInput
+              type="input"
+              value={config.value !== undefined ? String(config.value) : ""}
+              onChange={(value) =>
+                onUpdate({ config: { ...config, value: value || undefined } })
+              }
+              placeholder="e.g., 100 or {{step_1.output.threshold}}"
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Value to compare against. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+            </p>
+          </div>
+        </div>
+      );
+
     default:
       return null;
   }
@@ -550,6 +712,9 @@ function renderActionConfigSettings(
                 label: v.label,
               }))}
               allowEmpty={true}
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
             />
           </div>
 
@@ -629,17 +794,19 @@ function renderActionConfigSettings(
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               From Address (Optional)
             </label>
-            <input
-              type="text"
+            <VariableInput
+              type="input"
               value={config.from || ""}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, from: e.target.value || undefined } })
+              onChange={(value) =>
+                onUpdate({ config: { ...config, from: value || undefined } })
               }
-              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-              placeholder="Sender Name <sender@example.com>"
+              placeholder="Sender Name <sender@example.com> or {{step_1.output.sender}}"
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
             />
             <p className="mt-1 text-xs text-slate-500">
-              Default: Atomic Work &lt;alerts@theatomicwork.com&gt;
+              Default: Atomic Work &lt;alerts@theatomicwork.com&gt;. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
             </p>
           </div>
         </div>
@@ -661,6 +828,9 @@ function renderActionConfigSettings(
                 variableName: v.variableName,
                 label: v.label,
               }))}
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
             />
           </div>
         </div>
@@ -682,6 +852,9 @@ function renderActionConfigSettings(
                 variableName: v.variableName,
                 label: v.label,
               }))}
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
             />
           </div>
         </div>
@@ -705,6 +878,58 @@ function renderActionConfigSettings(
               placeholder="invoiceDate&#10;amount&#10;vendor&#10;invoiceNumber"
             />
             <p className="mt-1 text-xs text-slate-500">Enter one field name per line</p>
+          </div>
+        </div>
+      );
+
+    case "VALIDATE":
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Error Message (Optional)
+            </label>
+            <VariableInput
+              type="textarea"
+              value={config.errorMessage || ""}
+              onChange={(value) =>
+                onUpdate({ config: { ...config, errorMessage: value || undefined } })
+              }
+              rows={3}
+              placeholder="Custom error message if validation fails"
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Message to display/log if validation fails. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+            </p>
+          </div>
+        </div>
+      );
+
+    case "COMPARE":
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 rounded-xl border-2 border-slate-200 bg-slate-50">
+            <div>
+              <label className="text-sm font-semibold text-slate-900 block mb-0.5">
+                Require Mismatch Reason
+              </label>
+              <p className="text-xs text-slate-600">
+                If comparison fails, route to user input step asking for explanation
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={config.requireMismatchReason || false}
+                onChange={(e) =>
+                  onUpdate({ config: { ...config, requireMismatchReason: e.target.checked } })
+                }
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              />
+            </label>
           </div>
         </div>
       );
