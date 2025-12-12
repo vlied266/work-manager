@@ -596,7 +596,7 @@ export default function AICopilot({ records, collectionName }: AICopilotProps = 
             initial={{ opacity: 0, y: 20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-32 right-6 z-[9998] pointer-events-auto"
+            className="fixed bottom-32 left-6 z-[9998] pointer-events-auto"
             style={{ zIndex: 9998 }}
           >
             <div className="relative bg-gradient-to-br from-purple-50/95 via-indigo-50/95 to-blue-50/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-purple-200/60 px-4 py-3 max-w-xs hover:shadow-3xl transition-all group">
@@ -635,11 +635,11 @@ export default function AICopilot({ records, collectionName }: AICopilotProps = 
       <motion.div
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="fixed bottom-6 right-6 z-[9999] group"
+        className="fixed bottom-6 left-6 z-[9999] group"
         style={{
           position: 'fixed',
           bottom: '24px',
-          right: '24px',
+          left: '24px',
           zIndex: 9999,
         }}
       >
@@ -770,7 +770,7 @@ export default function AICopilot({ records, collectionName }: AICopilotProps = 
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className={`fixed bottom-28 right-6 z-[9999] w-[90vw] max-w-md rounded-[2rem] bg-white/80 backdrop-blur-2xl border-2 shadow-2xl overflow-hidden ${
+            className={`fixed bottom-28 left-6 z-[9999] w-[90vw] max-w-md rounded-[2rem] bg-white/80 backdrop-blur-2xl border-2 shadow-2xl overflow-hidden ${
               isPublicPath
                 ? "border-blue-200/50 shadow-blue-500/20"
                 : "border-purple-200/50 shadow-purple-500/20"

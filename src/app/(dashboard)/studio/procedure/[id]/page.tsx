@@ -601,12 +601,12 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 via-slate-50 to-indigo-50/30 relative overflow-hidden font-sans">
-      {/* Minimalist Header with Glassmorphism */}
+      {/* Compact Header - Slim Top Bar */}
       <header className="sticky top-0 z-50 border-b border-white/20 bg-white/40 backdrop-blur-xl supports-[backdrop-filter]:bg-white/30">
-        <div className="mx-auto max-w-[1800px] px-8 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors">
+        <div className="mx-auto max-w-[1800px] px-8 py-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+              <div className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors flex-shrink-0">
                 <Link
                   href="/studio"
                   className="flex items-center gap-1 text-sm font-medium"
@@ -614,6 +614,28 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                   <ArrowLeft className="h-4 w-4" strokeWidth={2} />
                   <span>Back</span>
                 </Link>
+              </div>
+              
+              {/* Compact Title Input */}
+              <div className="flex-1 min-w-0">
+                <input
+                  type="text"
+                  value={procedureTitle}
+                  onChange={(e) => setProcedureTitle(e.target.value)}
+                  placeholder="Procedure Title..."
+                  className="w-full bg-transparent border-none outline-none text-lg font-bold text-slate-900 placeholder:text-slate-400 focus:placeholder:text-slate-300 transition-colors"
+                />
+              </div>
+              
+              {/* Compact Description Input */}
+              <div className="flex-1 min-w-0 max-w-md">
+                <input
+                  type="text"
+                  value={procedureDescription}
+                  onChange={(e) => setProcedureDescription(e.target.value)}
+                  placeholder="Description..."
+                  className="w-full bg-transparent border-none outline-none text-sm text-slate-600 placeholder:text-slate-400 focus:placeholder:text-slate-300 transition-colors"
+                />
               </div>
             </div>
             
@@ -796,10 +818,8 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
         </div>
       </header>
 
-      {/* Remove the old Procedure Info Card section since it's now in the header */}
-      
       {/* Main Content - Floating Glass Islands */}
-      <main className="w-full h-[calc(100vh-100px)] overflow-x-auto">
+      <main className="w-full h-[calc(100vh-64px)] overflow-x-auto">
         <div className="mx-auto min-w-[1400px] max-w-[1800px] px-8 pb-8 pt-8 h-full">
           <DesignerDndContext
             selectedProcedure={procedure}
@@ -818,51 +838,6 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
 
             {/* Center Pane: Canvas - Floating Glass Island */}
             <div data-tour="canvas" className="h-full min-h-0 flex flex-col relative">
-              {/* Procedure Info Section */}
-              <div className="mb-6 rounded-2xl bg-white/60 backdrop-blur-xl border border-white/60 p-6 shadow-lg">
-                <div className="space-y-4">
-                  {/* Title Field */}
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      Procedure Title <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={procedureTitle}
-                      onChange={(e) => setProcedureTitle(e.target.value)}
-                      placeholder="e.g., Invoice Processing, Customer Onboarding..."
-                      className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-lg font-semibold text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all"
-                    />
-                    {!procedureTitle.trim() && (
-                      <p className="mt-1.5 text-xs text-rose-600 flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        Title is required to create the procedure
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Description Field */}
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      Procedure Description <span className="text-rose-500">*</span>
-                    </label>
-                    <textarea
-                      value={procedureDescription}
-                      onChange={(e) => setProcedureDescription(e.target.value)}
-                      placeholder="Describe what this procedure does... (e.g., This procedure handles invoice processing from receipt to payment approval)"
-                      rows={3}
-                      className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all resize-none"
-                    />
-                    {!procedureDescription.trim() && (
-                      <p className="mt-1.5 text-xs text-rose-600 flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        Description is required to create the procedure
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
               <div className="h-full min-h-0 flex flex-col rounded-[2.5rem] overflow-hidden bg-white/70 backdrop-blur-2xl border border-white/60 shadow-2xl shadow-black/5 relative">
                 {/* Mode Toggle Pills - Fixed Header */}
                 <div className="flex-shrink-0 flex items-center justify-center gap-4 py-5 px-6 border-b border-slate-100 bg-white/50 backdrop-blur-sm">
