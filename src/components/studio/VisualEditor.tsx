@@ -459,12 +459,18 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
 
   // Handle drop from sidebar (HTML5 drag & drop for React Flow)
   const onDragOver = useCallback((event: React.DragEvent) => {
-    // Only handle if it's a React Flow drag (not dnd-kit)
+    // Always prevent default to allow drop
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Check if it's a React Flow drag
     const hasReactFlowData = event.dataTransfer.types.includes("application/reactflow");
     if (hasReactFlowData) {
-      event.preventDefault();
-      event.stopPropagation();
       event.dataTransfer.dropEffect = "move";
+      console.log("[VisualEditor] DragOver with React Flow data:", {
+        types: Array.from(event.dataTransfer.types),
+        effectAllowed: event.dataTransfer.effectAllowed
+      });
     }
   }, []);
 
@@ -565,6 +571,8 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
         onConnect={handleConnect}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onPaneDragOver={onDragOver}
+        onPaneDrop={onDrop}
         fitView
         fitViewOptions={{ padding: 0.2, maxZoom: 1.5 }}
         className="bg-gradient-to-br from-slate-50/50 to-blue-50/30"
