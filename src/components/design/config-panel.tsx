@@ -47,6 +47,42 @@ function getAvailableVariables(allSteps: AtomicStep[], currentStepId: string) {
   }));
 }
 
+// Helper function to generate routing options with termination options
+function getRoutingOptions(
+  allSteps: AtomicStep[],
+  currentStepId: string,
+  includeDefault: boolean = true
+): Array<{ value: string; label: string }> {
+  const currentStepIndex = allSteps.findIndex((s) => s.id === currentStepId);
+  const otherSteps = allSteps.filter((s) => s.id !== currentStepId);
+  
+  const options: Array<{ value: string; label: string }> = [];
+  
+  if (includeDefault) {
+    options.push({ value: "", label: "Next Step (Default)" });
+  }
+  
+  // Add termination options
+  options.push(
+    { value: "__END_SUCCESS__", label: "🏁 Complete Process (Success)" },
+    { value: "__END_FAILURE__", label: "⛔ Terminate Process (Failure/Cancel)" }
+  );
+  
+  // Add other steps
+  otherSteps.forEach((s) => {
+    const stepNum = allSteps.findIndex(st => st.id === s.id) + 1;
+    options.push({
+      value: s.id,
+      label: `Step ${stepNum}: ${s.title || "Untitled Step"}`,
+    });
+  });
+  
+  // Legacy: Also include COMPLETED for backward compatibility
+  options.push({ value: "COMPLETED", label: "Complete Process (Legacy)" });
+  
+  return options;
+}
+
 // Render Basic tab content (critical fields)
 function renderActionConfigBasic(
   step: AtomicStep,
@@ -61,7 +97,7 @@ function renderActionConfigBasic(
 
   switch (action) {
     case "INPUT":
-      return (
+    return (
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
@@ -78,8 +114,8 @@ function renderActionConfigBasic(
             />
             <p className="mt-1.5 text-xs text-slate-500">
               The question the user will see (e.g., "What is your name?").
-            </p>
-          </div>
+          </p>
+        </div>
 
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
@@ -142,10 +178,10 @@ function renderActionConfigBasic(
       
       return (
         <div className="space-y-4">
-          <div>
+            <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Collection Name <span className="text-rose-500">*</span>
-            </label>
+              </label>
             <CreatableSelect
               value={config.collectionName || ""}
               onChange={(value) =>
@@ -154,8 +190,8 @@ function renderActionConfigBasic(
               options={allCollectionOptions}
               placeholder="Select an existing collection or type a new name..."
               helperText="Select an existing collection or type a new name to create one."
-            />
-          </div>
+              />
+            </div>
 
           {/* Show KeyValueBuilder only after collection is selected */}
           {config.collectionName && (
@@ -178,7 +214,7 @@ function renderActionConfigBasic(
               />
             </div>
           )}
-        </div>
+          </div>
       );
 
     case "AI_PARSE":
@@ -212,37 +248,37 @@ function renderActionConfigBasic(
       
       return (
         <div className="space-y-4">
-          <div>
+              <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               File Source Step <span className="text-rose-500">*</span>
-            </label>
-            <select
+                </label>
+                <select
               value={config.fileSourceStepId || ""}
-              onChange={(e) =>
+                  onChange={(e) =>
                 onUpdate({ config: { ...config, fileSourceStepId: e.target.value || undefined } })
-              }
-              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-            >
+                  }
+                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                >
               <option value="">Select a source...</option>
               {sourceOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-slate-500">
+                    </option>
+                  ))}
+                </select>
+                  <p className="mt-1 text-xs text-slate-500">
               {isFirstStep && hasAutomatedTrigger
                 ? "Select the trigger event for automated workflows, or a previous INPUT step for manual uploads"
                 : "Select the INPUT step where the file was uploaded"}
-            </p>
-          </div>
+                  </p>
+              </div>
         </div>
       );
 
     case "HTTP_REQUEST":
       return (
         <div className="space-y-4">
-          <div>
+              <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               URL <span className="text-rose-500">*</span>
             </label>
@@ -265,22 +301,22 @@ function renderActionConfigBasic(
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Method <span className="text-rose-500">*</span>
-            </label>
-            <select
+                </label>
+                <select
               value={config.method || "GET"}
-              onChange={(e) =>
+                  onChange={(e) =>
                 onUpdate({ config: { ...config, method: e.target.value as any } })
-              }
-              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-            >
+                  }
+                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                >
               <option value="GET">GET</option>
               <option value="POST">POST</option>
               <option value="PUT">PUT</option>
               <option value="DELETE">DELETE</option>
               <option value="PATCH">PATCH</option>
-            </select>
-          </div>
-        </div>
+                </select>
+              </div>
+                </div>
       );
 
     case "SEND_EMAIL":
@@ -304,9 +340,9 @@ function renderActionConfigBasic(
             <p className="mt-1 text-xs text-slate-500">
               Click the <Zap className="inline h-3 w-3" /> button to insert variables.
             </p>
-          </div>
+        </div>
 
-          <div>
+                  <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Subject <span className="text-rose-500">*</span>
             </label>
@@ -324,8 +360,8 @@ function renderActionConfigBasic(
             <p className="mt-1 text-xs text-slate-500">
               Click the <Zap className="inline h-3 w-3" /> button to insert variables.
             </p>
-          </div>
-        </div>
+              </div>
+            </div>
       );
 
     case "GOOGLE_SHEET":
@@ -432,13 +468,13 @@ function renderActionConfigBasic(
             />
           </div>
 
-          <div>
+            <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Output Format
-            </label>
+              </label>
             <select
               value={config.outputFormat || "pdf"}
-              onChange={(e) =>
+                onChange={(e) =>
                 onUpdate({ config: { ...config, outputFormat: e.target.value as any } })
               }
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
@@ -457,38 +493,38 @@ function renderActionConfigBasic(
       return (
         <div className="space-y-6">
           <div className="space-y-4">
-            <div>
+                <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Instruction <span className="text-rose-500">*</span>
-              </label>
+                  </label>
               <textarea
                 value={config.instruction || ""}
-                onChange={(e) =>
+                    onChange={(e) =>
                   onUpdate({ config: { ...config, instruction: e.target.value } })
                 }
                 rows={6}
                 className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
                 placeholder="Enter detailed instructions for the approver..."
-              />
-            </div>
+                  />
+                </div>
           </div>
 
           {/* Routing Section */}
           <div className="pt-4 border-t border-slate-200">
             <h3 className="text-sm font-semibold text-slate-900 mb-4">Flow Logic</h3>
             <div className="space-y-4">
-              <div>
+                <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   On Approve (Success) → Go To
-                </label>
+                  </label>
                 <select
                   value={approvalRoutes.onSuccessStepId || ""}
                   onChange={(e) =>
-                    onUpdate({
+                      onUpdate({
                       routes: { ...approvalRoutes, onSuccessStepId: e.target.value || undefined },
                     })
                   }
-                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                 >
                   <option value="">Next Step (Default)</option>
                   <option value="COMPLETED">Complete Process</option>
@@ -515,27 +551,48 @@ function renderActionConfigBasic(
                   }
                   className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                 >
-                  <option value="">Next Step (Default)</option>
-                  <option value="COMPLETED">Complete Process</option>
-                  {approvalOtherSteps.map((s) => {
-                    const stepNum = allSteps.findIndex(st => st.id === s.id) + 1;
-                    return (
-                      <option key={s.id} value={s.id}>
-                        Step {stepNum}: {s.title || "Untitled Step"}
-                      </option>
-                    );
-                  })}
+                  {getRoutingOptions(allSteps, step.id, true).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
                 <p className="mt-1 text-xs text-slate-500">
                   Route to a step that handles rejection (e.g., request revision or notify requester)
                 </p>
               </div>
             </div>
+                </div>
+                </div>
+      );
+              
+    case "NEGOTIATE":
+      return (
+        <div className="space-y-4">
+          {/* Helper Text */}
+          <div className="rounded-lg bg-amber-50/80 border border-amber-200/50 p-3">
+            <p className="text-xs text-slate-700 font-medium leading-relaxed">
+              💡 <strong>Note:</strong> Use this for back-and-forth discussions to reach an agreement (Deal/Contract). For simple execution tasks, use <strong>Manual Task</strong>.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Instruction <span className="text-rose-500">*</span>
+            </label>
+            <textarea
+              value={config.instruction || ""}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, instruction: e.target.value } })
+              }
+              rows={6}
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
+              placeholder="Specify the negotiation topic and parties involved.&#10;Example:&#10;- Call the vendor to negotiate a 10% discount.&#10;- Finalize the contract terms with the client."
+            />
           </div>
         </div>
       );
 
-    case "NEGOTIATE":
     case "INSPECT":
       return (
         <div className="space-y-4">
@@ -560,13 +617,13 @@ function renderActionConfigBasic(
       return (
         <div className="space-y-4">
           {/* Task Category Dropdown */}
-          <div>
+              <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Task Category
-            </label>
-            <select
+                </label>
+                <select
               value={config.taskSubType || "generic"}
-              onChange={(e) =>
+                  onChange={(e) =>
                 onUpdate({ config: { ...config, taskSubType: e.target.value as any } })
               }
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
@@ -576,7 +633,7 @@ function renderActionConfigBasic(
               <option value="logistics">📦 Logistics / Physical (Shipping, Moving, Delivering)</option>
               <option value="admin">🗄️ Admin / Archive (Scanning, Filing, Printing)</option>
               <option value="maintenance">🔧 Maintenance (Repair, Install, Inspect)</option>
-            </select>
+                </select>
             <p className="mt-1.5 text-xs text-slate-500">
               Categorize the task to help operators understand the type of work required.
             </p>
@@ -586,20 +643,20 @@ function renderActionConfigBasic(
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Task Title <span className="text-rose-500">*</span>
             </label>
-            <input
-              type="text"
+                    <input
+                      type="text"
               value={config.title || step.title || ""}
               onChange={(e) => {
                 const title = e.target.value;
-                onUpdate({ 
+                        onUpdate({
                   title: title,
                   config: { ...config, title: title || undefined } 
                 });
               }}
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
               placeholder="e.g., Call the client, Inspect the machine"
-            />
-          </div>
+                    />
+                  </div>
 
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
@@ -629,7 +686,7 @@ function renderActionConfigBasic(
 
     case "CALCULATE":
       return (
-        <div className="space-y-4">
+          <div className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Formula <span className="text-rose-500">*</span>
@@ -637,7 +694,7 @@ function renderActionConfigBasic(
             <VariableInput
               type="input"
               value={config.formula || ""}
-              onChange={(value) =>
+                    onChange={(value) =>
                 onUpdate({ config: { ...config, formula: value || undefined } })
               }
               placeholder="e.g., {{step_1.output.amount}} * 1.1"
@@ -649,7 +706,7 @@ function renderActionConfigBasic(
             <p className="mt-1 text-xs text-slate-500">
               Mathematical formula using variables. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
             </p>
-          </div>
+                </div>
         </div>
       );
 
@@ -674,16 +731,11 @@ function renderActionConfigBasic(
               }
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
             >
-              <option value="">Select a step...</option>
-              {availableSteps.map((s, idx) => {
-                const stepNum = allSteps.findIndex(st => st.id === s.id) + 1;
-                return (
-                  <option key={s.id} value={s.id}>
-                    Step {stepNum}: {s.title || "Untitled Step"}
-                  </option>
-                );
-              })}
-              <option value="COMPLETED">Complete Process</option>
+              {getRoutingOptions(allSteps, step.id, false).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -715,7 +767,7 @@ function renderActionConfigBasic(
                 <Plus className="h-3.5 w-3.5" />
                 Add Condition
               </button>
-            </div>
+                </div>
 
             {(!config.conditions || config.conditions.length === 0) ? (
               <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
@@ -749,13 +801,13 @@ function renderActionConfigBasic(
                         <X className="h-3.5 w-3.5" />
                         Remove
                       </button>
-                    </div>
+            </div>
 
                     {/* Variable */}
-                    <div>
+              <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                         Variable <span className="text-rose-500">*</span>
-                      </label>
+                </label>
                       <VariableInput
                         type="input"
                         value={condition.variable || ""}
@@ -769,7 +821,7 @@ function renderActionConfigBasic(
                         currentStepId={step.id}
                         procedureTrigger={procedureTrigger}
                       />
-                    </div>
+              </div>
 
                     {/* Operator */}
                     <div>
@@ -820,7 +872,7 @@ function renderActionConfigBasic(
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                         If True, Go To <span className="text-rose-500">*</span>
-                      </label>
+              </label>
                       <select
                         value={condition.nextStepId || ""}
                         onChange={(e) => {
@@ -833,18 +885,13 @@ function renderActionConfigBasic(
                         }}
                         className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                       >
-                        <option value="">Select a step...</option>
-                        {availableSteps.map((s) => {
-                          const stepNum = allSteps.findIndex(st => st.id === s.id) + 1;
-                          return (
-                            <option key={s.id} value={s.id}>
-                              Step {stepNum}: {s.title || "Untitled Step"}
-                            </option>
-                          );
-                        })}
-                        <option value="COMPLETED">Complete Process</option>
+                        {getRoutingOptions(allSteps, step.id, false).map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
                       </select>
-                    </div>
+            </div>
                   </div>
                 ))}
               </div>
@@ -859,11 +906,11 @@ function renderActionConfigBasic(
       
       return (
         <div className="space-y-6">
-          <div className="space-y-4">
-            <div>
+        <div className="space-y-4">
+          <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Target A <span className="text-rose-500">*</span>
-              </label>
+            </label>
               <VariableInput
                 type="input"
                 value={config.targetA || ""}
@@ -874,16 +921,16 @@ function renderActionConfigBasic(
                 allSteps={allSteps}
                 currentStepId={step.id}
                 procedureTrigger={procedureTrigger}
-              />
-              <p className="mt-1 text-xs text-slate-500">
+            />
+            <p className="mt-1 text-xs text-slate-500">
                 First value to compare. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-              </p>
-            </div>
+            </p>
+          </div>
 
-            <div>
+          <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Target B <span className="text-rose-500">*</span>
-              </label>
+            </label>
               <VariableInput
                 type="input"
                 value={config.targetB || ""}
@@ -895,18 +942,18 @@ function renderActionConfigBasic(
                 currentStepId={step.id}
                 procedureTrigger={procedureTrigger}
               />
-              <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-slate-500">
                 Second value to compare. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-              </p>
-            </div>
+            </p>
+          </div>
 
-            <div>
+          <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Comparison Type <span className="text-rose-500">*</span>
-              </label>
+            </label>
               <select
                 value={config.comparisonType || "exact"}
-                onChange={(e) =>
+              onChange={(e) =>
                   onUpdate({ config: { ...config, comparisonType: e.target.value as any } })
                 }
                 className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
@@ -924,34 +971,29 @@ function renderActionConfigBasic(
             <div className="flex items-center gap-2 mb-4">
               <Zap className="h-4 w-4 text-blue-600" />
               <h3 className="text-sm font-bold text-slate-900">Flow Logic</h3>
-            </div>
+                  </div>
             <p className="text-xs text-slate-600 mb-4">
               Define where the workflow should go based on comparison results
             </p>
-            <div className="space-y-4">
-              <div>
+        <div className="space-y-4">
+          <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   On Match (Success) → Go To
-                </label>
-                <select
+            </label>
+            <select
                   value={compareRoutes.onSuccessStepId || ""}
-                  onChange={(e) =>
-                    onUpdate({
+              onChange={(e) =>
+                onUpdate({
                       routes: { ...compareRoutes, onSuccessStepId: e.target.value || undefined },
-                    })
-                  }
+                })
+              }
                   className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                 >
-                  <option value="">Next Step (Default)</option>
-                  <option value="COMPLETED">Complete Process</option>
-                  {compareOtherSteps.map((s) => {
-                    const stepNum = allSteps.findIndex(st => st.id === s.id) + 1;
-                    return (
-                      <option key={s.id} value={s.id}>
-                        Step {stepNum}: {s.title || "Untitled Step"}
-                      </option>
-                    );
-                  })}
+                  {getRoutingOptions(allSteps, step.id, true).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -967,16 +1009,11 @@ function renderActionConfigBasic(
                   }
                   className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                 >
-                  <option value="">Next Step (Default)</option>
-                  <option value="COMPLETED">Complete Process</option>
-                  {compareOtherSteps.map((s) => {
-                    const stepNum = allSteps.findIndex(st => st.id === s.id) + 1;
-                    return (
-                      <option key={s.id} value={s.id}>
-                        Step {stepNum}: {s.title || "Untitled Step"}
-                      </option>
-                    );
-                  })}
+                  {getRoutingOptions(allSteps, step.id, true).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
                 <p className="mt-1 text-xs text-slate-500">
                   Useful for error loops: send user back to correction step
@@ -1007,7 +1044,7 @@ function renderActionConfigBasic(
               <option value="CONTAINS">Contains</option>
               <option value="REGEX">Regex Match</option>
             </select>
-          </div>
+            </div>
 
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
@@ -1047,8 +1084,8 @@ function renderActionConfigBasic(
             <p className="mt-1 text-xs text-slate-500">
               Value to compare against. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
             </p>
-          </div>
-        </div>
+                </div>
+              </div>
       );
 
     default:
@@ -1161,8 +1198,8 @@ function renderActionConfigSettings(
               />
               <p className="mt-1 text-xs text-slate-500">
                 Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-              </p>
-            </div>
+            </p>
+          </div>
           )}
         </div>
       );
@@ -1189,7 +1226,7 @@ function renderActionConfigSettings(
             <p className="mt-1 text-xs text-slate-500">
               Plain text or HTML. Click the <Zap className="inline h-3 w-3" /> button to insert variables. Line breaks are preserved.
             </p>
-          </div>
+              </div>
 
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
@@ -1210,7 +1247,7 @@ function renderActionConfigSettings(
             <p className="mt-1 text-xs text-slate-500">
               If HTML is provided, it will be used instead of the body. Leave empty to use plain text body.
             </p>
-          </div>
+            </div>
 
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
@@ -1314,22 +1351,22 @@ function renderActionConfigSettings(
             <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Validation Rule <span className="text-rose-500">*</span>
-              </label>
-              <select
+            </label>
+            <select
                 value={config.rule || ""}
-                onChange={(e) =>
-                  onUpdate({ config: { ...config, rule: e.target.value as any } })
-                }
+              onChange={(e) =>
+                onUpdate({ config: { ...config, rule: e.target.value as any } })
+              }
                 className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-              >
+            >
                 <option value="">Select a rule...</option>
-                <option value="GREATER_THAN">Greater Than</option>
-                <option value="LESS_THAN">Less Than</option>
-                <option value="EQUAL">Equal</option>
-                <option value="CONTAINS">Contains</option>
-                <option value="REGEX">Regex Pattern</option>
-              </select>
-            </div>
+              <option value="GREATER_THAN">Greater Than</option>
+              <option value="LESS_THAN">Less Than</option>
+              <option value="EQUAL">Equal</option>
+              <option value="CONTAINS">Contains</option>
+              <option value="REGEX">Regex Pattern</option>
+            </select>
+          </div>
 
             <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
@@ -1337,10 +1374,10 @@ function renderActionConfigSettings(
               </label>
               <VariableInput
                 type="input"
-                value={config.target || ""}
-                onChange={(value) =>
-                  onUpdate({ config: { ...config, target: value || undefined } })
-                }
+            value={config.target || ""}
+            onChange={(value) =>
+              onUpdate({ config: { ...config, target: value || undefined } })
+            }
                 placeholder="e.g., {{step_1.output.amount}}"
                 allSteps={allSteps}
                 currentStepId={step.id}
@@ -1358,7 +1395,7 @@ function renderActionConfigSettings(
               <VariableInput
                 type="textarea"
                 value={config.errorMessage || ""}
-                onChange={(value) =>
+            onChange={(value) =>
                   onUpdate({ config: { ...config, errorMessage: value || undefined } })
                 }
                 rows={3}
@@ -1377,29 +1414,24 @@ function renderActionConfigSettings(
           <div className="pt-4 border-t border-slate-200">
             <h3 className="text-sm font-semibold text-slate-900 mb-4">Routing</h3>
             <div className="space-y-4">
-              <div>
+          <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   On Pass (Success) → Go To
-                </label>
+            </label>
                 <select
                   value={validateRoutes.onSuccessStepId || ""}
-                  onChange={(e) =>
+              onChange={(e) =>
                     onUpdate({
                       routes: { ...validateRoutes, onSuccessStepId: e.target.value || undefined },
                     })
                   }
                   className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                 >
-                  <option value="">Next Step (Default)</option>
-                  <option value="COMPLETED">Complete Process</option>
-                  {validateOtherSteps.map((s) => {
-                    const stepNum = allSteps.findIndex(st => st.id === s.id) + 1;
-                    return (
-                      <option key={s.id} value={s.id}>
-                        Step {stepNum}: {s.title || "Untitled Step"}
-                      </option>
-                    );
-                  })}
+                  {getRoutingOptions(allSteps, step.id, true).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -1415,16 +1447,11 @@ function renderActionConfigSettings(
                   }
                   className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                 >
-                  <option value="">Next Step (Default)</option>
-                  <option value="COMPLETED">Complete Process</option>
-                  {validateOtherSteps.map((s) => {
-                    const stepNum = allSteps.findIndex(st => st.id === s.id) + 1;
-                    return (
-                      <option key={s.id} value={s.id}>
-                        Step {stepNum}: {s.title || "Untitled Step"}
-                      </option>
-                    );
-                  })}
+                  {getRoutingOptions(allSteps, step.id, true).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
                 <p className="mt-1 text-xs text-slate-500">
                   Useful for error loops: send user back to correction step
@@ -1445,8 +1472,8 @@ function renderActionConfigSettings(
               </label>
               <p className="text-xs text-slate-600">
                 If comparison fails, route to user input step asking for explanation
-              </p>
-            </div>
+            </p>
+          </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
@@ -1457,8 +1484,8 @@ function renderActionConfigSettings(
                 className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
               />
             </label>
-          </div>
-        </div>
+                  </div>
+              </div>
       );
 
     default:
@@ -1479,14 +1506,15 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
   // Determine if Logic tab should be shown
-  // Hide Logic tab for INPUT, APPROVAL, and MANUAL_TASK (branching handled in Basic tab or by connecting to GATEWAY on canvas)
+  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, and NEGOTIATE (branching handled in Basic tab or by connecting to GATEWAY on canvas)
   const shouldShowLogicTab = step && (
     step.action !== "GATEWAY" && 
     step.action !== "VALIDATE" && 
     step.action !== "COMPARE" &&
     step.action !== "INPUT" &&
     step.action !== "APPROVAL" &&
-    step.action !== "MANUAL_TASK"
+    step.action !== "MANUAL_TASK" &&
+    step.action !== "NEGOTIATE"
   );
   
   const [activeTab, setActiveTab] = useState<"basic" | "settings" | "logic">("basic");
@@ -1657,9 +1685,9 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
           <p className="text-sm text-slate-600 font-medium max-w-xs leading-relaxed">
             Select a step from the canvas to configure its settings
           </p>
+            </div>
         </div>
-      </div>
-    );
+      );
   }
 
 
@@ -1685,7 +1713,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
     label: `${v.label} (${v.variableName})`,
   }));
 
-  return (
+      return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
@@ -1801,7 +1829,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
 
             {/* Responsibility Section 👤 - Only show for Human Steps */}
             {step && isHumanStep(step.action) && (
-              <div className="space-y-4">
+        <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-slate-900">Responsibility</h3>
                 <div className="rounded-xl bg-slate-50/50 p-5 space-y-4">
                   <div>
@@ -1832,7 +1860,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
                       <option value="SPECIFIC_USER">Specific User</option>
                       <option value="TEAM_QUEUE">Team Queue (Any member can pick it up)</option>
                     </select>
-                  </div>
+            </div>
 
                   {(step.assignment?.type === "TEAM_QUEUE" || step.assigneeType === "TEAM") && (
                     <div>
@@ -1865,15 +1893,15 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
                           No teams available. Create teams in Settings.
                         </p>
                       )}
-                    </div>
+          </div>
                   )}
 
                   {(step.assignment?.type === "SPECIFIC_USER" || step.assigneeType === "SPECIFIC_USER" || (step.assignee && step.assignee.trim() !== "")) && (
-                    <div>
+          <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1.5">
                         Select User
-                      </label>
-                      <select
+            </label>
+            <select
                         value={(() => {
                           const currentId = step.assignment?.assigneeId || step.assigneeId;
                           if (currentId) return currentId;
@@ -1901,7 +1929,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
                           
                           return "";
                         })()}
-                        onChange={(e) =>
+              onChange={(e) =>
                           onUpdate({
                             assignment: {
                               type: "SPECIFIC_USER",
@@ -1919,13 +1947,13 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
                             {user.displayName} ({user.email})
                           </option>
                         ))}
-                      </select>
+            </select>
                       {users.length === 0 && (
                         <p className="mt-1 text-xs text-slate-500">
                           No users available. Invite users in Settings.
                         </p>
                       )}
-                    </div>
+          </div>
                   )}
 
                   {((step.assignment?.type && step.assignment.type !== "STARTER" && step.assignment.assigneeId) ||
@@ -1954,25 +1982,25 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
         {activeTab === "settings" && (
           <div className="space-y-6">
             {/* Output Variable Name */}
-            <div>
+          <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Output Variable Name
-              </label>
-              <input
-                type="text"
+            </label>
+            <input
+              type="text"
                 value={step.config.outputVariableName || ""}
-                onChange={(e) =>
+              onChange={(e) =>
                   onUpdate({
                     config: { ...step.config, outputVariableName: e.target.value || undefined },
                   })
-                }
+              }
                 className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                 placeholder="e.g., invoice_total"
-              />
+            />
               <p className="mt-2 text-xs text-slate-500">
                 Variable name for referencing this step's data later. Auto-generated if left blank.
               </p>
-            </div>
+          </div>
 
             {/* Evidence Requirement */}
             {step && isHumanStep(step.action) && (
@@ -1991,14 +2019,14 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
                     <p className="text-xs text-slate-500 mt-0.5">
                       Users must upload a file (PDF, Image, Doc) before completing this task
                     </p>
-                  </div>
+        </div>
                 </label>
               </div>
             )}
 
             {/* Action-specific Settings Configuration */}
             {renderActionConfigSettings(step, availableVariablesLegacy, onUpdate, allSteps, collections, procedureTrigger)}
-          </div>
+        </div>
         )}
 
         {/* Tab 3: Logic */}
@@ -2041,9 +2069,9 @@ function renderFlowLogic(
           {otherSteps.map((s) => {
             const stepNum = allSteps.findIndex((st) => st.id === s.id) + 1;
             return (
-              <option key={s.id} value={s.id}>
+            <option key={s.id} value={s.id}>
                 Step {stepNum}: {s.title || "Untitled Step"}
-              </option>
+            </option>
             );
           })}
         </select>
@@ -2070,9 +2098,9 @@ function renderFlowLogic(
               {otherSteps.map((s) => {
                 const stepNum = allSteps.findIndex((st) => st.id === s.id) + 1;
                 return (
-                  <option key={s.id} value={s.id}>
+                <option key={s.id} value={s.id}>
                     Step {stepNum}: {s.title || "Untitled Step"}
-                  </option>
+                </option>
                 );
               })}
             </select>
@@ -2095,9 +2123,9 @@ function renderFlowLogic(
               {otherSteps.map((s) => {
                 const stepNum = allSteps.findIndex((st) => st.id === s.id) + 1;
                 return (
-                  <option key={s.id} value={s.id}>
+                <option key={s.id} value={s.id}>
                     Step {stepNum}: {s.title || "Untitled Step"}
-                  </option>
+                </option>
                 );
               })}
             </select>

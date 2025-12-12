@@ -160,7 +160,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
       // GATEWAY: Use config.conditions
       if (step.action === "GATEWAY" && step.config?.conditions) {
         step.config.conditions.forEach((condition: any, condIndex: number) => {
-          if (condition.nextStepId && condition.nextStepId !== "COMPLETED") {
+          if (condition.nextStepId && condition.nextStepId !== "COMPLETED" && !condition.nextStepId.startsWith("__END__")) {
             // Format condition label
             const operatorSymbols: Record<string, string> = {
               eq: "=",
@@ -197,7 +197,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
         });
 
         // Default edge for GATEWAY - ONLY if explicitly configured
-        if (step.config?.defaultNextStepId && step.config.defaultNextStepId !== "COMPLETED") {
+        if (step.config?.defaultNextStepId && step.config.defaultNextStepId !== "COMPLETED" && !step.config.defaultNextStepId.startsWith("__END__")) {
           edgesArray.push({
             id: `${sourceId}-default`,
             source: sourceId,
@@ -224,7 +224,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
       } 
       // VALIDATE/COMPARE/APPROVAL: Use routes (onSuccessStepId, onFailureStepId)
       else if ((step.action === "VALIDATE" || step.action === "COMPARE" || step.action === "APPROVAL") && step.routes) {
-        if (step.routes.onSuccessStepId && step.routes.onSuccessStepId !== "COMPLETED") {
+        if (step.routes.onSuccessStepId && step.routes.onSuccessStepId !== "COMPLETED" && !step.routes.onSuccessStepId.startsWith("__END__")) {
           edgesArray.push({
             id: `${sourceId}-success`,
             source: sourceId,
@@ -248,7 +248,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
           });
         }
         
-        if (step.routes.onFailureStepId) {
+        if (step.routes.onFailureStepId && step.routes.onFailureStepId !== "COMPLETED" && !step.routes.onFailureStepId.startsWith("__END__")) {
           edgesArray.push({
             id: `${sourceId}-failure`,
             source: sourceId,
@@ -273,7 +273,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
         }
         
         // Default next step for VALIDATE/COMPARE/APPROVAL - ONLY if explicitly configured
-        if (step.routes.defaultNextStepId && step.routes.defaultNextStepId !== "COMPLETED") {
+        if (step.routes.defaultNextStepId && step.routes.defaultNextStepId !== "COMPLETED" && !step.routes.defaultNextStepId.startsWith("__END__")) {
           edgesArray.push({
             id: `${sourceId}-default`,
             source: sourceId,
@@ -291,7 +291,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
       }
       // Standard steps: Use routes.defaultNextStepId - ONLY if explicitly configured
       else {
-        if (step.routes?.defaultNextStepId && step.routes.defaultNextStepId !== "COMPLETED") {
+        if (step.routes?.defaultNextStepId && step.routes.defaultNextStepId !== "COMPLETED" && !step.routes.defaultNextStepId.startsWith("__END__")) {
           edgesArray.push({
             id: `${sourceId}-next`,
             source: sourceId,
