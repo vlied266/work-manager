@@ -94,6 +94,11 @@ export const GatewayNode = memo((props: NodeProps<Node<GatewayNodeData>>) => {
             const spacing = totalHandles > 1 ? 80 / (totalHandles + 1) : 50;
             const position = 10 + (idx + 1) * spacing;
             
+            // Generate label from condition
+            const conditionLabel = condition.variable 
+              ? `${condition.variable} ${condition.operator || "=="} ${condition.value || ""}`.substring(0, 20)
+              : `Condition ${idx + 1}`;
+            
             return (
               <div key={`condition-${idx}`} className="relative">
                 <Handle
@@ -103,14 +108,15 @@ export const GatewayNode = memo((props: NodeProps<Node<GatewayNodeData>>) => {
                   className="!w-3 !h-3 !bg-green-500 !border-2 !border-white !rounded-full !cursor-crosshair"
                   style={{
                     left: `${position}%`,
+                    bottom: "-6px",
                   }}
                 />
                 {/* Label */}
                 <div 
-                  className="absolute top-full left-1/2 -translate-x-1/2 mt-1 text-[10px] font-semibold text-green-600 whitespace-nowrap"
+                  className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 text-[10px] font-semibold text-green-600 whitespace-nowrap pointer-events-none"
                   style={{ left: `${position}%` }}
                 >
-                  True
+                  {conditionLabel}
                 </div>
               </div>
             );
@@ -128,14 +134,15 @@ export const GatewayNode = memo((props: NodeProps<Node<GatewayNodeData>>) => {
             className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white !rounded-full !cursor-crosshair"
             style={{
               left: conditionCount > 0 ? "85%" : "50%",
+              bottom: "-6px",
             }}
           />
           {/* Label */}
           <div 
-            className="absolute top-full left-1/2 -translate-x-1/2 mt-1 text-[10px] font-semibold text-slate-600 whitespace-nowrap"
+            className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 text-[10px] font-semibold text-slate-600 whitespace-nowrap pointer-events-none"
             style={{ left: conditionCount > 0 ? "85%" : "50%" }}
           >
-            Default
+            Default / Else
           </div>
         </div>
       )}

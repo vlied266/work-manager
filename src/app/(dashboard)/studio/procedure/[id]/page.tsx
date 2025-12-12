@@ -1009,6 +1009,16 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                           // Handle adding step from canvas drop with position
                           handleAddStep(action as AtomicAction, position);
                         }}
+                        onDeleteStep={async (stepId) => {
+                          // Handle step deletion
+                          if (!procedure) return;
+                          const updatedSteps = procedure.steps.filter(s => s.id !== stepId);
+                          await handleStepsChange(updatedSteps);
+                          // Deselect if deleted step was selected
+                          if (selectedStepId === stepId) {
+                            setSelectedStepId(null);
+                          }
+                        }}
                         procedureTrigger={procedure?.trigger}
                       />
                     </div>

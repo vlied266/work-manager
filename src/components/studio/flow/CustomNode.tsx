@@ -5,17 +5,18 @@ import { Handle, Position, NodeProps, Node } from "@xyflow/react";
 import { AtomicStep } from "@/types/schema";
 import { ATOMIC_ACTION_METADATA } from "@/types/schema";
 import * as LucideIcons from "lucide-react";
-import { Edit2 } from "lucide-react";
+import { Edit2, Trash2 } from "lucide-react";
 
 interface CustomNodeData extends Record<string, unknown> {
   step: AtomicStep;
   stepIndex: number;
+  onDelete?: (stepId: string) => void;
 }
 
 export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
   const { data, selected } = props;
   if (!data) return null;
-  const { step, stepIndex } = data;
+  const { step, stepIndex, onDelete } = data;
   const metadata = ATOMIC_ACTION_METADATA[step.action] || {
     label: step.action,
     color: "#6B7280",
@@ -58,9 +59,23 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
           />
         </div>
 
-        {/* Right: Edit icon (visible on hover) */}
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Right: Action buttons (visible on hover) */}
+        <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <Edit2 className="h-3.5 w-3.5 text-slate-400 hover:text-slate-600 cursor-pointer" />
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onDelete && step.id) {
+                  onDelete(step.id);
+                }
+              }}
+              className="p-0.5 rounded hover:bg-red-50 transition-colors"
+              title="Delete step"
+            >
+              <Trash2 className="h-3.5 w-3.5 text-slate-400 hover:text-red-600 cursor-pointer" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -87,22 +102,40 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
       {/* Source Handles (Bottom) */}
       {(step.action === "VALIDATE" || step.action === "COMPARE") ? (
         <>
-          {/* Success Handle (Left) */}
-          <Handle
-            type="source"
-            position={Position.Bottom}
-            id="success"
-            className="!w-3 !h-3 !bg-green-500 !border-2 !border-white !rounded-full !cursor-crosshair"
-            style={{ left: "30%" }}
-          />
-          {/* Failure Handle (Right) */}
-          <Handle
-            type="source"
-            position={Position.Bottom}
-            id="failure"
-            className="!w-3 !h-3 !bg-red-500 !border-2 !border-white !rounded-full !cursor-crosshair"
-            style={{ left: "70%" }}
-          />
+          {/* Success Handle (Left) - Labeled */}
+          <div className="relative">
+            <Handle
+              type="source"
+              position={Position.Bottom}
+              id="success"
+              className="!w-3 !h-3 !bg-green-500 !border-2 !border-white !rounded-full !cursor-crosshair"
+              style={{ left: "30%", bottom: "-6px" }}
+            />
+            {/* Label */}
+            <div 
+              className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 text-[10px] font-semibold text-green-600 whitespace-nowrap pointer-events-none"
+              style={{ left: "30%" }}
+            >
+              {step.action === "COMPARE" ? "Match" : "Pass"}
+            </div>
+          </div>
+          {/* Failure Handle (Right) - Labeled */}
+          <div className="relative">
+            <Handle
+              type="source"
+              position={Position.Bottom}
+              id="failure"
+              className="!w-3 !h-3 !bg-red-500 !border-2 !border-white !rounded-full !cursor-crosshair"
+              style={{ left: "70%", bottom: "-6px" }}
+            />
+            {/* Label */}
+            <div 
+              className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 text-[10px] font-semibold text-red-600 whitespace-nowrap pointer-events-none"
+              style={{ left: "70%" }}
+            >
+              {step.action === "COMPARE" ? "Mismatch" : "Fail"}
+            </div>
+          </div>
         </>
       ) : (
         <Handle

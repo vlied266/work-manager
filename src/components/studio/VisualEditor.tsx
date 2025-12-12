@@ -36,6 +36,7 @@ interface VisualEditorProps {
   onNodeSelect?: (nodeId: string | null) => void;
   onConnect?: (connection: Connection, sourceStep: AtomicStep, targetStepId: string | null) => void;
   onAddStep?: (action: string, position: { x: number; y: number }) => void;
+  onDeleteStep?: (stepId: string) => void;
   procedureTrigger?: Procedure["trigger"];
 }
 
@@ -116,7 +117,7 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction: "TB" | "LR
   return { nodes: layoutedNodes, edges };
 };
 
-function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onAddStep, procedureTrigger }: VisualEditorProps) {
+function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onAddStep, onDeleteStep, procedureTrigger }: VisualEditorProps) {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const { setNodes, getNodes, screenToFlowPosition } = useReactFlow();
   
@@ -400,6 +401,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
           : {
               step,
               stepIndex: index,
+              onDelete: onDeleteStep,
             },
       });
     });
@@ -778,10 +780,10 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
   );
 }
 
-export function VisualEditor({ tasks, onNodeUpdate, onNodeSelect, onConnect, onAddStep, procedureTrigger }: VisualEditorProps) {
+export function VisualEditor({ tasks, onNodeUpdate, onNodeSelect, onConnect, onAddStep, onDeleteStep, procedureTrigger }: VisualEditorProps) {
   return (
     <ReactFlowProvider>
-      <VisualEditorContent tasks={tasks} onNodeUpdate={onNodeUpdate} onNodeSelect={onNodeSelect} onConnect={onConnect} onAddStep={onAddStep} procedureTrigger={procedureTrigger} />
+      <VisualEditorContent tasks={tasks} onNodeUpdate={onNodeUpdate} onNodeSelect={onNodeSelect} onConnect={onConnect} onAddStep={onAddStep} onDeleteStep={onDeleteStep} procedureTrigger={procedureTrigger} />
     </ReactFlowProvider>
   );
 }
