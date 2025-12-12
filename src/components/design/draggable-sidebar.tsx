@@ -8,9 +8,10 @@ import { motion } from "framer-motion";
 
 interface DraggableActionCardProps {
   action: AtomicAction;
+  viewMode?: "list" | "canvas";
 }
 
-function DraggableActionCard({ action }: DraggableActionCardProps) {
+function DraggableActionCard({ action, viewMode = "canvas" }: DraggableActionCardProps) {
   const metadata = ATOMIC_ACTION_METADATA[action];
   const IconComponent = (LucideIcons as any)[metadata.icon] || LucideIcons.Type;
 
@@ -54,15 +55,18 @@ function DraggableActionCard({ action }: DraggableActionCardProps) {
     });
   };
 
+  // Conditional logic: Use dnd-kit for List View, HTML5 drag for Flow View
+  const useDndKit = viewMode === "list";
+  const useHTML5Drag = viewMode === "canvas";
+
   return (
     <motion.div
       ref={setNodeRef}
       style={style}
       {...attributes}
-      // Don't use dnd-kit listeners for HTML5 drag - they interfere with native drag
-      // {...listeners} // Commented out to allow HTML5 drag & drop
-      draggable={true}
-      onDragStart={handleDragStart}
+      {...(useDndKit ? listeners : {})} // Only use dnd-kit listeners in List View
+      draggable={useHTML5Drag} // Only enable HTML5 drag in Flow View
+      onDragStart={useHTML5Drag ? handleDragStart : undefined}
       className={`group relative cursor-grab active:cursor-grabbing rounded-2xl bg-white shadow-sm border border-slate-100 p-4 transition-all duration-200 ${
         isDragging ? "shadow-xl opacity-90 scale-105 ring-1 ring-black/5" : "hover:shadow-md hover:-translate-y-1"
       }`}
@@ -85,7 +89,11 @@ function DraggableActionCard({ action }: DraggableActionCardProps) {
   );
 }
 
-export function DraggableSidebar() {
+interface DraggableSidebarProps {
+  viewMode?: "list" | "canvas";
+}
+
+export function DraggableSidebar({ viewMode = "canvas" }: DraggableSidebarProps = {}) {
   return (
     <div className="h-full flex flex-col overflow-hidden relative">
       {/* Clean Header */}
@@ -110,7 +118,7 @@ export function DraggableSidebar() {
               </h3>
               <div className="space-y-3">
                 {actions.map((action) => (
-                  <DraggableActionCard key={action} action={action} />
+                  <DraggableActionCard key={action} action={action} viewMode={viewMode} />
                 ))}
               </div>
             </motion.div>

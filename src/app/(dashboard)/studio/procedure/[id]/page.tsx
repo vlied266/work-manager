@@ -836,7 +836,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
               data-tour="toolbox" 
               className="h-full min-w-[300px] overflow-hidden rounded-[2.5rem] bg-white/70 backdrop-blur-2xl border border-white/60 shadow-2xl shadow-black/5"
             >
-              <DraggableSidebar />
+              <DraggableSidebar viewMode={viewMode} />
             </div>
 
             {/* Center Pane: Canvas - Floating Glass Island */}
