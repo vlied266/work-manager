@@ -43,6 +43,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
   const [previewMode, setPreviewMode] = useState(false); // false = Edit Mode, true = Preview Mode
   const [viewMode, setViewMode] = useState<"list" | "canvas">("canvas"); // "list" = List View, "canvas" = Flow View (default)
   const [isTriggerModalOpen, setIsTriggerModalOpen] = useState(false);
+  const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
 
 
   // Fetch Procedure if editing
