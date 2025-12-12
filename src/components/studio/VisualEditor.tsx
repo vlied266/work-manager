@@ -466,9 +466,15 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
+      event.stopPropagation();
 
       const action = event.dataTransfer.getData("application/reactflow");
-      if (!action || !onAddStep) return;
+      console.log("[VisualEditor] Drop event:", { action, hasOnAddStep: !!onAddStep });
+      
+      if (!action || !onAddStep) {
+        console.warn("[VisualEditor] Drop failed - missing action or onAddStep:", { action, hasOnAddStep: !!onAddStep });
+        return;
+      }
 
       // Get drop position in flow coordinates
       const position = screenToFlowPosition({
@@ -476,6 +482,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
         y: event.clientY,
       });
 
+      console.log("[VisualEditor] Calling onAddStep with:", { action, position });
       onAddStep(action, position);
     },
     [screenToFlowPosition, onAddStep]
@@ -524,7 +531,11 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
   }
 
   return (
-    <div className="h-full w-full rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 overflow-hidden relative">
+    <div 
+      className="h-full w-full rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 overflow-hidden relative"
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -535,8 +546,6 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
         onConnect={handleConnect}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
         fitView
         fitViewOptions={{ padding: 0.2, maxZoom: 1.5 }}
         className="bg-gradient-to-br from-slate-50/50 to-blue-50/30"

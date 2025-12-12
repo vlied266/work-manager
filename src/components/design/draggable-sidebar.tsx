@@ -40,6 +40,7 @@ function DraggableActionCard({ action }: DraggableActionCardProps) {
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData("application/reactflow", action);
     e.dataTransfer.effectAllowed = "move";
+    console.log("[DraggableSidebar] Drag started:", action);
   };
 
   return (
