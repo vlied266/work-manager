@@ -6,7 +6,7 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import * as LucideIcons from "lucide-react";
 import { motion } from "framer-motion";
-import { Users, User, ShieldCheck, Upload, CheckCircle2, Calculator, Sparkles, AlertTriangle, Info, HelpCircle, Zap, Plus, X, Phone, Mail, Package, Truck, FileText, Archive, Wrench, ClipboardList } from "lucide-react";
+import { Users, User, ShieldCheck, Upload, CheckCircle2, Calculator, Sparkles, AlertTriangle, Info, HelpCircle, Zap, Plus, X, Phone, Mail, Package, Truck, FileText, Archive, Wrench, ClipboardList, Lightbulb } from "lucide-react";
 import { MagicInput } from "@/components/studio/magic-input";
 import { GoogleSheetConfig } from "@/components/studio/GoogleSheetConfig";
 import { useOrgId, useOrgQuery } from "@/hooks/useOrgData";
@@ -14,6 +14,25 @@ import { isHumanStep } from "@/lib/constants";
 import { KeyValueBuilder } from "./key-value-builder";
 import { VariableInput } from "@/components/studio/variable-input";
 import { CreatableSelect } from "./creatable-select";
+
+// Usage Hints for all Action Types
+const ACTION_USAGE_HINTS: Record<string, string> = {
+  INPUT: "Use this to collect new data from a user (Forms). If you need a manager to approve existing data, use an Approval Step.",
+  APPROVAL: "Use this when a human needs to make a decision (Approve/Reject). For simple data entry, use an Input Step.",
+  MANUAL_TASK: "Use this for offline/physical actions (e.g., Call client, Ship package). No data is collected here except confirmation.",
+  NEGOTIATE: "Use this for back-and-forth discussions to reach an agreement. For simple approvals, use Approval Step.",
+  INSPECT: "Use this for quality checks or physical inspections where a checklist or photo evidence is required.",
+  AI_PARSE: "Use this to extract text/data from files (PDF, Images) automatically. To just upload without reading, use Input Step.",
+  DB_INSERT: "Use this to permanently save workflow data into your database. Essential for keeping records.",
+  HTTP_REQUEST: "Use this to connect to external APIs (Zapier, Slack). For internal DB saving, use Save to DB.",
+  SEND_EMAIL: "Sends an automated email. You can use dynamic variables (e.g., {{step.email}}) in the body.",
+  GOOGLE_SHEET: "Adds a new row to a Google Sheet. Useful for external logging or reporting.",
+  DOC_GENERATE: "Creates a PDF/Word document from a template (e.g., Contracts, Invoices).",
+  CALCULATE: "Performs math formulas. For logic checks, use Validate or Compare.",
+  GATEWAY: "Splits flow into multiple paths based on conditions (If/Else). For simple Pass/Fail, use Validate.",
+  VALIDATE: "Checks if data meets a rule (e.g. Age > 18). Routes to 'Pass' or 'Fail' paths.",
+  COMPARE: "Compares two values (e.g. Invoice vs PO). Routes to 'Match' or 'Mismatch' paths.",
+};
 
 // Helper function to get available variables
 function getAvailableVariables(allSteps: AtomicStep[], currentStepId: string) {
@@ -1756,6 +1775,16 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
         {/* Tab 1: Basic */}
         {activeTab === "basic" && (
           <div className="space-y-6">
+            {/* Usage Hint */}
+            {step && ACTION_USAGE_HINTS[step.action] && (
+              <div className="rounded-lg bg-blue-50/80 border border-blue-200/50 p-3 flex items-start gap-2.5">
+                <Lightbulb className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" strokeWidth={2} />
+                <p className="text-xs text-blue-700 font-medium leading-relaxed">
+                  💡 <strong>Note:</strong> {ACTION_USAGE_HINTS[step.action]}
+                </p>
+              </div>
+            )}
+
             {/* Step Title */}
             <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
