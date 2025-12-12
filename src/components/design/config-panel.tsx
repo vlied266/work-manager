@@ -706,64 +706,129 @@ function renderActionConfigBasic(
       );
 
     case "COMPARE":
+      const compareRoutes = step.routes || {};
+      const compareOtherSteps = allSteps.filter((s) => s.id !== step.id);
+      
       return (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Target A <span className="text-rose-500">*</span>
-            </label>
-            <VariableInput
-              type="input"
-              value={config.targetA || ""}
-              onChange={(value) =>
-                onUpdate({ config: { ...config, targetA: value || undefined } })
-              }
-              placeholder="e.g., {{step_1.output.amount}}"
-              allSteps={allSteps}
-              currentStepId={step.id}
-              procedureTrigger={procedureTrigger}
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              First value to compare. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-            </p>
+        <div className="space-y-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Target A <span className="text-rose-500">*</span>
+              </label>
+              <VariableInput
+                type="input"
+                value={config.targetA || ""}
+                onChange={(value) =>
+                  onUpdate({ config: { ...config, targetA: value || undefined } })
+                }
+                placeholder="e.g., {{step_1.output.amount}}"
+                allSteps={allSteps}
+                currentStepId={step.id}
+                procedureTrigger={procedureTrigger}
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                First value to compare. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Target B <span className="text-rose-500">*</span>
+              </label>
+              <VariableInput
+                type="input"
+                value={config.targetB || ""}
+                onChange={(value) =>
+                  onUpdate({ config: { ...config, targetB: value || undefined } })
+                }
+                placeholder="e.g., {{step_2.output.amount}}"
+                allSteps={allSteps}
+                currentStepId={step.id}
+                procedureTrigger={procedureTrigger}
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Second value to compare. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Comparison Type <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={config.comparisonType || "exact"}
+                onChange={(e) =>
+                  onUpdate({ config: { ...config, comparisonType: e.target.value as any } })
+                }
+                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+              >
+                <option value="exact">Exact Match</option>
+                <option value="fuzzy">Fuzzy Match</option>
+                <option value="numeric">Numeric Comparison</option>
+                <option value="date">Date Comparison</option>
+              </select>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Target B <span className="text-rose-500">*</span>
-            </label>
-            <VariableInput
-              type="input"
-              value={config.targetB || ""}
-              onChange={(value) =>
-                onUpdate({ config: { ...config, targetB: value || undefined } })
-              }
-              placeholder="e.g., {{step_2.output.amount}}"
-              allSteps={allSteps}
-              currentStepId={step.id}
-              procedureTrigger={procedureTrigger}
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              Second value to compare. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Comparison Type <span className="text-rose-500">*</span>
-            </label>
-            <select
-              value={config.comparisonType || "exact"}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, comparisonType: e.target.value as any } })
-              }
-              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-            >
-              <option value="exact">Exact Match</option>
-              <option value="fuzzy">Fuzzy Match</option>
-              <option value="numeric">Numeric Comparison</option>
-              <option value="date">Date Comparison</option>
-            </select>
+          {/* Routing Section */}
+          <div className="pt-4 border-t border-slate-200">
+            <h3 className="text-sm font-semibold text-slate-900 mb-4">Routing</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  On Match (Success) → Go To
+                </label>
+                <select
+                  value={compareRoutes.onSuccessStepId || ""}
+                  onChange={(e) =>
+                    onUpdate({
+                      routes: { ...compareRoutes, onSuccessStepId: e.target.value || undefined },
+                    })
+                  }
+                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                >
+                  <option value="">Next Step (Default)</option>
+                  <option value="COMPLETED">Complete Process</option>
+                  {compareOtherSteps.map((s) => {
+                    const stepNum = allSteps.findIndex(st => st.id === s.id) + 1;
+                    return (
+                      <option key={s.id} value={s.id}>
+                        Step {stepNum}: {s.title || "Untitled Step"}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  On Mismatch (Failure) → Go To
+                </label>
+                <select
+                  value={compareRoutes.onFailureStepId || ""}
+                  onChange={(e) =>
+                    onUpdate({
+                      routes: { ...compareRoutes, onFailureStepId: e.target.value || undefined },
+                    })
+                  }
+                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                >
+                  <option value="">Next Step (Default)</option>
+                  <option value="COMPLETED">Complete Process</option>
+                  {compareOtherSteps.map((s) => {
+                    const stepNum = allSteps.findIndex(st => st.id === s.id) + 1;
+                    return (
+                      <option key={s.id} value={s.id}>
+                        Step {stepNum}: {s.title || "Untitled Step"}
+                      </option>
+                    );
+                  })}
+                </select>
+                <p className="mt-1 text-xs text-slate-500">
+                  Useful for error loops: send user back to correction step
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       );
@@ -1083,27 +1148,132 @@ function renderActionConfigSettings(
       );
 
     case "VALIDATE":
+      const validateRoutes = step.routes || {};
+      const validateOtherSteps = allSteps.filter((s) => s.id !== step.id);
+      
       return (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Error Message (Optional)
-            </label>
-            <VariableInput
-              type="textarea"
-              value={config.errorMessage || ""}
-              onChange={(value) =>
-                onUpdate({ config: { ...config, errorMessage: value || undefined } })
-              }
-              rows={3}
-              placeholder="Custom error message if validation fails"
-              allSteps={allSteps}
-              currentStepId={step.id}
-              procedureTrigger={procedureTrigger}
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              Message to display/log if validation fails. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-            </p>
+        <div className="space-y-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Validation Rule <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={config.rule || ""}
+                onChange={(e) =>
+                  onUpdate({ config: { ...config, rule: e.target.value as any } })
+                }
+                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+              >
+                <option value="">Select a rule...</option>
+                <option value="GREATER_THAN">Greater Than</option>
+                <option value="LESS_THAN">Less Than</option>
+                <option value="EQUAL">Equal</option>
+                <option value="CONTAINS">Contains</option>
+                <option value="REGEX">Regex Pattern</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Target <span className="text-rose-500">*</span>
+              </label>
+              <VariableInput
+                type="input"
+                value={config.target || ""}
+                onChange={(value) =>
+                  onUpdate({ config: { ...config, target: value || undefined } })
+                }
+                placeholder="e.g., {{step_1.output.amount}}"
+                allSteps={allSteps}
+                currentStepId={step.id}
+                procedureTrigger={procedureTrigger}
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Value to validate. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Error Message (Optional)
+              </label>
+              <VariableInput
+                type="textarea"
+                value={config.errorMessage || ""}
+                onChange={(value) =>
+                  onUpdate({ config: { ...config, errorMessage: value || undefined } })
+                }
+                rows={3}
+                placeholder="Custom error message if validation fails"
+                allSteps={allSteps}
+                currentStepId={step.id}
+                procedureTrigger={procedureTrigger}
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Message to display/log if validation fails. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+              </p>
+            </div>
+          </div>
+
+          {/* Routing Section */}
+          <div className="pt-4 border-t border-slate-200">
+            <h3 className="text-sm font-semibold text-slate-900 mb-4">Routing</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  On Pass (Success) → Go To
+                </label>
+                <select
+                  value={validateRoutes.onSuccessStepId || ""}
+                  onChange={(e) =>
+                    onUpdate({
+                      routes: { ...validateRoutes, onSuccessStepId: e.target.value || undefined },
+                    })
+                  }
+                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                >
+                  <option value="">Next Step (Default)</option>
+                  <option value="COMPLETED">Complete Process</option>
+                  {validateOtherSteps.map((s) => {
+                    const stepNum = allSteps.findIndex(st => st.id === s.id) + 1;
+                    return (
+                      <option key={s.id} value={s.id}>
+                        Step {stepNum}: {s.title || "Untitled Step"}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  On Fail → Go To
+                </label>
+                <select
+                  value={validateRoutes.onFailureStepId || ""}
+                  onChange={(e) =>
+                    onUpdate({
+                      routes: { ...validateRoutes, onFailureStepId: e.target.value || undefined },
+                    })
+                  }
+                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                >
+                  <option value="">Next Step (Default)</option>
+                  <option value="COMPLETED">Complete Process</option>
+                  {validateOtherSteps.map((s) => {
+                    const stepNum = allSteps.findIndex(st => st.id === s.id) + 1;
+                    return (
+                      <option key={s.id} value={s.id}>
+                        Step {stepNum}: {s.title || "Untitled Step"}
+                      </option>
+                    );
+                  })}
+                </select>
+                <p className="mt-1 text-xs text-slate-500">
+                  Useful for error loops: send user back to correction step
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       );
@@ -1151,6 +1321,13 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
   const [teams, setTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
+  // Determine if Logic tab should be shown
+  const shouldShowLogicTab = step && (
+    step.action !== "GATEWAY" && 
+    step.action !== "VALIDATE" && 
+    step.action !== "COMPARE"
+  );
+  
   const [activeTab, setActiveTab] = useState<"basic" | "settings" | "logic">("basic");
   
   // Get organization ID from context
@@ -1411,23 +1588,25 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
               />
             )}
           </button>
-          <button
-            onClick={() => setActiveTab("logic")}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
-              activeTab === "logic"
-                ? "text-blue-600"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            Logic
-            {activeTab === "logic" && (
-              <motion.div
-                layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
-                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-              />
-            )}
-          </button>
+          {shouldShowLogicTab && (
+            <button
+              onClick={() => setActiveTab("logic")}
+              className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+                activeTab === "logic"
+                  ? "text-blue-600"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Logic
+              {activeTab === "logic" && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+            </button>
+          )}
         </div>
       </div>
 
