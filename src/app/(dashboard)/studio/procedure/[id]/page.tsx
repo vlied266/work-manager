@@ -406,7 +406,42 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
       config: {},
       ...(position && { ui: { position } }), // Store position if provided
     };
-    const updatedSteps = [...procedure.steps, newStep];
+
+    // Smart connection logic for VALIDATE/COMPARE nodes
+    let updatedSteps = [...procedure.steps, newStep];
+    
+    // Check if the last step before this one is VALIDATE or COMPARE
+    if (updatedSteps.length >= 2) {
+      const previousStep = updatedSteps[updatedSteps.length - 2];
+      
+      if (previousStep.action === "VALIDATE" || previousStep.action === "COMPARE") {
+        // Check if this step already has connections
+        const hasSuccessConnection = previousStep.routes?.onSuccessStepId;
+        const hasFailureConnection = previousStep.routes?.onFailureStepId;
+        
+        // Connect to success handle if not already connected
+        if (!hasSuccessConnection) {
+          updatedSteps[updatedSteps.length - 2] = {
+            ...previousStep,
+            routes: {
+              ...previousStep.routes,
+              onSuccessStepId: newStep.id,
+            },
+          };
+        } 
+        // Connect to failure handle if success is already connected
+        else if (!hasFailureConnection) {
+          updatedSteps[updatedSteps.length - 2] = {
+            ...previousStep,
+            routes: {
+              ...previousStep.routes,
+              onFailureStepId: newStep.id,
+            },
+          };
+        }
+      }
+    }
+
     const updated = { ...procedure, steps: updatedSteps };
     setProcedure(updated);
     setSelectedStepId(newStep.id);
