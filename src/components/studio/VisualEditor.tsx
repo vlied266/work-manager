@@ -195,7 +195,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
           }
         });
 
-        // Default edge for GATEWAY
+        // Default edge for GATEWAY - ONLY if explicitly configured
         if (step.config?.defaultNextStepId && step.config.defaultNextStepId !== "COMPLETED") {
           edgesArray.push({
             id: `${sourceId}-default`,
@@ -218,31 +218,8 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
               color: "#6B7280",
             },
           });
-        } else if (index < tasks.length - 1) {
-          // Fallback to next step if no default
-          const nextStepId = tasks[index + 1].id || `step-${index + 1}`;
-          edgesArray.push({
-            id: `${sourceId}-default-fallback`,
-            source: sourceId,
-            sourceHandle: "default",
-            target: nextStepId,
-            animated: true,
-            style: { stroke: "#6B7280", strokeWidth: 2, strokeDasharray: "5,5" },
-            label: "Default",
-            labelStyle: { 
-              fill: "#6B7280", 
-              fontWeight: 600,
-              fontSize: "11px",
-              backgroundColor: "white",
-              padding: "2px 6px",
-              borderRadius: "4px",
-            },
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              color: "#6B7280",
-            },
-          });
         }
+        // NO FALLBACK - If no defaultNextStepId configured, no edge is created
       } 
       // VALIDATE/COMPARE: Use routes (onSuccessStepId, onFailureStepId)
       else if ((step.action === "VALIDATE" || step.action === "COMPARE") && step.routes) {
@@ -294,26 +271,13 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
           });
         }
         
-        // Default next step for VALIDATE/COMPARE
+        // Default next step for VALIDATE/COMPARE - ONLY if explicitly configured
         if (step.routes.defaultNextStepId && step.routes.defaultNextStepId !== "COMPLETED") {
           edgesArray.push({
             id: `${sourceId}-default`,
             source: sourceId,
+            sourceHandle: "default",
             target: step.routes.defaultNextStepId,
-            animated: true,
-            style: { stroke: "#6366F1", strokeWidth: 2 },
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              color: "#6366F1",
-            },
-          });
-        } else if (!step.routes.onSuccessStepId && !step.routes.onFailureStepId && index < tasks.length - 1) {
-          // Fallback to sequential if no custom routes
-          const nextStepId = tasks[index + 1].id || `step-${index + 1}`;
-          edgesArray.push({
-            id: `${sourceId}-${nextStepId}`,
-            source: sourceId,
-            target: nextStepId,
             animated: true,
             style: { stroke: "#6366F1", strokeWidth: 2 },
             markerEnd: {
@@ -322,13 +286,15 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
             },
           });
         }
+        // NO FALLBACK - If no routes configured, no edge is created
       }
-      // Standard steps: Use routes.defaultNextStepId or fallback to sequential
+      // Standard steps: Use routes.defaultNextStepId - ONLY if explicitly configured
       else {
         if (step.routes?.defaultNextStepId && step.routes.defaultNextStepId !== "COMPLETED") {
           edgesArray.push({
             id: `${sourceId}-next`,
             source: sourceId,
+            sourceHandle: "default",
             target: step.routes.defaultNextStepId,
             animated: true,
             style: { stroke: "#6366F1", strokeWidth: 2 },
@@ -337,22 +303,9 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
               color: "#6366F1",
             },
           });
-        } else if (index < tasks.length - 1) {
-        // Default sequential connection
-          const nextStepId = tasks[index + 1].id || `step-${index + 1}`;
-        edgesArray.push({
-            id: `${sourceId}-${nextStepId}`,
-          source: sourceId,
-            target: nextStepId,
-          animated: true,
-          style: { stroke: "#6366F1", strokeWidth: 2 },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: "#6366F1",
-          },
-        });
+        }
+        // NO FALLBACK - If no defaultNextStepId configured, no edge is created
       }
-    }
     });
     
     return edgesArray;
