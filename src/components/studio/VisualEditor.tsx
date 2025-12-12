@@ -637,7 +637,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
     return hasCycle(targetNode);
   }, [nodes, edges]);
 
-  // Handle connection (drag-to-connect)
+  // Handle connection (drag-to-connect) - Graph-based wiring system
   const handleConnect = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target) return;
     
@@ -647,7 +647,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
       return;
     }
 
-    // Prevent cycles (connecting to ancestors)
+    // Prevent cycles (connecting to ancestors) - Allow branching!
     if (wouldCreateCycle(connection.source, connection.target)) {
       alert("⚠️ Cannot create a cycle. This connection would create a circular dependency.");
       return;
@@ -668,14 +668,18 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
       return;
     }
 
+    // Identify the slot based on sourceHandle
+    // This determines which config field to update
+    const sourceHandle = connection.sourceHandle || "default";
+    
     // Optimistic update: Add edge immediately for instant feedback
     // Note: The edge will be regenerated from procedure steps after Firestore update,
     // but this provides instant visual feedback
     const newEdge: Edge = {
-      id: `${connection.source}-${connection.target}-${connection.sourceHandle || 'default'}`,
+      id: `${connection.source}-${connection.target}-${sourceHandle}`,
       source: connection.source,
       target: connection.target,
-      sourceHandle: connection.sourceHandle || undefined,
+      sourceHandle: sourceHandle,
       type: "smoothstep",
       animated: true,
       style: { stroke: "#94a3b8", strokeWidth: 2 },
@@ -691,18 +695,19 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
       const exists = eds.some(e => 
         e.source === newEdge.source && 
         e.target === newEdge.target && 
-        (e.sourceHandle || undefined) === (newEdge.sourceHandle || undefined)
+        (e.sourceHandle || "default") === (newEdge.sourceHandle || "default")
       );
       if (exists) return eds;
       return [...eds, newEdge];
     });
 
     // Call parent callback to update procedure (this will persist to Firestore)
+    // The parent's handleConnect will identify the slot and update the correct config field
     // After this completes, initialEdges will be regenerated and edges will sync
     if (onConnect) {
       onConnect(connection, sourceStep, targetStepId);
     }
-  }, [tasks, onConnect, wouldCreateCycle, setEdges, initialEdges]);
+  }, [tasks, onConnect, wouldCreateCycle, setEdges]);
 
   if (tasks.length === 0) {
     return (
