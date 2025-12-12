@@ -622,6 +622,11 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
         defaultEdgeOptions={{
           type: "smoothstep",
           animated: true,
+          style: { stroke: "#94a3b8", strokeWidth: 2 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: "#94a3b8",
+          },
         }}
         nodesDraggable={true}
         nodesConnectable={true}
@@ -629,8 +634,8 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
         edgesDeletable={true}
         deleteKeyCode="Delete"
       >
-        <Background color="#E2E8F0" gap={20} size={1} />
-        <Controls className="!bg-white/80 !backdrop-blur-xl !border !border-white/60 !rounded-xl !shadow-lg" />
+        <Background variant="dots" gap={12} size={1} color="#CBD5E1" />
+        <Controls className="!bg-white/90 !backdrop-blur-xl !border !border-slate-200 !rounded-xl !shadow-lg" />
         <MiniMap
           className="!bg-white/80 !backdrop-blur-xl !border !border-white/60 !rounded-xl"
           nodeColor={(node) => {

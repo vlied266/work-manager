@@ -30,92 +30,114 @@ export const GatewayNode = memo((props: NodeProps<Node<GatewayNodeData>>) => {
 
   return (
     <div 
-      className={`relative min-w-[180px] max-w-[220px] ${
+      className={`group relative w-64 rounded-xl bg-white border shadow-sm transition-all duration-200 ${
         selected 
-          ? "ring-2 ring-purple-500 ring-offset-2" 
-          : ""
+          ? "ring-2 ring-purple-500 border-purple-400 shadow-md" 
+          : "border-purple-200 hover:shadow-md hover:border-purple-400"
       }`}
     >
       {/* Target Handle (Top) */}
       <Handle
         type="target"
         position={Position.Top}
-        className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white !rounded-full"
+        className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white !rounded-full !cursor-crosshair"
       />
 
-      {/* Diamond Shape Container */}
-      <div 
-        className="relative w-[180px] h-[120px] transform rotate-45 bg-gradient-to-br from-purple-500 to-violet-600 shadow-lg border-2 border-white/80"
-        style={{
-          clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
-        }}
-      >
-        {/* Content (rotated back) */}
-        <div className="absolute inset-0 transform -rotate-45 flex flex-col items-center justify-center p-4">
-          <div 
-            className="p-2 rounded-lg mb-2"
-            style={{
-              backgroundColor: "rgba(255, 255, 255, 0.2)",
-            }}
-          >
-            <IconComponent 
-              className="h-5 w-5 text-white" 
-            />
+      {/* Purple Header Section */}
+      <div className="px-4 py-3 bg-gradient-to-r from-purple-500 to-violet-600 rounded-t-xl">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-white/20">
+            <IconComponent className="h-4 w-4 text-white" />
           </div>
-          <h3 className="text-xs font-bold text-white text-center leading-tight mb-1">
-            {step.title || "Gateway"}
-          </h3>
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] font-semibold text-white/90">
-              {conditionCount} {conditionCount === 1 ? "path" : "paths"}
-            </span>
-            {hasDefault && (
-              <span className="text-[10px] font-semibold text-white/70">+ default</span>
-            )}
+          <div className="flex-1">
+            <h3 className="text-sm font-bold text-white leading-tight">
+              {step.title || "Gateway"}
+            </h3>
+            <p className="text-xs text-white/80 font-medium">
+              {conditionCount} {conditionCount === 1 ? "condition" : "conditions"}
+              {hasDefault && " + default"}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Source Handles (Bottom) - Multiple for conditions */}
+      {/* Content Section */}
+      <div className="px-4 py-3 space-y-2">
+        {/* Step Number Badge */}
+        <div>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold text-purple-600 bg-purple-50">
+            Step {stepIndex + 1} • Logic
+          </span>
+        </div>
+
+        {/* Conditions Preview */}
+        {conditionCount > 0 && step.config?.conditions && (
+          <div className="space-y-1">
+            {step.config.conditions.slice(0, 2).map((condition: any, idx: number) => (
+              <div key={idx} className="text-xs text-slate-600 font-medium truncate">
+                {condition.variable} {condition.operator} {condition.value}
+              </div>
+            ))}
+            {conditionCount > 2 && (
+              <div className="text-xs text-slate-400">+{conditionCount - 2} more</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Source Handles (Bottom) - Labeled */}
       {conditionCount > 0 && step.config?.conditions ? (
         <>
           {step.config.conditions.map((condition: any, idx: number) => {
-            // Distribute handles evenly across bottom of diamond
+            // Distribute handles evenly
             const totalHandles = conditionCount + (hasDefault ? 1 : 0);
-            const basePosition = 50; // Center of diamond
-            const spacing = totalHandles > 1 ? 30 : 0; // Spacing between handles
-            const offset = (idx - (conditionCount - 1) / 2) * spacing;
-            const position = basePosition + offset;
+            const spacing = totalHandles > 1 ? 80 / (totalHandles + 1) : 50;
+            const position = 10 + (idx + 1) * spacing;
             
             return (
-              <Handle
-                key={`condition-${idx}`}
-                type="source"
-                position={Position.Bottom}
-                id={`condition-${idx}`}
-                className="!w-3 !h-3 !bg-green-500 !border-2 !border-white !rounded-full"
-                style={{
-                  left: `${Math.max(10, Math.min(90, position))}%`,
-                  bottom: "-6px",
-                }}
-              />
+              <div key={`condition-${idx}`} className="relative">
+                <Handle
+                  type="source"
+                  position={Position.Bottom}
+                  id={`condition-${idx}`}
+                  className="!w-3 !h-3 !bg-green-500 !border-2 !border-white !rounded-full !cursor-crosshair"
+                  style={{
+                    left: `${position}%`,
+                  }}
+                />
+                {/* Label */}
+                <div 
+                  className="absolute top-full left-1/2 -translate-x-1/2 mt-1 text-[10px] font-semibold text-green-600 whitespace-nowrap"
+                  style={{ left: `${position}%` }}
+                >
+                  True
+                </div>
+              </div>
             );
           })}
         </>
       ) : null}
 
-      {/* Default Handle (Bottom Center) */}
+      {/* Default Handle (Bottom Right) */}
       {hasDefault && (
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="default"
-          className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white !rounded-full"
-          style={{
-            left: "50%",
-            bottom: "-6px",
-          }}
-        />
+        <div className="relative">
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="default"
+            className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white !rounded-full !cursor-crosshair"
+            style={{
+              left: conditionCount > 0 ? "85%" : "50%",
+            }}
+          />
+          {/* Label */}
+          <div 
+            className="absolute top-full left-1/2 -translate-x-1/2 mt-1 text-[10px] font-semibold text-slate-600 whitespace-nowrap"
+            style={{ left: conditionCount > 0 ? "85%" : "50%" }}
+          >
+            Default
+          </div>
+        </div>
       )}
 
       {/* Fallback: Single handle if no conditions */}
@@ -123,10 +145,7 @@ export const GatewayNode = memo((props: NodeProps<Node<GatewayNodeData>>) => {
         <Handle
           type="source"
           position={Position.Bottom}
-          className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white !rounded-full"
-          style={{
-            bottom: "-6px",
-          }}
+          className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white !rounded-full !cursor-crosshair"
         />
       )}
     </div>
