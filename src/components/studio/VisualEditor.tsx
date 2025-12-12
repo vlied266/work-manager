@@ -498,6 +498,25 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
     setEdges(initialEdges);
   }, [initialEdges, setEdges]);
 
+  // Handle edge deletion from delete button
+  const handleEdgeDelete = useCallback((edgeId: string) => {
+    setEdges((currentEdges) => {
+      const deletedEdge = currentEdges.find((e) => e.id === edgeId);
+      if (deletedEdge && deletedEdge.source && deletedEdge.target && onConnect) {
+        const sourceStep = tasks.find((s) => s.id === deletedEdge.source);
+        if (sourceStep) {
+          const connection: Connection = {
+            source: deletedEdge.source,
+            target: deletedEdge.target,
+            sourceHandle: deletedEdge.sourceHandle || undefined,
+          };
+          onConnect(connection, sourceStep, null);
+        }
+      }
+      return currentEdges.filter((e) => e.id !== edgeId);
+    });
+  }, [tasks, onConnect]);
+
   // Handle edge changes (including deletion)
   const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
     // Handle edge deletion BEFORE applying changes (so we can access the edge)
