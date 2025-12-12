@@ -20,6 +20,7 @@ import {
   applyNodeChanges,
   EdgeChange,
   applyEdgeChanges,
+  getOutgoers,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import dagre from "@dagrejs/dagre";
@@ -611,31 +612,30 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
     [screenToFlowPosition, onAddStep]
   );
 
-  // Helper function to detect cycles (prevent connecting to ancestors)
+  // Helper function to detect cycles using proper DAG check
+  // A connection from Source to Target is INVALID only if Target can already reach Source
   const wouldCreateCycle = useCallback((sourceId: string, targetId: string): boolean => {
-    // Simple cycle detection: check if target is an ancestor of source
-    const visited = new Set<string>();
-    const queue = [targetId];
+    if (sourceId === targetId) return true;
     
-    while (queue.length > 0) {
-      const currentId = queue.shift()!;
-      if (currentId === sourceId) {
-        return true; // Cycle detected
-      }
-      if (visited.has(currentId)) continue;
-      visited.add(currentId);
+    // Check if Target eventually leads back to Source (DFS)
+    const targetNode = nodes.find(n => n.id === targetId);
+    if (!targetNode) return false;
+    
+    const hasCycle = (node: Node, visited = new Set<string>()): boolean => {
+      if (visited.has(node.id)) return false; // Already visited this path
+      visited.add(node.id);
       
-      // Find all nodes that connect to currentId
-      const incomingEdges = initialEdges.filter(e => e.target === currentId);
-      incomingEdges.forEach(edge => {
-        if (edge.source && !visited.has(edge.source)) {
-          queue.push(edge.source);
-        }
-      });
-    }
+      if (node.id === sourceId) return true; // Found a path back to source! This creates a cycle.
+      
+      // Get all nodes that this node connects to (outgoers)
+      const outgoers = getOutgoers(node, nodes, edges);
+      
+      // Check if any outgoer eventually leads back to source
+      return outgoers.some(outgoer => hasCycle(outgoer, new Set(visited)));
+    };
     
-    return false;
-  }, [initialEdges]);
+    return hasCycle(targetNode);
+  }, [nodes, edges]);
 
   // Handle connection (drag-to-connect)
   const handleConnect = useCallback((connection: Connection) => {

@@ -1156,7 +1156,8 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                             const sourceHandle = edge.sourceHandle;
                             
                             // Reset the specific route based on the Handle ID
-                            if (sourceHandle === 'success' || sourceHandle === 'pass') {
+                            // Handle all variations: pass/success/true, fail/failure/false, default, condition-X
+                            if (sourceHandle === 'success' || sourceHandle === 'pass' || sourceHandle === 'true') {
                               if (sourceStep.routes?.onSuccessStepId) {
                                 updatedSteps[sourceStepIndex] = {
                                   ...sourceStep,
@@ -1167,7 +1168,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                                 };
                                 hasChanges = true;
                               }
-                            } else if (sourceHandle === 'failure' || sourceHandle === 'fail') {
+                            } else if (sourceHandle === 'failure' || sourceHandle === 'fail' || sourceHandle === 'false') {
                               if (sourceStep.routes?.onFailureStepId) {
                                 updatedSteps[sourceStepIndex] = {
                                   ...sourceStep,
@@ -1197,7 +1198,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                                 hasChanges = true;
                               }
                             } else {
-                              // Default path
+                              // Default path (empty sourceHandle or 'default')
                               if (sourceStep.action === "GATEWAY") {
                                 if (sourceStep.config?.defaultNextStepId) {
                                   updatedSteps[sourceStepIndex] = {
