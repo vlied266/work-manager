@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AtomicStep, AtomicAction, ATOMIC_ACTION_METADATA, Team, UserProfile } from "@/types/schema";
+import { useEffect, useState, useRef } from "react";
+import { AtomicStep, AtomicAction, ATOMIC_ACTION_METADATA, Team, UserProfile, Procedure } from "@/types/schema";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import * as LucideIcons from "lucide-react";
 import { motion } from "framer-motion";
-import { Users, User, ShieldCheck, Upload, CheckCircle2, Calculator, Sparkles, AlertTriangle, Info, HelpCircle } from "lucide-react";
+import { Users, User, ShieldCheck, Upload, CheckCircle2, Calculator, Sparkles, AlertTriangle, Info, HelpCircle, Zap } from "lucide-react";
 import { MagicInput } from "@/components/studio/magic-input";
 import { GoogleSheetConfig } from "@/components/studio/GoogleSheetConfig";
 import { useOrgId, useOrgQuery } from "@/hooks/useOrgData";
 import { isHumanStep } from "@/lib/constants";
 import { KeyValueBuilder } from "./key-value-builder";
+import { VariableInput } from "@/components/studio/variable-input";
 
 // Helper function to get available variables
 function getAvailableVariables(allSteps: AtomicStep[], currentStepId: string) {
@@ -243,15 +244,20 @@ function renderActionConfigBasic(
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               URL <span className="text-rose-500">*</span>
             </label>
-            <input
-              type="text"
+            <VariableInput
+              type="input"
               value={config.url || ""}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, url: e.target.value } })
+              onChange={(value) =>
+                onUpdate({ config: { ...config, url: value || undefined } })
               }
-              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-              placeholder="https://api.example.com/endpoint"
+              placeholder="https://api.example.com/endpoint or {{step_1.output.api_url}}"
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
             />
+            <p className="mt-1 text-xs text-slate-500">
+              Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+            </p>
           </div>
 
           <div>
@@ -475,7 +481,8 @@ function renderActionConfigSettings(
   availableVariablesLegacy: { value: string; label: string }[],
   onUpdate: (updates: Partial<AtomicStep>) => void,
   allSteps: AtomicStep[],
-  collections: Array<{ id: string; name: string }> = []
+  collections: Array<{ id: string; name: string }> = [],
+  procedureTrigger?: { type: "MANUAL" | "ON_FILE_CREATED" | "WEBHOOK"; config?: any } | undefined
 ) {
   const { action, config } = step;
   const availableVariables = getAvailableVariables(allSteps, step.id);
@@ -552,15 +559,22 @@ function renderActionConfigSettings(
               <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Request Body
               </label>
-              <textarea
+              <VariableInput
+                type="textarea"
                 value={config.requestBody || ""}
-                onChange={(e) =>
-                  onUpdate({ config: { ...config, requestBody: e.target.value || undefined } })
+                onChange={(value) =>
+                  onUpdate({ config: { ...config, requestBody: value || undefined } })
                 }
                 rows={6}
-                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                 placeholder='{"key": "value"} or {{step_1.data}}'
+                allSteps={allSteps}
+                currentStepId={step.id}
+                procedureTrigger={procedureTrigger}
+                className="font-mono"
               />
+              <p className="mt-1 text-xs text-slate-500">
+                Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+              </p>
             </div>
           )}
         </div>
@@ -573,17 +587,20 @@ function renderActionConfigSettings(
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Email Body <span className="text-rose-500">*</span>
             </label>
-            <textarea
+            <VariableInput
+              type="textarea"
               value={config.body || config.emailBody || ""}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, body: e.target.value || undefined, emailBody: e.target.value || undefined } })
+              onChange={(value) =>
+                onUpdate({ config: { ...config, body: value || undefined, emailBody: value || undefined } })
               }
               rows={8}
-              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none font-mono"
               placeholder="Hello {{step_1.output.name}},\n\nYour request has been approved.\n\nThank you!"
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
             />
             <p className="mt-1 text-xs text-slate-500">
-              Plain text or HTML. Use variables like <code className="bg-slate-100 px-1 rounded">{`{{step_1.output.name}}`}</code>. Line breaks are preserved.
+              Plain text or HTML. Click the <Zap className="inline h-3 w-3" /> button to insert variables. Line breaks are preserved.
             </p>
           </div>
 
@@ -591,14 +608,17 @@ function renderActionConfigSettings(
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               HTML Content (Optional)
             </label>
-            <textarea
+            <VariableInput
+              type="textarea"
               value={config.html || ""}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, html: e.target.value || undefined } })
+              onChange={(value) =>
+                onUpdate({ config: { ...config, html: value || undefined } })
               }
               rows={6}
-              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none font-mono"
               placeholder="<h1>Welcome!</h1><p>Hello {{step_1.output.name}}</p>"
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
             />
             <p className="mt-1 text-xs text-slate-500">
               If HTML is provided, it will be used instead of the body. Leave empty to use plain text body.
@@ -1202,7 +1222,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
             )}
 
             {/* Action-specific Settings Configuration */}
-            {renderActionConfigSettings(step, availableVariablesLegacy, onUpdate, allSteps, collections)}
+            {renderActionConfigSettings(step, availableVariablesLegacy, onUpdate, allSteps, collections, procedureTrigger)}
           </div>
         )}
 
