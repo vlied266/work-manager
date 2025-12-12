@@ -546,10 +546,14 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
 
   if (tasks.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60">
+      <div 
+        className="flex h-full items-center justify-center rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 relative"
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+      >
         <div className="text-center">
           <p className="text-slate-500 text-sm">No steps to display</p>
-          <p className="text-slate-400 text-xs mt-1">Add steps to see the visual flow</p>
+          <p className="text-slate-400 text-xs mt-1">Drag an atomic task here to get started</p>
         </div>
       </div>
     );
