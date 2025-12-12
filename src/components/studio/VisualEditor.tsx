@@ -804,8 +804,25 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
         edgesDeletable={true}
         edgesFocusable={true}
         edgesUpdatable={false}
-        deleteKeyCode="Delete"
+        deleteKeyCode={["Delete", "Backspace"]}
         multiSelectionKeyCode="Shift"
+        onEdgesDelete={(deletedEdges) => {
+          // Handle edge deletion via keyboard (Delete/Backspace)
+          if (onConnect) {
+            deletedEdges.forEach((deletedEdge) => {
+              const sourceStep = tasks.find((s) => s.id === deletedEdge.source);
+              if (sourceStep && deletedEdge.source && deletedEdge.target) {
+                const connection: Connection = {
+                  source: deletedEdge.source,
+                  target: deletedEdge.target,
+                  sourceHandle: deletedEdge.sourceHandle || undefined,
+                };
+                // Pass null to indicate disconnection
+                onConnect(connection, sourceStep, null);
+              }
+            });
+          }
+        }}
       >
         <Background variant="dots" gap={12} size={1} color="#CBD5E1" />
         <Controls className="!bg-white/90 !backdrop-blur-xl !border !border-slate-200 !rounded-xl !shadow-lg" />

@@ -407,19 +407,102 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
       ...(position && { ui: { position } }), // Store position if provided
     };
 
-    // Smart connection logic for VALIDATE/COMPARE nodes
+    // Smart Branching Logic: Connect based on selectedStepId (not last step)
     let updatedSteps = [...procedure.steps, newStep];
     
-    // Check if the last step before this one is VALIDATE or COMPARE
-    if (updatedSteps.length >= 2) {
+    // If a step is selected, try to connect to it intelligently
+    if (selectedStepId) {
+      const selectedStepIndex = updatedSteps.findIndex((s) => s.id === selectedStepId);
+      if (selectedStepIndex !== -1) {
+        const selectedStep = updatedSteps[selectedStepIndex];
+        
+        // Case 1: Selected node is VALIDATE or COMPARE (branching node)
+        if (selectedStep.action === "VALIDATE" || selectedStep.action === "COMPARE") {
+          const hasSuccessConnection = selectedStep.routes?.onSuccessStepId;
+          const hasFailureConnection = selectedStep.routes?.onFailureStepId;
+          
+          // Connect to success handle if not already connected
+          if (!hasSuccessConnection) {
+            updatedSteps[selectedStepIndex] = {
+              ...selectedStep,
+              routes: {
+                ...selectedStep.routes,
+                onSuccessStepId: newStep.id,
+              },
+            };
+          } 
+          // Connect to failure handle if success is already connected
+          else if (!hasFailureConnection) {
+            updatedSteps[selectedStepIndex] = {
+              ...selectedStep,
+              routes: {
+                ...selectedStep.routes,
+                onFailureStepId: newStep.id,
+              },
+            };
+          }
+          // Both handles are connected - don't auto-connect (user can manually connect)
+        }
+        // Case 2: Selected node is GATEWAY
+        else if (selectedStep.action === "GATEWAY") {
+          const conditions = selectedStep.config?.conditions || [];
+          const hasDefault = selectedStep.config?.defaultNextStepId;
+          
+          // Find first condition without nextStepId
+          let connectedToCondition = false;
+          for (let i = 0; i < conditions.length; i++) {
+            if (!conditions[i].nextStepId) {
+              const updatedConditions = [...conditions];
+              updatedConditions[i] = {
+                ...updatedConditions[i],
+                nextStepId: newStep.id,
+              };
+              updatedSteps[selectedStepIndex] = {
+                ...selectedStep,
+                config: {
+                  ...selectedStep.config,
+                  conditions: updatedConditions,
+                },
+              };
+              connectedToCondition = true;
+              break;
+            }
+          }
+          
+          // If no empty condition found, connect to default path
+          if (!connectedToCondition && !hasDefault) {
+            updatedSteps[selectedStepIndex] = {
+              ...selectedStep,
+              config: {
+                ...selectedStep.config,
+                defaultNextStepId: newStep.id,
+              },
+            };
+          }
+        }
+        // Case 3: Selected node is Standard Step (Input, Email, etc.)
+        else {
+          // Connect to defaultNextStepId if not set
+          if (!selectedStep.routes?.defaultNextStepId) {
+            updatedSteps[selectedStepIndex] = {
+              ...selectedStep,
+              routes: {
+                ...selectedStep.routes,
+                defaultNextStepId: newStep.id,
+              },
+            };
+          }
+        }
+      }
+    }
+    // Fallback: If no step is selected, use old logic (connect to last step if it's VALIDATE/COMPARE)
+    else if (updatedSteps.length >= 2) {
       const previousStep = updatedSteps[updatedSteps.length - 2];
       
       if (previousStep.action === "VALIDATE" || previousStep.action === "COMPARE") {
-        // Check if this step already has connections
         const hasSuccessConnection = previousStep.routes?.onSuccessStepId;
         const hasFailureConnection = previousStep.routes?.onFailureStepId;
         
-        // Connect to success handle if not already connected
         if (!hasSuccessConnection) {
           updatedSteps[updatedSteps.length - 2] = {
             ...previousStep,
@@ -428,9 +511,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
               onSuccessStepId: newStep.id,
             },
           };
-        } 
-        // Connect to failure handle if success is already connected
-        else if (!hasFailureConnection) {
+        } else if (!hasFailureConnection) {
           updatedSteps[updatedSteps.length - 2] = {
             ...previousStep,
             routes: {
@@ -526,14 +607,14 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
               ...sourceStepCopy.config,
               conditions,
             };
-            alert(`Disconnected condition ${conditionIndex + 1} of "${sourceTitle}"`);
+            // Condition disconnected successfully
           }
         } else if (sourceHandle === "default") {
           sourceStepCopy.config = {
             ...sourceStepCopy.config,
             defaultNextStepId: undefined,
           };
-          alert(`Disconnected default path of "${sourceTitle}"`);
+          // Default path disconnected successfully
         }
       }
       // Scenario B: VALIDATE/COMPARE - Remove success/failure paths
@@ -543,13 +624,13 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
             ...sourceStepCopy.routes,
             onSuccessStepId: undefined,
           };
-          alert(`Disconnected success path of "${sourceTitle}"`);
+          // Success path disconnected successfully
         } else if (sourceHandle === "failure") {
           sourceStepCopy.routes = {
             ...sourceStepCopy.routes,
             onFailureStepId: undefined,
           };
-          alert(`Disconnected failure path of "${sourceTitle}"`);
+          // Failure path disconnected successfully
         }
       }
       // Scenario C: Standard Step - Remove defaultNextStepId
@@ -558,7 +639,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
           ...sourceStepCopy.routes,
           defaultNextStepId: undefined,
         };
-        alert(`Disconnected "${sourceTitle}"`);
+        // Step disconnected successfully
       }
 
       updatedSteps[sourceStepIndex] = sourceStepCopy;
