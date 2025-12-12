@@ -27,6 +27,7 @@ import { CustomNode } from "./flow/CustomNode";
 import { GoogleSheetNode } from "./flow/GoogleSheetNode";
 import { GatewayNode } from "./flow/GatewayNode";
 import { TriggerNode } from "./flow/TriggerNode";
+import { CustomEdge } from "./flow/CustomEdge";
 import { AtomicStep, ATOMIC_ACTION_METADATA, Procedure } from "@/types/schema";
 import { GoogleSheetFlowConfig } from "./sidebar/GoogleSheetFlowConfig";
 
@@ -45,6 +46,10 @@ const nodeTypes = {
   googleSheet: GoogleSheetNode,
   gateway: GatewayNode,
   trigger: TriggerNode,
+};
+
+const edgeTypes = {
+  default: CustomEdge,
 };
 
 // Dagre layout configuration
@@ -728,8 +733,16 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
     >
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={edges.map(edge => ({
+          ...edge,
+          type: "default",
+          data: {
+            ...edge.data,
+            onDelete: handleEdgeDelete,
+          },
+        }))}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         connectionMode={ConnectionMode.Loose}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
