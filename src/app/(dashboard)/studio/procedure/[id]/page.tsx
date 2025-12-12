@@ -6,7 +6,7 @@ import { db } from "@/lib/firebase";
 import { ProcessGroup, Procedure, AtomicStep, AtomicAction, ATOMIC_ACTION_METADATA } from "@/types/schema";
 import { DndContext, DragEndEvent, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { ArrowLeft, ArrowRight, X, Trash2, FileText, Loader2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ArrowRight, X, Trash2, FileText, Loader2, AlertTriangle, Settings as SettingsIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { DraggableSidebar } from "@/components/design/draggable-sidebar";
@@ -21,6 +21,7 @@ import { VisualEditor } from "@/components/studio/VisualEditor";
 import { useOrgId } from "@/hooks/useOrgData";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { TriggerConfigModal } from "@/components/studio/TriggerConfigModal";
+import { DescriptionModal } from "@/components/studio/DescriptionModal";
 
 interface ProcedureBuilderPageProps {
   params: Promise<{ id: string }>;
@@ -601,42 +602,43 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 via-slate-50 to-indigo-50/30 relative overflow-hidden font-sans">
-      {/* Compact Header - Slim Top Bar */}
-      <header className="sticky top-0 z-50 border-b border-white/20 bg-white/40 backdrop-blur-xl supports-[backdrop-filter]:bg-white/30">
-        <div className="mx-auto max-w-[1800px] px-8 py-3">
-          <div className="flex items-center justify-between gap-4">
+      {/* Compact Header - Slim Top Bar (Notion/Google Docs style) */}
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white h-16 flex items-center">
+        <div className="mx-auto max-w-[1800px] w-full px-8">
+          <div className="flex items-center justify-between gap-4 h-full">
             <div className="flex items-center gap-4 flex-1 min-w-0">
-              <div className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors flex-shrink-0">
-                <Link
-                  href="/studio"
-                  className="flex items-center gap-1 text-sm font-medium"
-                >
-                  <ArrowLeft className="h-4 w-4" strokeWidth={2} />
-                  <span>Back</span>
-                </Link>
-              </div>
+              {/* Back Button */}
+              <Link
+                href="/studio"
+                className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors flex-shrink-0"
+              >
+                <ArrowLeft className="h-4 w-4" strokeWidth={2} />
+                <span>Back</span>
+              </Link>
               
-              {/* Compact Title Input */}
+              <div className="h-6 w-px bg-slate-200" />
+              
+              {/* Title Input (H2 style) */}
               <div className="flex-1 min-w-0">
                 <input
                   type="text"
                   value={procedureTitle}
                   onChange={(e) => setProcedureTitle(e.target.value)}
-                  placeholder="Procedure Title..."
-                  className="w-full bg-transparent border-none outline-none text-lg font-bold text-slate-900 placeholder:text-slate-400 focus:placeholder:text-slate-300 transition-colors"
+                  placeholder="Untitled Procedure"
+                  className="w-full bg-transparent border-none outline-none text-xl font-bold text-slate-900 placeholder:text-slate-400 focus:placeholder:text-slate-300 transition-colors"
                 />
               </div>
               
-              {/* Compact Description Input */}
-              <div className="flex-1 min-w-0 max-w-md">
-                <input
-                  type="text"
-                  value={procedureDescription}
-                  onChange={(e) => setProcedureDescription(e.target.value)}
-                  placeholder="Description..."
-                  className="w-full bg-transparent border-none outline-none text-sm text-slate-600 placeholder:text-slate-400 focus:placeholder:text-slate-300 transition-colors"
-                />
-              </div>
+              {/* Description Settings Button */}
+              <motion.button
+                onClick={() => setIsDescriptionModalOpen(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex-shrink-0 p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+                title="Edit Description"
+              >
+                <SettingsIcon className="h-4 w-4" strokeWidth={2} />
+              </motion.button>
             </div>
             
             <div className="flex items-center gap-3">
@@ -934,6 +936,10 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                         }}
                         onNodeSelect={handleStepSelect}
                         onConnect={handleConnect}
+                        onAddStep={(action, position) => {
+                          // Handle adding step from canvas drop
+                          handleAddStep(action as AtomicAction);
+                        }}
                         procedureTrigger={procedure?.trigger}
                       />
                     </div>
@@ -985,6 +991,20 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
         onClose={() => setIsTriggerModalOpen(false)}
         procedure={procedure}
         onSave={handleSaveTrigger}
+      />
+
+      {/* Description Modal */}
+      <DescriptionModal
+        isOpen={isDescriptionModalOpen}
+        onClose={() => setIsDescriptionModalOpen(false)}
+        description={procedureDescription}
+        onSave={(desc) => {
+          setProcedureDescription(desc);
+          // Auto-save if procedure exists
+          if (procedure && procedure.id && !procedure.id.startsWith("temp-")) {
+            handleSaveProcedure();
+          }
+        }}
       />
     </div>
   );
