@@ -398,6 +398,12 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
               sheetId: step.config?.sheetId,
               mapping: step.config?.mapping || { A: "", B: "", C: "" },
             }
+          : nodeType === "gateway"
+          ? {
+              step,
+              stepIndex: index,
+              onDelete: onDeleteStep,
+            }
           : {
               step,
               stepIndex: index,

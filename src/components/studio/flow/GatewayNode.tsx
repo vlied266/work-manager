@@ -5,16 +5,18 @@ import { Handle, Position, NodeProps, Node } from "@xyflow/react";
 import { AtomicStep } from "@/types/schema";
 import { ATOMIC_ACTION_METADATA } from "@/types/schema";
 import * as LucideIcons from "lucide-react";
+import { Trash2 } from "lucide-react";
 
 interface GatewayNodeData extends Record<string, unknown> {
   step: AtomicStep;
   stepIndex: number;
+  onDelete?: (stepId: string) => void;
 }
 
 export const GatewayNode = memo((props: NodeProps<Node<GatewayNodeData>>) => {
   const { data, selected } = props;
   if (!data) return null;
-  const { step, stepIndex } = data;
+  const { step, stepIndex, onDelete } = data;
   const metadata = ATOMIC_ACTION_METADATA[step.action] || {
     label: step.action,
     color: "#8B5CF6",
@@ -58,6 +60,21 @@ export const GatewayNode = memo((props: NodeProps<Node<GatewayNodeData>>) => {
               {hasDefault && " + default"}
             </p>
           </div>
+          {/* Delete Button (visible on hover) */}
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onDelete && step.id) {
+                  onDelete(step.id);
+                }
+              }}
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-white/20"
+              title="Delete gateway"
+            >
+              <Trash2 className="h-3.5 w-3.5 text-white hover:text-red-200 cursor-pointer" />
+            </button>
+          )}
         </div>
       </div>
 
