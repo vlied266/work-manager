@@ -5,7 +5,7 @@ import { Handle, Position, NodeProps, Node } from "@xyflow/react";
 import { AtomicStep } from "@/types/schema";
 import { ATOMIC_ACTION_METADATA } from "@/types/schema";
 import * as LucideIcons from "lucide-react";
-import { Edit2, Trash2 } from "lucide-react";
+import { Edit2, Trash2, Phone, Mail, Package, Truck, FileText, Archive, Wrench, ClipboardList } from "lucide-react";
 
 interface CustomNodeData extends Record<string, unknown> {
   step: AtomicStep;
@@ -23,8 +23,31 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
     icon: "Type",
   };
 
-  // Get icon component
-  const IconComponent = (LucideIcons as any)[metadata.icon] || LucideIcons.Type;
+  // Get icon component - Dynamic for MANUAL_TASK based on taskSubType
+  let IconComponent: React.ElementType;
+  if (step.action === "MANUAL_TASK" && step.config?.taskSubType) {
+    const taskSubType = step.config.taskSubType;
+    switch (taskSubType) {
+      case "contact":
+        IconComponent = Phone; // or Mail, but Phone is more common for "Contact/Call"
+        break;
+      case "logistics":
+        IconComponent = Package; // or Truck, but Package is more common
+        break;
+      case "admin":
+        IconComponent = FileText; // or Archive, but FileText is more common
+        break;
+      case "maintenance":
+        IconComponent = Wrench;
+        break;
+      case "generic":
+      default:
+        IconComponent = ClipboardList;
+        break;
+    }
+  } else {
+    IconComponent = (LucideIcons as any)[metadata.icon] || LucideIcons.Type;
+  }
 
   // Determine icon background color based on action group
   const getIconBgColor = () => {
@@ -87,8 +110,8 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
           {step.title || "Untitled Step"}
         </h3>
 
-        {/* Output Variable (for INPUT and APPROVAL steps) */}
-        {(step.action === "INPUT" || step.action === "APPROVAL") && step.config?.outputVariableName && (
+        {/* Output Variable (for INPUT, APPROVAL, and MANUAL_TASK steps) */}
+        {(step.action === "INPUT" || step.action === "APPROVAL" || step.action === "MANUAL_TASK") && step.config?.outputVariableName && (
           <p className="text-[10px] font-mono text-purple-600 font-semibold">
             Var: {step.config.outputVariableName}
           </p>

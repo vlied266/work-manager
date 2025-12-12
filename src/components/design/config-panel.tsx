@@ -6,7 +6,7 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import * as LucideIcons from "lucide-react";
 import { motion } from "framer-motion";
-import { Users, User, ShieldCheck, Upload, CheckCircle2, Calculator, Sparkles, AlertTriangle, Info, HelpCircle, Zap, Plus, X } from "lucide-react";
+import { Users, User, ShieldCheck, Upload, CheckCircle2, Calculator, Sparkles, AlertTriangle, Info, HelpCircle, Zap, Plus, X, Phone, Mail, Package, Truck, FileText, Archive, Wrench, ClipboardList } from "lucide-react";
 import { MagicInput } from "@/components/studio/magic-input";
 import { GoogleSheetConfig } from "@/components/studio/GoogleSheetConfig";
 import { useOrgId, useOrgQuery } from "@/hooks/useOrgData";
@@ -540,6 +540,29 @@ function renderActionConfigBasic(
     case "MANUAL_TASK":
       return (
         <div className="space-y-4">
+          {/* Task Category Dropdown */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Task Category
+            </label>
+            <select
+              value={config.taskSubType || "generic"}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, taskSubType: e.target.value as any } })
+              }
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+            >
+              <option value="generic">📋 Generic Task</option>
+              <option value="contact">📞 Contact / Call (Phone, Email, Outreach)</option>
+              <option value="logistics">📦 Logistics / Physical (Shipping, Moving, Delivering)</option>
+              <option value="admin">🗄️ Admin / Archive (Scanning, Filing, Printing)</option>
+              <option value="maintenance">🔧 Maintenance (Repair, Install, Inspect)</option>
+            </select>
+            <p className="mt-1.5 text-xs text-slate-500">
+              Categorize the task to help operators understand the type of work required.
+            </p>
+          </div>
+
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Task Title <span className="text-rose-500">*</span>
@@ -570,11 +593,17 @@ function renderActionConfigBasic(
               }
               rows={10}
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
-              placeholder="Enter detailed instructions in Markdown format...&#10;&#10;## Steps:&#10;1. First, do this...&#10;2. Then, do that...&#10;&#10;## Notes:&#10;- Important point 1&#10;- Important point 2"
+              placeholder="Describe the physical/offline action required.&#10;Examples:&#10;- Call the client to confirm the meeting.&#10;- Ship the package to the address.&#10;- Scan and archive the physical contract."
             />
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1.5 text-xs text-slate-500">
               Supports Markdown formatting (headers, lists, links). This will be displayed to the operator when they complete the task.
             </p>
+            {/* Usage Warning */}
+            <div className="mt-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <p className="text-xs text-slate-700">
+                <span className="font-semibold">💡 Note:</span> This step is for <strong>offline execution</strong>. If you need the user to enter data, use an <strong>Input Step</strong>. If you need a manager's decision, use an <strong>Approval Step</strong>.
+              </p>
+            </div>
           </div>
         </div>
       );
@@ -1431,13 +1460,14 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
   // Determine if Logic tab should be shown
-  // Hide Logic tab for INPUT and APPROVAL (branching handled in Basic tab or by connecting to GATEWAY on canvas)
+  // Hide Logic tab for INPUT, APPROVAL, and MANUAL_TASK (branching handled in Basic tab or by connecting to GATEWAY on canvas)
   const shouldShowLogicTab = step && (
     step.action !== "GATEWAY" && 
     step.action !== "VALIDATE" && 
     step.action !== "COMPARE" &&
     step.action !== "INPUT" &&
-    step.action !== "APPROVAL"
+    step.action !== "APPROVAL" &&
+    step.action !== "MANUAL_TASK"
   );
   
   const [activeTab, setActiveTab] = useState<"basic" | "settings" | "logic">("basic");
