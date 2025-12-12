@@ -46,7 +46,7 @@ function renderActionConfigBasic(
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Question Text <span className="text-rose-500">*</span>
+              Field Label <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -55,8 +55,11 @@ function renderActionConfigBasic(
                 onUpdate({ config: { ...config, fieldLabel: e.target.value } })
               }
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-              placeholder="e.g., Enter the oven temperature"
+              placeholder="e.g., What is your name?"
             />
+            <p className="mt-1.5 text-xs text-slate-500">
+              The question the user will see (e.g., "What is your name?").
+            </p>
           </div>
 
           <div>
@@ -75,52 +78,25 @@ function renderActionConfigBasic(
               <option value="date">Date</option>
               <option value="select">Dropdown (Select)</option>
               <option value="checkbox">Checkbox</option>
-              <option value="multiline">Multiline Text</option>
+              <option value="multiline">Long Text (Paragraph)</option>
               <option value="file">File Upload</option>
             </select>
           </div>
 
-          {/* Conditional: Show options only for select/checkbox */}
+          {/* Conditional: Show options only for select/checkbox - List Builder UI */}
           {(config.inputType === "select" || config.inputType === "checkbox") && (
-            <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-2">
-                Options <span className="text-rose-500">*</span>
-              </label>
-              <textarea
-                value={config.options ? config.options.map(o => typeof o === "string" ? o : o.label).join("\n") : ""}
-                onChange={(e) => {
-                  const optionStrings = e.target.value.split("\n").filter(o => o.trim());
-                  const options: Array<{ label: string; value: string }> | undefined = optionStrings.length > 0 
-                    ? optionStrings.map(o => ({ label: o, value: o }))
-                    : undefined;
-                  onUpdate({ config: { ...config, options } });
-                }}
-                rows={4}
-                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-                placeholder="Option 1&#10;Option 2&#10;Option 3"
-              />
-              <p className="mt-1 text-xs text-slate-500">Enter one option per line</p>
-            </div>
+            <OptionsListBuilder
+              options={config.options || []}
+              onChange={(options) => onUpdate({ config: { ...config, options } })}
+            />
           )}
 
-          {/* Conditional: Show allowedExtensions only for file */}
+          {/* Conditional: Show file restrictions only for file - Multi-Select Checkbox Group */}
           {config.inputType === "file" && (
-            <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-2">
-                Allowed File Types
-              </label>
-              <input
-                type="text"
-                value={config.allowedExtensions ? config.allowedExtensions.join(", ") : ""}
-                onChange={(e) => {
-                  const extensions = e.target.value.split(",").map(e => e.trim()).filter(e => e);
-                  onUpdate({ config: { ...config, allowedExtensions: extensions.length > 0 ? extensions : undefined } });
-                }}
-                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-                placeholder="e.g., pdf, jpg, png, docx"
-              />
-              <p className="mt-1 text-xs text-slate-500">Comma-separated file extensions (e.g., pdf, jpg, png)</p>
-            </div>
+            <FileRestrictionsBuilder
+              allowedExtensions={config.allowedExtensions || []}
+              onChange={(extensions) => onUpdate({ config: { ...config, allowedExtensions: extensions.length > 0 ? extensions : undefined } })}
+            />
           )}
         </div>
       );
@@ -977,6 +953,9 @@ function renderActionConfigSettings(
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
               placeholder="Enter placeholder text"
             />
+            <p className="mt-1.5 text-xs text-slate-500">
+              Text shown inside the empty field to guide the user (e.g., "0912...").
+            </p>
           </div>
 
           <div className="flex items-center justify-between p-4 rounded-xl border-2 border-slate-200 bg-slate-50">
@@ -1368,10 +1347,12 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
   // Determine if Logic tab should be shown
+  // Hide Logic tab for INPUT (branching should be handled by connecting to GATEWAY on canvas)
   const shouldShowLogicTab = step && (
     step.action !== "GATEWAY" && 
     step.action !== "VALIDATE" && 
-    step.action !== "COMPARE"
+    step.action !== "COMPARE" &&
+    step.action !== "INPUT"
   );
   
   const [activeTab, setActiveTab] = useState<"basic" | "settings" | "logic">("basic");

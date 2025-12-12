@@ -87,6 +87,13 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
           {step.title || "Untitled Step"}
         </h3>
 
+        {/* Output Variable (for INPUT steps) */}
+        {step.action === "INPUT" && step.config?.outputVariableName && (
+          <p className="text-[10px] font-mono text-purple-600 font-semibold">
+            Var: {step.config.outputVariableName}
+          </p>
+        )}
+
         {/* Subtitle: Action Type */}
         <p className="text-xs text-slate-500 font-medium">
           {metadata.label}
