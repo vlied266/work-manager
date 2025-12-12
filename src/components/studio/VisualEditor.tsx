@@ -47,6 +47,7 @@ const nodeTypes = {
 };
 
 // Dagre layout configuration
+// Respects manual positions (from drag & drop) and only auto-layouts nodes without positions
 const getLayoutedElements = (nodes: Node[], edges: Edge[], direction: "TB" | "LR" = "TB") => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -58,25 +59,55 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction: "TB" | "LR
     marginy: 50,
   });
 
+  // Separate nodes with manual positions from those needing auto-layout
+  const nodesWithManualPosition = new Set<string>();
+  const nodesNeedingLayout: Node[] = [];
+
   nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { 
-      width: node.width || 280, 
-      height: node.height || 120 
-    });
+    // Check if node has a manually set position (not 0,0 and not trigger)
+    const hasManualPosition = node.position && 
+      (node.position.x !== 0 || node.position.y !== 0) &&
+      node.id !== "trigger"; // Trigger always at 0,0
+    
+    if (hasManualPosition) {
+      nodesWithManualPosition.add(node.id);
+      // Set node position directly in dagre (so edges can still be laid out correctly)
+      dagreGraph.setNode(node.id, {
+        width: node.width || 256,
+        height: node.height || 120,
+        x: node.position.x + (node.width || 256) / 2,
+        y: node.position.y + (node.height || 120) / 2,
+      });
+    } else {
+      nodesNeedingLayout.push(node);
+      dagreGraph.setNode(node.id, { 
+        width: node.width || 256, 
+        height: node.height || 120 
+      });
+    }
   });
 
   edges.forEach((edge) => {
     dagreGraph.setEdge(edge.source, edge.target);
   });
 
-  dagre.layout(dagreGraph);
+  // Only run layout if there are nodes that need it
+  if (nodesNeedingLayout.length > 0) {
+    dagre.layout(dagreGraph);
+  }
 
   const layoutedNodes = nodes.map((node) => {
+    // If node has manual position, keep it
+    if (nodesWithManualPosition.has(node.id)) {
+      return node;
+    }
+    
+    // Otherwise, use dagre layout
     const nodeWithPosition = dagreGraph.node(node.id);
     return {
       ...node,
       position: {
-        x: nodeWithPosition.x - (node.width || 280) / 2,
+        x: nodeWithPosition.x - (node.width || 256) / 2,
         y: nodeWithPosition.y - (node.height || 120) / 2,
       },
     };
@@ -351,11 +382,14 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
         nodeType = "gateway";
       }
       
+      // Use stored position if available, otherwise will be set by dagre
+      const storedPosition = step.ui?.position;
+      
       nodes.push({
         id: step.id || `step-${index}`,
         type: nodeType,
-        position: { x: 0, y: 0 }, // Will be set by dagre
-        width: nodeType === "gateway" ? 180 : 280,
+        position: storedPosition || { x: 0, y: 0 }, // Use stored position or let dagre set it
+        width: nodeType === "gateway" ? 256 : 256, // w-64 = 256px
         height: nodeType === "gateway" ? 120 : 120,
         data: step.action === "GOOGLE_SHEET_APPEND" 
           ? {
@@ -498,6 +532,21 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
   useEffect(() => {
     setNodesState(layoutedNodes);
   }, [layoutedNodes, setNodesState]);
+
+  // Handle node drag end - save position to step metadata
+  const handleNodeDragStop = useCallback((event: React.MouseEvent, node: Node) => {
+    // Find the corresponding step
+    const step = tasks.find(s => s.id === node.id);
+    if (step && onNodeUpdate) {
+      // Update step with new position
+      onNodeUpdate(node.id, {
+        ...step,
+        ui: {
+          position: node.position,
+        },
+      });
+    }
+  }, [tasks, onNodeUpdate]);
 
   // Handle drop from sidebar (HTML5 drag & drop for React Flow)
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -678,6 +727,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
         onPaneClick={handlePaneClick}
         onConnect={handleConnect}
         onNodesChange={onNodesChange}
+        onNodeDragStop={handleNodeDragStop}
         onEdgesChange={handleEdgesChange}
         onPaneDragOver={onDragOver}
         onPaneDrop={onDrop}

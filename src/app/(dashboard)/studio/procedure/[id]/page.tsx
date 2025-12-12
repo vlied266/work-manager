@@ -372,7 +372,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
     }
   };
 
-  const handleAddStep = async (action: AtomicAction) => {
+  const handleAddStep = async (action: AtomicAction, position?: { x: number; y: number }) => {
     // Create procedure in memory if it doesn't exist yet
     if (!procedure) {
       const newStep: AtomicStep = {
@@ -380,6 +380,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
         title: `${ATOMIC_ACTION_METADATA[action].label} Step`,
         action,
         config: {},
+        ...(position && { ui: { position } }), // Store position if provided
       };
       // Create a temporary procedure object in memory (not saved to Firestore yet)
       const tempProcedure: Procedure = {
@@ -403,6 +404,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
       title: `${ATOMIC_ACTION_METADATA[action].label} Step`,
       action,
       config: {},
+      ...(position && { ui: { position } }), // Store position if provided
     };
     const updatedSteps = [...procedure.steps, newStep];
     const updated = { ...procedure, steps: updatedSteps };
@@ -666,13 +668,13 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
           <div className="flex items-center justify-between gap-4 h-full">
             <div className="flex items-center gap-4 flex-1 min-w-0">
               {/* Back Button */}
-              <Link
-                href="/studio"
+                <Link
+                  href="/studio"
                 className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors flex-shrink-0"
-              >
-                <ArrowLeft className="h-4 w-4" strokeWidth={2} />
-                <span>Back</span>
-              </Link>
+                >
+                  <ArrowLeft className="h-4 w-4" strokeWidth={2} />
+                  <span>Back</span>
+                </Link>
               
               <div className="h-6 w-px bg-slate-200" />
               
@@ -749,20 +751,20 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
 
               {procedure && procedure.id && !procedure.id.startsWith("temp-") ? (
                 <>
-                  <motion.button
-                    onClick={handleSaveProcedure}
-                    disabled={!procedureTitle.trim() || !validation.isValid || saving}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="rounded-full bg-[#007AFF] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#0071E3] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        <span>Saving...</span>
-                      </>
-                    ) : (
-                      <span>Save Changes</span>
+                <motion.button
+                  onClick={handleSaveProcedure}
+                  disabled={!procedureTitle.trim() || !validation.isValid || saving}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="rounded-full bg-[#007AFF] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#0071E3] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Changes</span>
                     )}
                   </motion.button>
                   {/* Conditional Button: Run vs Activate/Deactivate */}
@@ -793,9 +795,9 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                           <Play className="h-3.5 w-3.5" />
                           <span>Activate</span>
                         </>
-                      )}
-                    </motion.button>
-                  ) : (
+                  )}
+                </motion.button>
+              ) : (
                     <motion.button
                       onClick={handleStartProcedure}
                       disabled={!procedure || !procedure.steps || procedure.steps.length === 0 || saving}
@@ -811,19 +813,19 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                 </>
               ) : (
                 <div className="relative group">
-                  <motion.button
-                    onClick={handleCreateProcedure}
-                    disabled={
-                      !procedureTitle.trim() ||
-                      !procedureDescription.trim() ||
-                      !procedure ||
-                      procedure.steps.length === 0 ||
-                      !validation.isValid ||
-                      saving
-                    }
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="rounded-full bg-[#007AFF] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#0071E3] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                <motion.button
+                  onClick={handleCreateProcedure}
+                  disabled={
+                    !procedureTitle.trim() ||
+                    !procedureDescription.trim() ||
+                    !procedure ||
+                    procedure.steps.length === 0 ||
+                    !validation.isValid ||
+                    saving
+                  }
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="rounded-full bg-[#007AFF] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#0071E3] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
                     title={
                       !procedureTitle.trim()
                         ? "Please enter a procedure title"
@@ -839,16 +841,16 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                         ? "Creating procedure..."
                         : "Create Procedure"
                     }
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        <span>Creating...</span>
-                      </>
-                    ) : (
-                      <span>Create Procedure</span>
-                    )}
-                  </motion.button>
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Creating...</span>
+                    </>
+                  ) : (
+                    <span>Create Procedure</span>
+                  )}
+                </motion.button>
                   {/* Tooltip showing why button is disabled */}
                   {(!procedureTitle.trim() ||
                     !procedureDescription.trim() ||
@@ -877,16 +879,16 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
           </div>
         </div>
       </header>
-
+      
       {/* Main Content - Floating Glass Islands */}
       <main className="w-full h-[calc(100vh-64px)] overflow-x-auto">
         <div className="mx-auto min-w-[1400px] max-w-[1800px] px-8 pb-8 pt-8 h-full">
-          <DesignerDndContext
-            selectedProcedure={procedure}
-            onStepsChange={handleStepsChange}
-            onDropAction={handleAddStep}
-            key={procedure?.id || "new"}
-          >
+        <DesignerDndContext
+          selectedProcedure={procedure}
+          onStepsChange={handleStepsChange}
+          onDropAction={handleAddStep}
+          key={procedure?.id || "new"}
+        >
             <div className="grid grid-cols-[300px_1fr_420px] gap-10 h-full min-w-0">
             {/* Left Pane: Toolbox - Floating Glass Island */}
             <div 
@@ -933,7 +935,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                     </button>
 
                     {/* Divider - only show when in List View */}
-                    {viewMode === "list" && (
+                  {viewMode === "list" && (
                       <div className="h-8 w-px bg-slate-200" />
                     )}
 
@@ -965,7 +967,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                         <Smartphone className="h-4 w-4" />
                         Preview
                       </button>
-                    )}
+                  )}
                   </div>
                 </div>
                 
@@ -975,19 +977,28 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                     <div className="h-full w-full">
                       <VisualEditor 
                         tasks={procedure?.steps || []}
-                        onNodeUpdate={(nodeId, data) => {
+                        onNodeUpdate={(nodeId, updatedStepData) => {
                           // Update the corresponding step in the procedure
                           if (procedure) {
                             const stepIndex = procedure.steps.findIndex(s => s.id === nodeId);
                             if (stepIndex !== -1) {
                               const updatedSteps = [...procedure.steps];
-                              updatedSteps[stepIndex] = {
-                                ...updatedSteps[stepIndex],
-                                config: {
-                                  ...updatedSteps[stepIndex].config,
-                                  ...data,
-                                },
-                              };
+                              // If updatedStepData has ui.position, it's a position update from drag
+                              if (updatedStepData.ui?.position) {
+                                updatedSteps[stepIndex] = {
+                                  ...updatedSteps[stepIndex],
+                                  ui: updatedStepData.ui,
+                                };
+                              } else {
+                                // Otherwise, it's a config update
+                                updatedSteps[stepIndex] = {
+                                  ...updatedSteps[stepIndex],
+                                  config: {
+                                    ...updatedSteps[stepIndex].config,
+                                    ...updatedStepData,
+                                  },
+                                };
+                              }
                               handleStepsChange(updatedSteps);
                             }
                           }
@@ -995,8 +1006,8 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                         onNodeSelect={handleStepSelect}
                         onConnect={handleConnect}
                         onAddStep={(action, position) => {
-                          // Handle adding step from canvas drop
-                          handleAddStep(action as AtomicAction);
+                          // Handle adding step from canvas drop with position
+                          handleAddStep(action as AtomicAction, position);
                         }}
                         procedureTrigger={procedure?.trigger}
                       />
@@ -1039,7 +1050,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
               />
             </div>
           </div>
-          </DesignerDndContext>
+        </DesignerDndContext>
         </div>
       </main>
 

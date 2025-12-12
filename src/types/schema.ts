@@ -121,6 +121,11 @@ export interface AtomicStep {
   assigneeId?: string; // User ID or Team ID
   assignee?: string; // Optional display name/email for AI-generated assignment
   requiresEvidence?: boolean; // If true, user must upload a file before completing the task
+  
+  // UI Metadata (for Visual Editor)
+  ui?: {
+    position?: { x: number; y: number }; // Manual position set by user drag & drop
+  };
 
   // Routing Logic (Non-Linear Flow)
   routes?: {
