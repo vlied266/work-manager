@@ -17,18 +17,23 @@ import "@xyflow/react/dist/style.css";
 import dagre from "@dagrejs/dagre";
 import { CustomNode } from "./flow/CustomNode";
 import { GoogleSheetNode } from "./flow/GoogleSheetNode";
-import { AtomicStep, ATOMIC_ACTION_METADATA } from "@/types/schema";
+import { GatewayNode } from "./flow/GatewayNode";
+import { TriggerNode } from "./flow/TriggerNode";
+import { AtomicStep, ATOMIC_ACTION_METADATA, Procedure } from "@/types/schema";
 import { GoogleSheetFlowConfig } from "./sidebar/GoogleSheetFlowConfig";
 
 interface VisualEditorProps {
   tasks: AtomicStep[];
   onNodeUpdate?: (nodeId: string, data: any) => void;
   onNodeSelect?: (nodeId: string | null) => void;
+  procedureTrigger?: Procedure["trigger"];
 }
 
 const nodeTypes = {
   custom: CustomNode,
   googleSheet: GoogleSheetNode,
+  gateway: GatewayNode,
+  trigger: TriggerNode,
 };
 
 // Dagre layout configuration
@@ -70,22 +75,45 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction: "TB" | "LR
   return { nodes: layoutedNodes, edges };
 };
 
-function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect }: VisualEditorProps) {
+function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, procedureTrigger }: VisualEditorProps) {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const { setNodes, getNodes } = useReactFlow();
 
   // Convert tasks to nodes (initial positions will be set by dagre)
   const initialNodes: Node[] = useMemo(() => {
-    return tasks.map((step, index) => {
-      // Use GoogleSheetNode for GOOGLE_SHEET_APPEND actions
-      const nodeType = step.action === "GOOGLE_SHEET_APPEND" ? "googleSheet" : "custom";
+    const nodes: Node[] = [];
+
+    // Add Trigger Node if there's an automated trigger
+    if (procedureTrigger && (procedureTrigger.type === "ON_FILE_CREATED" || procedureTrigger.type === "WEBHOOK")) {
+      nodes.push({
+        id: "trigger",
+        type: "trigger",
+        position: { x: 0, y: 0 },
+        width: 128,
+        height: 128,
+        data: {
+          triggerType: procedureTrigger.type,
+          label: procedureTrigger.type === "ON_FILE_CREATED" ? "File Upload" : "Webhook",
+        },
+      });
+    }
+
+    // Add step nodes
+    tasks.forEach((step, index) => {
+      let nodeType = "custom";
       
-      return {
+      if (step.action === "GOOGLE_SHEET_APPEND") {
+        nodeType = "googleSheet";
+      } else if (step.action === "GATEWAY") {
+        nodeType = "gateway";
+      }
+      
+      nodes.push({
         id: step.id || `step-${index}`,
         type: nodeType,
         position: { x: 0, y: 0 }, // Will be set by dagre
-        width: 280,
-        height: 120,
+        width: nodeType === "gateway" ? 180 : 280,
+        height: nodeType === "gateway" ? 120 : 120,
         data: step.action === "GOOGLE_SHEET_APPEND" 
           ? {
               fileName: step.config?.fileName,
@@ -96,9 +124,11 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect }: VisualEditor
               step,
               stepIndex: index,
             },
-      };
+      });
     });
-  }, [tasks]);
+
+    return nodes;
+  }, [tasks, procedureTrigger]);
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
@@ -140,27 +170,141 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect }: VisualEditor
     }
   }, [setNodes, onNodeUpdate]);
 
-  // Create edges connecting sequential steps
+  // Create edges based on actual routing logic
   const initialEdges: Edge[] = useMemo(() => {
     const edgesArray: Edge[] = [];
     
-    for (let i = 0; i < tasks.length - 1; i++) {
-      const sourceId = tasks[i].id || `step-${i}`;
-      const targetId = tasks[i + 1].id || `step-${i + 1}`;
-      
-      // Check if step has custom routing
-      const step = tasks[i];
-      if (step.routes) {
-        // Handle custom routes
+    // Helper to find step by ID
+    const findStepById = (stepId: string): AtomicStep | undefined => {
+      return tasks.find(s => s.id === stepId);
+    };
+
+    // Connect trigger to first step if trigger exists
+    if (procedureTrigger && (procedureTrigger.type === "ON_FILE_CREATED" || procedureTrigger.type === "WEBHOOK") && tasks.length > 0) {
+      const firstStepId = tasks[0].id || "step-0";
+      edgesArray.push({
+        id: "trigger-first",
+        source: "trigger",
+        target: firstStepId,
+        animated: true,
+        style: { stroke: "#3B82F6", strokeWidth: 3 },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: "#3B82F6",
+        },
+      });
+    }
+
+    // Process each step to create edges
+    tasks.forEach((step, index) => {
+      const sourceId = step.id || `step-${index}`;
+
+      // GATEWAY: Use config.conditions
+      if (step.action === "GATEWAY" && step.config?.conditions) {
+        step.config.conditions.forEach((condition: any, condIndex: number) => {
+          if (condition.nextStepId && condition.nextStepId !== "COMPLETED") {
+            // Format condition label
+            const operatorSymbols: Record<string, string> = {
+              eq: "=",
+              neq: "≠",
+              gt: ">",
+              lt: "<",
+              contains: "contains",
+            };
+            const opSymbol = operatorSymbols[condition.operator] || condition.operator;
+            const conditionLabel = `${condition.variable} ${opSymbol} ${condition.value}`;
+
+            edgesArray.push({
+              id: `${sourceId}-condition-${condIndex}`,
+              source: sourceId,
+              sourceHandle: `condition-${condIndex}`,
+              target: condition.nextStepId,
+              animated: true,
+              style: { stroke: "#10B981", strokeWidth: 2.5 },
+              label: conditionLabel,
+              labelStyle: { 
+                fill: "#10B981", 
+                fontWeight: 600,
+                fontSize: "11px",
+                backgroundColor: "white",
+                padding: "2px 6px",
+                borderRadius: "4px",
+              },
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                color: "#10B981",
+              },
+            });
+          }
+        });
+
+        // Default edge for GATEWAY
+        if (step.config?.defaultNextStepId && step.config.defaultNextStepId !== "COMPLETED") {
+          edgesArray.push({
+            id: `${sourceId}-default`,
+            source: sourceId,
+            sourceHandle: "default",
+            target: step.config.defaultNextStepId,
+            animated: true,
+            style: { stroke: "#6B7280", strokeWidth: 2, strokeDasharray: "5,5" },
+            label: "Default",
+            labelStyle: { 
+              fill: "#6B7280", 
+              fontWeight: 600,
+              fontSize: "11px",
+              backgroundColor: "white",
+              padding: "2px 6px",
+              borderRadius: "4px",
+            },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: "#6B7280",
+            },
+          });
+        } else if (index < tasks.length - 1) {
+          // Fallback to next step if no default
+          const nextStepId = tasks[index + 1].id || `step-${index + 1}`;
+          edgesArray.push({
+            id: `${sourceId}-default-fallback`,
+            source: sourceId,
+            sourceHandle: "default",
+            target: nextStepId,
+            animated: true,
+            style: { stroke: "#6B7280", strokeWidth: 2, strokeDasharray: "5,5" },
+            label: "Default",
+            labelStyle: { 
+              fill: "#6B7280", 
+              fontWeight: 600,
+              fontSize: "11px",
+              backgroundColor: "white",
+              padding: "2px 6px",
+              borderRadius: "4px",
+            },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: "#6B7280",
+            },
+          });
+        }
+      } 
+      // VALIDATE/COMPARE: Use routes (onSuccessStepId, onFailureStepId)
+      else if ((step.action === "VALIDATE" || step.action === "COMPARE") && step.routes) {
         if (step.routes.onSuccessStepId && step.routes.onSuccessStepId !== "COMPLETED") {
           edgesArray.push({
             id: `${sourceId}-success`,
             source: sourceId,
             target: step.routes.onSuccessStepId,
             animated: true,
-            style: { stroke: "#10B981", strokeWidth: 2 },
-            label: "Success",
-            labelStyle: { fill: "#10B981", fontWeight: 600 },
+            style: { stroke: "#10B981", strokeWidth: 2.5 },
+            label: "True",
+            labelStyle: { 
+              fill: "#10B981", 
+              fontWeight: 600,
+              fontSize: "11px",
+              backgroundColor: "white",
+              padding: "2px 6px",
+              borderRadius: "4px",
+            },
             markerEnd: {
               type: MarkerType.ArrowClosed,
               color: "#10B981",
@@ -174,17 +318,24 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect }: VisualEditor
             source: sourceId,
             target: step.routes.onFailureStepId,
             animated: true,
-            style: { stroke: "#EF4444", strokeWidth: 2 },
-            label: "Failure",
-            labelStyle: { fill: "#EF4444", fontWeight: 600 },
+            style: { stroke: "#EF4444", strokeWidth: 2.5 },
+            label: "False",
+            labelStyle: { 
+              fill: "#EF4444", 
+              fontWeight: 600,
+              fontSize: "11px",
+              backgroundColor: "white",
+              padding: "2px 6px",
+              borderRadius: "4px",
+            },
             markerEnd: {
               type: MarkerType.ArrowClosed,
               color: "#EF4444",
             },
           });
         }
-        
-        // Default next step
+
+        // Default next step for VALIDATE/COMPARE
         if (step.routes.defaultNextStepId && step.routes.defaultNextStepId !== "COMPLETED") {
           edgesArray.push({
             id: `${sourceId}-default`,
@@ -197,12 +348,13 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect }: VisualEditor
               color: "#6366F1",
             },
           });
-        } else if (!step.routes.onSuccessStepId && !step.routes.onFailureStepId) {
+        } else if (!step.routes.onSuccessStepId && !step.routes.onFailureStepId && index < tasks.length - 1) {
           // Fallback to sequential if no custom routes
+          const nextStepId = tasks[index + 1].id || `step-${index + 1}`;
           edgesArray.push({
-            id: `${sourceId}-${targetId}`,
+            id: `${sourceId}-${nextStepId}`,
             source: sourceId,
-            target: targetId,
+            target: nextStepId,
             animated: true,
             style: { stroke: "#6366F1", strokeWidth: 2 },
             markerEnd: {
@@ -211,24 +363,41 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect }: VisualEditor
             },
           });
         }
-      } else {
-        // Default sequential connection
-        edgesArray.push({
-          id: `${sourceId}-${targetId}`,
-          source: sourceId,
-          target: targetId,
-          animated: true,
-          style: { stroke: "#6366F1", strokeWidth: 2 },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: "#6366F1",
-          },
-        });
       }
-    }
+      // Standard steps: Use routes.defaultNextStepId or fallback to sequential
+      else {
+        if (step.routes?.defaultNextStepId && step.routes.defaultNextStepId !== "COMPLETED") {
+          edgesArray.push({
+            id: `${sourceId}-next`,
+            source: sourceId,
+            target: step.routes.defaultNextStepId,
+            animated: true,
+            style: { stroke: "#6366F1", strokeWidth: 2 },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: "#6366F1",
+            },
+          });
+        } else if (index < tasks.length - 1) {
+          // Default sequential connection
+          const nextStepId = tasks[index + 1].id || `step-${index + 1}`;
+          edgesArray.push({
+            id: `${sourceId}-${nextStepId}`,
+            source: sourceId,
+            target: nextStepId,
+            animated: true,
+            style: { stroke: "#6366F1", strokeWidth: 2 },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: "#6366F1",
+            },
+          });
+        }
+      }
+    });
     
     return edgesArray;
-  }, [tasks]);
+  }, [tasks, procedureTrigger]);
 
   // Apply dagre layout to nodes and edges
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
@@ -283,6 +452,10 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect }: VisualEditor
         fitView
         fitViewOptions={{ padding: 0.2, maxZoom: 1.5 }}
         className="bg-gradient-to-br from-slate-50/50 to-blue-50/30"
+        defaultEdgeOptions={{
+          type: "smoothstep",
+          animated: true,
+        }}
       >
         <Background color="#E2E8F0" gap={20} size={1} />
         <Controls className="!bg-white/80 !backdrop-blur-xl !border !border-white/60 !rounded-xl !shadow-lg" />
@@ -313,10 +486,10 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect }: VisualEditor
   );
 }
 
-export function VisualEditor({ tasks, onNodeUpdate, onNodeSelect }: VisualEditorProps) {
+export function VisualEditor({ tasks, onNodeUpdate, onNodeSelect, procedureTrigger }: VisualEditorProps) {
   return (
     <ReactFlowProvider>
-      <VisualEditorContent tasks={tasks} onNodeUpdate={onNodeUpdate} onNodeSelect={onNodeSelect} />
+      <VisualEditorContent tasks={tasks} onNodeUpdate={onNodeUpdate} onNodeSelect={onNodeSelect} procedureTrigger={procedureTrigger} />
     </ReactFlowProvider>
   );
 }
