@@ -255,7 +255,7 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
             },
           });
         }
-
+        
         // Default next step for VALIDATE/COMPARE
         if (step.routes.defaultNextStepId && step.routes.defaultNextStepId !== "COMPLETED") {
           edgesArray.push({
@@ -300,21 +300,21 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
             },
           });
         } else if (index < tasks.length - 1) {
-          // Default sequential connection
+        // Default sequential connection
           const nextStepId = tasks[index + 1].id || `step-${index + 1}`;
-          edgesArray.push({
+        edgesArray.push({
             id: `${sourceId}-${nextStepId}`,
-            source: sourceId,
+          source: sourceId,
             target: nextStepId,
-            animated: true,
-            style: { stroke: "#6366F1", strokeWidth: 2 },
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              color: "#6366F1",
-            },
-          });
-        }
+          animated: true,
+          style: { stroke: "#6366F1", strokeWidth: 2 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: "#6366F1",
+          },
+        });
       }
+    }
     });
     
     return edgesArray;
@@ -467,7 +467,10 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
               // Find source step
               const sourceStep = tasks.find((s) => s.id === deletedEdge.source);
               if (sourceStep) {
-                // Call onConnect with null target to disconnect
+                // Optimistic update: Remove edge immediately
+                // The edge is already being removed by applyEdgeChanges below
+                
+                // Call onConnect with null target to disconnect (persist to Firestore)
                 const connection: Connection = {
                   source: deletedEdge.source,
                   target: deletedEdge.target,
@@ -479,11 +482,11 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
             }
           }
         });
-        // Apply the changes
+        // Apply the changes (remove edges from state)
         return applyEdgeChanges(changes, currentEdges);
       });
     } else {
-      // Apply changes to edges state (for non-deletion changes)
+      // Apply changes to edges state (for non-deletion changes like selection)
       setEdges((eds) => applyEdgeChanges(changes, eds));
     }
   }, [tasks, onConnect, setEdges]);
@@ -552,13 +555,45 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
     [screenToFlowPosition, onAddStep]
   );
 
+  // Helper function to detect cycles (prevent connecting to ancestors)
+  const wouldCreateCycle = useCallback((sourceId: string, targetId: string): boolean => {
+    // Simple cycle detection: check if target is an ancestor of source
+    const visited = new Set<string>();
+    const queue = [targetId];
+    
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      if (currentId === sourceId) {
+        return true; // Cycle detected
+      }
+      if (visited.has(currentId)) continue;
+      visited.add(currentId);
+      
+      // Find all nodes that connect to currentId
+      const incomingEdges = initialEdges.filter(e => e.target === currentId);
+      incomingEdges.forEach(edge => {
+        if (edge.source && !visited.has(edge.source)) {
+          queue.push(edge.source);
+        }
+      });
+    }
+    
+    return false;
+  }, [initialEdges]);
+
   // Handle connection (drag-to-connect)
   const handleConnect = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target) return;
     
     // Prevent self-connections
     if (connection.source === connection.target) {
-      alert("Cannot connect a step to itself.");
+      alert("⚠️ Cannot connect a step to itself.");
+      return;
+    }
+
+    // Prevent cycles (connecting to ancestors)
+    if (wouldCreateCycle(connection.source, connection.target)) {
+      alert("⚠️ Cannot create a cycle. This connection would create a circular dependency.");
       return;
     }
 
@@ -571,17 +606,47 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
       if (connection.source === "trigger" && onConnect) {
         // Trigger connections are handled differently - they don't update step config
         // Just show a message
-        alert("Trigger connections are automatic. The trigger connects to the first step.");
+        alert("ℹ️ Trigger connections are automatic. The trigger connects to the first step.");
         return;
       }
       return;
     }
 
-    // Call parent callback to update procedure
+    // Optimistic update: Add edge immediately for instant feedback
+    // Note: The edge will be regenerated from procedure steps after Firestore update,
+    // but this provides instant visual feedback
+    const newEdge: Edge = {
+      id: `${connection.source}-${connection.target}-${connection.sourceHandle || 'default'}`,
+      source: connection.source,
+      target: connection.target,
+      sourceHandle: connection.sourceHandle || undefined,
+      type: "smoothstep",
+      animated: true,
+      style: { stroke: "#94a3b8", strokeWidth: 2 },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: "#94a3b8",
+      },
+    };
+    
+    // Add edge optimistically (will be replaced when initialEdges updates)
+    setEdges((eds) => {
+      // Check if edge already exists
+      const exists = eds.some(e => 
+        e.source === newEdge.source && 
+        e.target === newEdge.target && 
+        (e.sourceHandle || undefined) === (newEdge.sourceHandle || undefined)
+      );
+      if (exists) return eds;
+      return [...eds, newEdge];
+    });
+
+    // Call parent callback to update procedure (this will persist to Firestore)
+    // After this completes, initialEdges will be regenerated and edges will sync
     if (onConnect) {
       onConnect(connection, sourceStep, targetStepId);
     }
-  }, [tasks, onConnect]);
+  }, [tasks, onConnect, wouldCreateCycle, setEdges, initialEdges]);
 
   if (tasks.length === 0) {
     return (
@@ -641,8 +706,8 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
           nodeColor={(node) => {
             const step = (node.data as { step: AtomicStep })?.step;
             if (step) {
-              const metadata = ATOMIC_ACTION_METADATA[step.action];
-              return metadata?.color || "#6B7280";
+            const metadata = ATOMIC_ACTION_METADATA[step.action];
+            return metadata?.color || "#6B7280";
             }
             return "#10B981"; // Default green for Google Sheet nodes
           }}
