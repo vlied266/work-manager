@@ -26,8 +26,9 @@ function DraggableActionCard({ action }: DraggableActionCardProps) {
     ? {
         transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
         rotate: isDragging ? "2deg" : "0deg",
+        minHeight: "88px",
       }
-    : undefined;
+    : { minHeight: "88px" };
 
   // Use group-based colors: Human Tasks = Blue, Automation = Purple/Violet
   const isAutomation = metadata.group === "Automation";
@@ -47,14 +48,17 @@ function DraggableActionCard({ action }: DraggableActionCardProps) {
       whileHover={{ scale: 1.02, y: -1 }}
       whileTap={{ scale: 0.98 }}
     >
-      <div className="flex items-center gap-4">
+      <div className="flex items-start gap-4">
         {/* Large Squircle Icon */}
         <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${iconBgColor} text-white shadow-md flex-shrink-0`}>
           <IconComponent className="h-7 w-7" strokeWidth={2} />
         </div>
         
-        {/* Title Only - No Description */}
-        <h4 className="text-sm font-bold text-slate-800 tracking-tight">{metadata.label}</h4>
+        {/* Title and Description */}
+        <div className="flex-1 min-w-0 pt-0.5">
+          <h4 className="text-sm font-bold text-slate-800 tracking-tight mb-1">{metadata.label}</h4>
+          <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{metadata.description}</p>
+        </div>
       </div>
     </motion.div>
   );
