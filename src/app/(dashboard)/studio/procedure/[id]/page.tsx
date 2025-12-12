@@ -418,30 +418,30 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
         
         // Case 1: Selected node is VALIDATE or COMPARE (branching node)
         if (selectedStep.action === "VALIDATE" || selectedStep.action === "COMPARE") {
-          const hasSuccessConnection = selectedStep.routes?.onSuccessStepId;
-          const hasFailureConnection = selectedStep.routes?.onFailureStepId;
+          // Ensure routes object exists
+          const routes = selectedStep.routes || {};
           
-          // Connect to success handle if not already connected
-          if (!hasSuccessConnection) {
+          // If Success slot empty? -> Assign onSuccessStepId
+          if (!routes.onSuccessStepId) {
             updatedSteps[selectedStepIndex] = {
               ...selectedStep,
               routes: {
-                ...selectedStep.routes,
+                ...routes,
                 onSuccessStepId: newStep.id,
               },
             };
           } 
-          // Connect to failure handle if success is already connected
-          else if (!hasFailureConnection) {
+          // ELSE IF Failure slot empty? -> Assign onFailureStepId
+          else if (!routes.onFailureStepId) {
             updatedSteps[selectedStepIndex] = {
               ...selectedStep,
               routes: {
-                ...selectedStep.routes,
+                ...routes,
                 onFailureStepId: newStep.id,
               },
             };
           }
-          // Both handles are connected - don't auto-connect (user can manually connect)
+          // ELSE -> Do NOT connect (just place on canvas). Do NOT chain to the child.
         }
         // Case 2: Selected node is GATEWAY
         else if (selectedStep.action === "GATEWAY") {
@@ -1133,6 +1133,94 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                           // Deselect if deleted step was selected
                           if (selectedStepId === stepId) {
                             setSelectedStepId(null);
+                          }
+                        }}
+                        onEdgesDelete={async (deletedEdges) => {
+                          // Direct edge deletion handler - updates procedure steps immediately
+                          if (!procedure) return;
+                          
+                          const updatedSteps = [...procedure.steps];
+                          let hasChanges = false;
+                          
+                          deletedEdges.forEach((edge) => {
+                            const sourceStepIndex = updatedSteps.findIndex(s => s.id === edge.source);
+                            if (sourceStepIndex === -1) return;
+                            
+                            const sourceStep = updatedSteps[sourceStepIndex];
+                            const sourceHandle = edge.sourceHandle;
+                            
+                            // Reset the specific route based on the Handle ID
+                            if (sourceHandle === 'success' || sourceHandle === 'pass') {
+                              if (sourceStep.routes?.onSuccessStepId) {
+                                updatedSteps[sourceStepIndex] = {
+                                  ...sourceStep,
+                                  routes: {
+                                    ...sourceStep.routes,
+                                    onSuccessStepId: undefined,
+                                  },
+                                };
+                                hasChanges = true;
+                              }
+                            } else if (sourceHandle === 'failure' || sourceHandle === 'fail') {
+                              if (sourceStep.routes?.onFailureStepId) {
+                                updatedSteps[sourceStepIndex] = {
+                                  ...sourceStep,
+                                  routes: {
+                                    ...sourceStep.routes,
+                                    onFailureStepId: undefined,
+                                  },
+                                };
+                                hasChanges = true;
+                              }
+                            } else if (sourceHandle && sourceHandle.startsWith('condition-')) {
+                              // Handle Gateway specific condition
+                              const condIndex = parseInt(sourceHandle.split('-')[1]);
+                              const conditions = [...(sourceStep.config?.conditions || [])];
+                              if (conditions[condIndex]?.nextStepId) {
+                                conditions[condIndex] = {
+                                  ...conditions[condIndex],
+                                  nextStepId: undefined,
+                                };
+                                updatedSteps[sourceStepIndex] = {
+                                  ...sourceStep,
+                                  config: {
+                                    ...sourceStep.config,
+                                    conditions,
+                                  },
+                                };
+                                hasChanges = true;
+                              }
+                            } else {
+                              // Default path
+                              if (sourceStep.action === "GATEWAY") {
+                                if (sourceStep.config?.defaultNextStepId) {
+                                  updatedSteps[sourceStepIndex] = {
+                                    ...sourceStep,
+                                    config: {
+                                      ...sourceStep.config,
+                                      defaultNextStepId: undefined,
+                                    },
+                                  };
+                                  hasChanges = true;
+                                }
+                              } else {
+                                if (sourceStep.routes?.defaultNextStepId) {
+                                  updatedSteps[sourceStepIndex] = {
+                                    ...sourceStep,
+                                    routes: {
+                                      ...sourceStep.routes,
+                                      defaultNextStepId: undefined,
+                                    },
+                                  };
+                                  hasChanges = true;
+                                }
+                              }
+                            }
+                          });
+                          
+                          // Save if changed
+                          if (hasChanges) {
+                            await handleStepsChange(updatedSteps);
                           }
                         }}
                         procedureTrigger={procedure?.trigger}

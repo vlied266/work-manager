@@ -38,6 +38,7 @@ interface VisualEditorProps {
   onConnect?: (connection: Connection, sourceStep: AtomicStep, targetStepId: string | null) => void;
   onAddStep?: (action: string, position: { x: number; y: number }) => void;
   onDeleteStep?: (stepId: string) => void;
+  onEdgesDelete?: (edges: Edge[]) => void; // Direct handler for edge deletion
   procedureTrigger?: Procedure["trigger"];
 }
 
@@ -807,8 +808,11 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
         deleteKeyCode={["Delete", "Backspace"]}
         multiSelectionKeyCode="Shift"
         onEdgesDelete={(deletedEdges) => {
-          // Handle edge deletion via keyboard (Delete/Backspace)
-          if (onConnect) {
+          // Handle edge deletion via keyboard (Delete/Backspace) - Direct update
+          if (onEdgesDelete) {
+            onEdgesDelete(deletedEdges);
+          } else if (onConnect) {
+            // Fallback to onConnect if onEdgesDelete not provided
             deletedEdges.forEach((deletedEdge) => {
               const sourceStep = tasks.find((s) => s.id === deletedEdge.source);
               if (sourceStep && deletedEdge.source && deletedEdge.target) {
@@ -817,7 +821,6 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
                   target: deletedEdge.target,
                   sourceHandle: deletedEdge.sourceHandle || undefined,
                 };
-                // Pass null to indicate disconnection
                 onConnect(connection, sourceStep, null);
               }
             });
