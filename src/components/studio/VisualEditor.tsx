@@ -14,6 +14,7 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import dagre from "@dagrejs/dagre";
 import { CustomNode } from "./flow/CustomNode";
 import { GoogleSheetNode } from "./flow/GoogleSheetNode";
 import { AtomicStep, ATOMIC_ACTION_METADATA } from "@/types/schema";
@@ -22,6 +23,7 @@ import { GoogleSheetFlowConfig } from "./sidebar/GoogleSheetFlowConfig";
 interface VisualEditorProps {
   tasks: AtomicStep[];
   onNodeUpdate?: (nodeId: string, data: any) => void;
+  onNodeSelect?: (nodeId: string | null) => void;
 }
 
 const nodeTypes = {
@@ -29,12 +31,51 @@ const nodeTypes = {
   googleSheet: GoogleSheetNode,
 };
 
-function VisualEditorContent({ tasks, onNodeUpdate }: VisualEditorProps) {
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const { setNodes } = useReactFlow();
+// Dagre layout configuration
+const getLayoutedElements = (nodes: Node[], edges: Edge[], direction: "TB" | "LR" = "TB") => {
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+  dagreGraph.setGraph({ 
+    rankdir: direction,
+    nodesep: 100, // Horizontal spacing between nodes
+    ranksep: 150, // Vertical spacing between ranks
+    marginx: 50,
+    marginy: 50,
+  });
 
-  // Convert tasks to nodes with auto-layout
-  const nodes: Node[] = useMemo(() => {
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { 
+      width: node.width || 280, 
+      height: node.height || 120 
+    });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  const layoutedNodes = nodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    return {
+      ...node,
+      position: {
+        x: nodeWithPosition.x - (node.width || 280) / 2,
+        y: nodeWithPosition.y - (node.height || 120) / 2,
+      },
+    };
+  });
+
+  return { nodes: layoutedNodes, edges };
+};
+
+function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect }: VisualEditorProps) {
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const { setNodes, getNodes } = useReactFlow();
+
+  // Convert tasks to nodes (initial positions will be set by dagre)
+  const initialNodes: Node[] = useMemo(() => {
     return tasks.map((step, index) => {
       // Use GoogleSheetNode for GOOGLE_SHEET_APPEND actions
       const nodeType = step.action === "GOOGLE_SHEET_APPEND" ? "googleSheet" : "custom";
@@ -42,10 +83,9 @@ function VisualEditorContent({ tasks, onNodeUpdate }: VisualEditorProps) {
       return {
         id: step.id || `step-${index}`,
         type: nodeType,
-        position: {
-          x: 400, // Center horizontally
-          y: index * 200, // Vertical spacing
-        },
+        position: { x: 0, y: 0 }, // Will be set by dagre
+        width: 280,
+        height: 120,
         data: step.action === "GOOGLE_SHEET_APPEND" 
           ? {
               fileName: step.config?.fileName,
@@ -62,11 +102,19 @@ function VisualEditorContent({ tasks, onNodeUpdate }: VisualEditorProps) {
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
-  }, []);
+    // Call parent callback to select the step
+    if (onNodeSelect) {
+      onNodeSelect(node.id);
+    }
+  }, [onNodeSelect]);
 
   const handlePaneClick = useCallback(() => {
     setSelectedNode(null);
-  }, []);
+    // Deselect step in parent
+    if (onNodeSelect) {
+      onNodeSelect(null);
+    }
+  }, [onNodeSelect]);
 
   const updateNodeData = useCallback((nodeId: string, data: any) => {
     setNodes((nds) =>
@@ -93,7 +141,7 @@ function VisualEditorContent({ tasks, onNodeUpdate }: VisualEditorProps) {
   }, [setNodes, onNodeUpdate]);
 
   // Create edges connecting sequential steps
-  const edges: Edge[] = useMemo(() => {
+  const initialEdges: Edge[] = useMemo(() => {
     const edgesArray: Edge[] = [];
     
     for (let i = 0; i < tasks.length - 1; i++) {
@@ -182,6 +230,36 @@ function VisualEditorContent({ tasks, onNodeUpdate }: VisualEditorProps) {
     return edgesArray;
   }, [tasks]);
 
+  // Apply dagre layout to nodes and edges
+  const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
+    if (initialNodes.length === 0) {
+      return { nodes: initialNodes, edges: initialEdges };
+    }
+    
+    // If no edges, create sequential edges for layout calculation
+    const edgesToLayout = initialEdges.length > 0 
+      ? initialEdges 
+      : initialNodes.slice(0, -1).map((node, idx) => ({
+          id: `${node.id}-${initialNodes[idx + 1].id}`,
+          source: node.id,
+          target: initialNodes[idx + 1].id,
+        }));
+    
+    // Only apply layout if we have edges or multiple nodes
+    if (edgesToLayout.length > 0 || initialNodes.length > 1) {
+      return getLayoutedElements(initialNodes, edgesToLayout, "TB");
+    }
+    
+    // Single node - center it
+    return {
+      nodes: initialNodes.map(node => ({
+        ...node,
+        position: { x: 400, y: 300 },
+      })),
+      edges: [],
+    };
+  }, [initialNodes, initialEdges]);
+
   if (tasks.length === 0) {
     return (
       <div className="flex h-full items-center justify-center rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60">
@@ -196,13 +274,14 @@ function VisualEditorContent({ tasks, onNodeUpdate }: VisualEditorProps) {
   return (
     <div className="h-full w-full rounded-[2.5rem] bg-white/70 backdrop-blur-xl border border-white/60 overflow-hidden relative">
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
+        nodes={layoutedNodes}
+        edges={layoutedEdges}
         nodeTypes={nodeTypes}
         connectionMode={ConnectionMode.Loose}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
         fitView
+        fitViewOptions={{ padding: 0.2, maxZoom: 1.5 }}
         className="bg-gradient-to-br from-slate-50/50 to-blue-50/30"
       >
         <Background color="#E2E8F0" gap={20} size={1} />
@@ -234,10 +313,10 @@ function VisualEditorContent({ tasks, onNodeUpdate }: VisualEditorProps) {
   );
 }
 
-export function VisualEditor({ tasks, onNodeUpdate }: VisualEditorProps) {
+export function VisualEditor({ tasks, onNodeUpdate, onNodeSelect }: VisualEditorProps) {
   return (
     <ReactFlowProvider>
-      <VisualEditorContent tasks={tasks} onNodeUpdate={onNodeUpdate} />
+      <VisualEditorContent tasks={tasks} onNodeUpdate={onNodeUpdate} onNodeSelect={onNodeSelect} />
     </ReactFlowProvider>
   );
 }

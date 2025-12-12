@@ -880,6 +880,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
                             }
                           }
                         }}
+                        onNodeSelect={handleStepSelect}
                       />
                     </div>
                   ) : previewMode ? (
