@@ -500,22 +500,25 @@ function VisualEditorContent({ tasks, onNodeUpdate, onNodeSelect, onConnect, onA
 
   // Handle edge deletion from delete button
   const handleEdgeDelete = useCallback((edgeId: string) => {
-    setEdges((currentEdges) => {
-      const deletedEdge = currentEdges.find((e) => e.id === edgeId);
-      if (deletedEdge && deletedEdge.source && deletedEdge.target && onConnect) {
-        const sourceStep = tasks.find((s) => s.id === deletedEdge.source);
-        if (sourceStep) {
-          const connection: Connection = {
-            source: deletedEdge.source,
-            target: deletedEdge.target,
-            sourceHandle: deletedEdge.sourceHandle || undefined,
-          };
-          onConnect(connection, sourceStep, null);
-        }
+    // Find the edge before deletion
+    const deletedEdge = edges.find((e) => e.id === edgeId);
+    
+    if (deletedEdge && deletedEdge.source && deletedEdge.target && onConnect) {
+      const sourceStep = tasks.find((s) => s.id === deletedEdge.source);
+      if (sourceStep) {
+        // Call onConnect with null to disconnect in procedure
+        const connection: Connection = {
+          source: deletedEdge.source,
+          target: deletedEdge.target,
+          sourceHandle: deletedEdge.sourceHandle || undefined,
+        };
+        onConnect(connection, sourceStep, null);
       }
-      return currentEdges.filter((e) => e.id !== edgeId);
-    });
-  }, [tasks, onConnect]);
+    }
+    
+    // Remove edge from state
+    setEdges((currentEdges) => currentEdges.filter((e) => e.id !== edgeId));
+  }, [edges, tasks, onConnect]);
 
   // Handle edge changes (including deletion)
   const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
