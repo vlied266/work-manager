@@ -155,6 +155,126 @@ async function executeDelayStep(
 }
 
 /**
+ * Resume ProcessRun execution after a delay step completes
+ * Moves to the next step and executes it
+ */
+export async function resumeProcessRunAfterDelay(
+  db: Firestore,
+  processRunId: string
+): Promise<void> {
+  console.log(`[Process Resume] Resuming ProcessRun ${processRunId} after delay`);
+
+  // Fetch ProcessRun
+  const processRunDoc = await db.collection("process_runs").doc(processRunId).get();
+  if (!processRunDoc.exists) {
+    throw new Error("ProcessRun not found");
+  }
+
+  const processRun = processRunDoc.data() as ProcessRun;
+
+  if (processRun.status !== "WAITING_DELAY") {
+    throw new Error(`ProcessRun ${processRunId} is not in WAITING_DELAY status`);
+  }
+
+  // Fetch ProcessGroup to get step definitions
+  const processGroupDoc = await db.collection("process_groups").doc(processRun.processGroupId).get();
+  if (!processGroupDoc.exists) {
+    throw new Error("ProcessGroup not found");
+  }
+
+  const processGroup = processGroupDoc.data() as ProcessGroup;
+
+  // Get processSteps
+  let processSteps: ProcessStepType[] = [];
+  if (processGroup.processSteps && Array.isArray(processGroup.processSteps)) {
+    processSteps = processGroup.processSteps as ProcessStepType[];
+  } else if (processGroup.procedureSequence && Array.isArray(processGroup.procedureSequence)) {
+    // Migrate from old format
+    const procedureDocs = await Promise.all(
+      processGroup.procedureSequence.map((procId: string) =>
+        db.collection("procedures").doc(procId).get()
+      )
+    );
+
+    processSteps = procedureDocs
+      .map((doc, index) => {
+        if (!doc.exists) return null;
+        const procData = doc.data();
+        return {
+          type: 'procedure' as const,
+          instanceId: `step-${index + 1}-${doc.id}`,
+          procedureId: doc.id,
+          procedureData: {
+            id: doc.id,
+            ...procData,
+            createdAt: procData.createdAt?.toDate() || new Date(),
+            updatedAt: procData.updatedAt?.toDate() || new Date(),
+            steps: procData.steps || [],
+          },
+          inputMappings: {},
+        };
+      })
+      .filter((s): s is ProcessStepType => s !== null);
+  }
+
+  // Find the current step index (should be the delay step)
+  const currentStepIndex = processSteps.findIndex(
+    (step) => step.instanceId === processRun.currentStepInstanceId
+  );
+
+  if (currentStepIndex === -1) {
+    throw new Error(`Current step ${processRun.currentStepInstanceId} not found in processSteps`);
+  }
+
+  const currentStep = processSteps[currentStepIndex];
+
+  // Verify it's a delay step
+  if (currentStep.type !== "logic_delay") {
+    throw new Error(`Current step is not a delay step: ${currentStep.type}`);
+  }
+
+  // Update step history - mark delay step as completed
+  const stepHistory = processRun.stepHistory || [];
+  const stepHistoryEntry = stepHistory.find(
+    (entry) => entry.stepInstanceId === currentStep.instanceId
+  );
+  
+  if (stepHistoryEntry) {
+    stepHistoryEntry.status = "COMPLETED";
+  }
+
+  // Find next step
+  const nextStepIndex = currentStepIndex + 1;
+  
+  if (nextStepIndex >= processSteps.length) {
+    // ProcessRun is complete
+    await db.collection("process_runs").doc(processRunId).update({
+      status: "COMPLETED",
+      stepHistory,
+      updatedAt: Timestamp.now(),
+    });
+    
+    console.log(`[Process Resume] ProcessRun ${processRunId} completed`);
+    return;
+  }
+
+  const nextStep = processSteps[nextStepIndex];
+
+  // Update ProcessRun to point to next step and set status to RUNNING
+  await db.collection("process_runs").doc(processRunId).update({
+    currentStepInstanceId: nextStep.instanceId,
+    stepHistory,
+    status: "RUNNING",
+    resumeAt: null, // Clear resumeAt
+    updatedAt: Timestamp.now(),
+  });
+
+  // Execute next step
+  console.log(`[Process Resume] Executing next step after delay: ${nextStep.instanceId}`);
+  await executeStep(db, processRunId, nextStep, processSteps, processGroup);
+}
+
+/**
  * Resolve a variable from contextData
  * Supports patterns like:
  * - step_1.output.email
