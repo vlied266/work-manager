@@ -229,12 +229,24 @@ function renderActionConfigBasic(
         sourceOptions.push({ label: "⚡️ Start Trigger (Automated File)", value: "TRIGGER_EVENT" });
       }
       
-      // Add previous INPUT steps with file type (with step index and title)
+      // Add previous steps that can provide files
       const currentStepIndex = allSteps.findIndex((s) => s.id === step.id);
-      const previousFileInputSteps = allSteps
+      const previousSteps = allSteps
         .filter((s) => {
           const stepIndex = allSteps.findIndex((st) => st.id === s.id);
-          return s.action === "INPUT" && s.config.inputType === "file" && stepIndex < currentStepIndex;
+          if (stepIndex >= currentStepIndex) return false;
+          
+          // INPUT step with file/image/document type
+          if (s.action === "INPUT" && (s.config.inputType === "file" || s.config.inputType === "image" || s.config.inputType === "document")) {
+            return true;
+          }
+          
+          // DOC_GENERATE step (outputs a file/PDF)
+          if (s.action === "DOC_GENERATE") {
+            return true;
+          }
+          
+          return false;
         })
         .map((s) => {
           const stepIndex = allSteps.findIndex((st) => st.id === s.id) + 1;
@@ -244,7 +256,7 @@ function renderActionConfigBasic(
           };
         });
       
-      sourceOptions.push(...previousFileInputSteps);
+      sourceOptions.push(...previousSteps);
       
       return (
         <div className="space-y-4">
@@ -266,11 +278,9 @@ function renderActionConfigBasic(
                     </option>
                   ))}
                 </select>
-                  <p className="mt-1 text-xs text-slate-500">
-              {isFirstStep && hasAutomatedTrigger
-                ? "Select the trigger event for automated workflows, or a previous INPUT step for manual uploads"
-                : "Select the INPUT step where the file was uploaded"}
-                  </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Select the step that provides the file to parse (e.g., a File Upload Input, Document Generator, or Trigger Event).
+            </p>
               </div>
         </div>
       );
@@ -1327,24 +1337,71 @@ function renderActionConfigSettings(
       );
 
     case "AI_PARSE":
+      const extractionMode = config.extractionMode || "specific_fields";
+      
       return (
         <div className="space-y-4">
+          {/* Extraction Mode Dropdown */}
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Fields to Extract <span className="text-rose-500">*</span>
+              Extraction Mode <span className="text-rose-500">*</span>
             </label>
-            <textarea
-              value={config.fieldsToExtract ? config.fieldsToExtract.join("\n") : ""}
-              onChange={(e) => {
-                const fields = e.target.value.split("\n").filter(f => f.trim());
-                onUpdate({ config: { ...config, fieldsToExtract: fields.length > 0 ? fields : undefined } });
-              }}
-              rows={6}
-              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-              placeholder="invoiceDate&#10;amount&#10;vendor&#10;invoiceNumber"
-            />
-            <p className="mt-1 text-xs text-slate-500">Enter one field name per line</p>
+            <select
+              value={extractionMode}
+              onChange={(e) =>
+                onUpdate({ config: { ...config, extractionMode: e.target.value } })
+              }
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+            >
+              <option value="specific_fields">Specific Fields (JSON)</option>
+              <option value="summary_qa">Summary / Q&A</option>
+              <option value="full_text">Full Text (OCR)</option>
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              {extractionMode === "specific_fields" && "Good for invoices, forms with structured data"}
+              {extractionMode === "summary_qa" && "Good for analyzing contracts, resumes, extracting insights"}
+              {extractionMode === "full_text" && "Good for raw archiving, complete text extraction"}
+            </p>
           </div>
+
+          {/* Dynamic UI based on Mode */}
+          {extractionMode === "specific_fields" && (
+            <FieldExtractionBuilder
+              fields={config.fieldsToExtract || []}
+              onChange={(fields) => onUpdate({ config: { ...config, fieldsToExtract: fields } })}
+            />
+          )}
+
+          {extractionMode === "summary_qa" && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Prompt / Question <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                value={config.prompt || ""}
+                onChange={(e) =>
+                  onUpdate({ config: { ...config, prompt: e.target.value || undefined } })
+                }
+                rows={6}
+                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
+                placeholder="Summarize the key terms of this contract, specifically liability clauses..."
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Describe what information you want extracted or ask specific questions about the document.
+              </p>
+            </div>
+          )}
+
+          {extractionMode === "full_text" && (
+            <div className="rounded-lg bg-blue-50/80 border border-blue-200/50 p-4">
+              <div className="flex items-start gap-2.5">
+                <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" strokeWidth={2} />
+                <p className="text-xs text-blue-700 font-medium leading-relaxed">
+                  ℹ️ <strong>Full Text Extraction:</strong> The entire text content of the document will be extracted to the output variable. No specific fields or prompts needed.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       );
 
@@ -2326,6 +2383,122 @@ function OptionsListBuilder({ options, onChange }: OptionsListBuilderProps) {
         </div>
       ) : (
         <p className="text-xs text-slate-400 italic">No options added yet. Add options above.</p>
+      )}
+    </div>
+  );
+}
+
+// Field Extraction Builder Component (for AI_PARSE)
+interface FieldExtractionBuilderProps {
+  fields: Array<{ key: string; description?: string }> | string[];
+  onChange: (fields: Array<{ key: string; description?: string }>) => void;
+}
+
+function FieldExtractionBuilder({ fields, onChange }: FieldExtractionBuilderProps) {
+  const [newFieldKey, setNewFieldKey] = useState("");
+  const [newFieldDescription, setNewFieldDescription] = useState("");
+
+  // Convert fields to array of objects
+  const fieldObjects = fields.map(f => 
+    typeof f === "string" 
+      ? { key: f, description: "" } 
+      : { key: f.key, description: f.description || "" }
+  );
+
+  const handleAddField = () => {
+    if (!newFieldKey.trim()) return;
+    
+    const updatedFields = [
+      ...fieldObjects,
+      { key: newFieldKey.trim(), description: newFieldDescription.trim() || undefined }
+    ];
+    
+    onChange(updatedFields);
+    setNewFieldKey("");
+    setNewFieldDescription("");
+  };
+
+  const handleRemoveField = (index: number) => {
+    const updatedFields = fieldObjects.filter((_, i) => i !== index);
+    onChange(updatedFields.length > 0 ? updatedFields : []);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddField();
+    }
+  };
+
+  return (
+    <div>
+      <label className="block text-sm font-semibold text-slate-900 mb-2">
+        Fields to Extract <span className="text-rose-500">*</span>
+      </label>
+      
+      {/* Input Fields + Add Button */}
+      <div className="space-y-2 mb-3">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={newFieldKey}
+            onChange={(e) => setNewFieldKey(e.target.value)}
+            onKeyPress={handleKeyPress}
+            className="flex-1 rounded-xl border-0 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+            placeholder="Field name (e.g., invoice_date)"
+          />
+          <input
+            type="text"
+            value={newFieldDescription}
+            onChange={(e) => setNewFieldDescription(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAddField();
+              }
+            }}
+            className="flex-1 rounded-xl border-0 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+            placeholder="Description (optional)"
+          />
+          <button
+            type="button"
+            onClick={handleAddField}
+            disabled={!newFieldKey.trim()}
+            className="flex-shrink-0 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+          >
+            <Plus className="h-4 w-4" />
+            Add
+          </button>
+        </div>
+      </div>
+
+      {/* Fields as List */}
+      {fieldObjects.length > 0 ? (
+        <div className="space-y-2">
+          {fieldObjects.map((field, index) => (
+            <div
+              key={index}
+              className="flex items-start justify-between gap-3 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-blue-900">{field.key}</div>
+                {field.description && (
+                  <div className="text-xs text-blue-700 mt-0.5">{field.description}</div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleRemoveField(index)}
+                className="flex-shrink-0 text-blue-600 hover:text-blue-800 transition-colors"
+                title="Remove field"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-slate-400 italic">No fields added yet. Add fields above.</p>
       )}
     </div>
   );
