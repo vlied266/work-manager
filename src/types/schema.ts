@@ -227,9 +227,10 @@ export interface AtomicStep {
     // GATEWAY
     conditions?: Array<{
       variable: string; // Variable name (e.g., "step_1.amount") or variable reference
-      operator: "eq" | "neq" | "gt" | "lt" | "contains"; // Comparison operator
+      operator: "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "contains" | "not_contains" | "starts_with" | "is_empty" | "is_not_empty"; // Comparison operator
       value: string; // Value to compare against (can be variable or literal)
       nextStepId: string; // Step ID to jump to if condition is true
+      label?: string; // Optional label for the condition (e.g., "VIP", "High Value > 10k") - appears on visual canvas
     }>;
     defaultNextStepId?: string; // Step to proceed to if no conditions match (the "else" case)
 

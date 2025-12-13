@@ -617,17 +617,17 @@ function renderActionConfigBasic(
                 <strong className="font-semibold text-blue-900">Column Mapping:</strong>
                 <br />
                 Map your spreadsheet headers to workflow variables. Left = Column Header (e.g. &apos;Date&apos;), Right = Value (e.g. <code className="bg-white/50 px-1 rounded">{`{{step.date}}`}</code>).
-              </p>
+            </p>
           </div>
           )}
 
           {/* Update Row: Show Row Number + Column Mapping */}
           {operation === "UPDATE_ROW" && (
             <>
-            <div>
+          <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   Row Number <span className="text-rose-500">*</span>
-              </label>
+            </label>
                 <VariableInput
                   type="input"
                   value={config.rowNumber || ""}
@@ -643,10 +643,10 @@ function renderActionConfigBasic(
                   Which row to update? (Row 1 is usually headers, so start from 2). Click the <Zap className="inline h-3 w-3" /> button to insert variables.
                 </p>
           </div>
-                <div>
+            <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   Column Mapping <span className="text-rose-500">*</span>
-                  </label>
+              </label>
                 <KeyValueBuilder
                   value={config.columnMapping}
                   onChange={(value) => onUpdate({ config: { ...config, columnMapping: value } })}
@@ -664,8 +664,8 @@ function renderActionConfigBasic(
                   <strong className="font-semibold text-blue-900">Column Mapping:</strong>
                   <br />
                   Map your spreadsheet headers to new values. Left = Column Header (e.g. &apos;Date&apos;), Right = New Value (e.g. <code className="bg-white/50 px-1 rounded">{`{{step.newDate}}`}</code>).
-                </p>
-                </div>
+              </p>
+            </div>
             </>
           )}
 
@@ -699,7 +699,7 @@ function renderActionConfigBasic(
               <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   Lookup Value <span className="text-rose-500">*</span>
-                </label>
+            </label>
                 <VariableInput
                   type="input"
                   value={config.lookupValue || ""}
@@ -719,7 +719,7 @@ function renderActionConfigBasic(
                 <p className="mt-1 text-xs text-slate-500">
                   Click the <Zap className="inline h-3 w-3" /> button to insert variables.
                 </p>
-              </div>
+          </div>
             </>
           )}
                 </div>
@@ -733,13 +733,13 @@ function renderActionConfigBasic(
                 <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Source Type <span className="text-rose-500">*</span>
-            </label>
+                  </label>
             <select
               value={sourceType}
-              onChange={(e) =>
+                    onChange={(e) =>
                 onUpdate({ config: { ...config, sourceType: e.target.value as any } })
-              }
-              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    }
+                    className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
             >
               <option value="template">Select Template (Uploaded .docx)</option>
               <option value="inline">Simple Text/HTML</option>
@@ -780,13 +780,13 @@ function renderActionConfigBasic(
                     Manage templates →
                   </a>
                 </p>
-              </div>
+                </div>
 
               {config.templateId && (
-              <div>
+                <div>
                   <label className="block text-sm font-semibold text-slate-900 mb-2">
                     Data Mapping <span className="text-rose-500">*</span>
-                </label>
+                  </label>
                   <KeyValueBuilder
                     value={config.dataMapping}
                     onChange={(value) => onUpdate({ config: { ...config, dataMapping: value } })}
@@ -805,11 +805,11 @@ function renderActionConfigBasic(
                     <br />
                     Map placeholders in your template to workflow variables. Left = Placeholder (e.g. &apos;{"{{clientName}}"}&apos;), Right = Variable (e.g. <code className="bg-white/50 px-1 rounded">{`{{step_1.name}}`}</code>).
                 </p>
-              </div>
+                </div>
               )}
             </>
           ) : (
-            <div>
+              <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Document Content <span className="text-rose-500">*</span>
                 </label>
@@ -830,13 +830,13 @@ function renderActionConfigBasic(
                 <br />
                 Type content here. Use <code className="bg-white/50 px-1 rounded">{`{{variable}}`}</code> for variables (e.g. <code className="bg-white/50 px-1 rounded">{`{{step_1.name}}`}</code>). Supports plain text or HTML.
               </p>
-              <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-slate-500">
                 Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-              </p>
+                </p>
             </div>
           )}
 
-          <div>
+                <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Output Format
             </label>
@@ -850,8 +850,8 @@ function renderActionConfigBasic(
               <option value="pdf">PDF</option>
               <option value="docx">DOCX</option>
             </select>
-          </div>
-        </div>
+                </div>
+              </div>
       );
     }
 
@@ -862,30 +862,30 @@ function renderActionConfigBasic(
       return (
         <div className="space-y-6">
           <div className="space-y-4">
-                <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-2">
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Instruction <span className="text-rose-500">*</span>
-                  </label>
+                </label>
               <textarea
                 value={config.instruction || ""}
-                    onChange={(e) =>
+                  onChange={(e) =>
                   onUpdate({ config: { ...config, instruction: e.target.value } })
-                }
+                  }
                 rows={6}
                 className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
                 placeholder="Enter detailed instructions for the approver..."
-                  />
+                />
                 </div>
-                </div>
-                
+              </div>
+
           {/* Routing Section */}
           <div className="pt-4 border-t border-slate-200">
             <h3 className="text-sm font-semibold text-slate-900 mb-4">Flow Logic</h3>
             <div className="space-y-4">
-                <div>
+              <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   On Approve (Success) → Go To
-                  </label>
+                </label>
                 <select
                   value={approvalRoutes.onSuccessStepId || ""}
                   onChange={(e) =>
@@ -906,7 +906,7 @@ function renderActionConfigBasic(
                     );
                   })}
                 </select>
-              </div>
+                </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   On Reject (Failure) → Go To
@@ -929,7 +929,7 @@ function renderActionConfigBasic(
                 <p className="mt-1 text-xs text-slate-500">
                   Route to a step that handles rejection (e.g., request revision or notify requester)
                 </p>
-                </div>
+                  </div>
               </div>
             </div>
                 </div>
@@ -944,20 +944,20 @@ function renderActionConfigBasic(
               💡 <strong>Note:</strong> Use this for back-and-forth discussions to reach an agreement (Deal/Contract). For simple execution tasks, use <strong>Manual Task</strong>.
                 </p>
               </div>
-              
-              <div>
+
+          <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
               Instruction <span className="text-rose-500">*</span>
-                </label>
+            </label>
             <textarea
               value={config.instruction || ""}
-                  onChange={(e) =>
+              onChange={(e) =>
                 onUpdate({ config: { ...config, instruction: e.target.value } })
-                  }
+              }
               rows={6}
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
               placeholder="Specify the negotiation topic and parties involved.&#10;Example:&#10;- Call the vendor to negotiate a 10% discount.&#10;- Finalize the contract terms with the client."
-                />
+            />
           </div>
         </div>
       );
@@ -984,8 +984,8 @@ function renderActionConfigBasic(
               rows={6}
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
               placeholder="List inspection criteria and acceptance standards.&#10;Example:&#10;- Check for physical damage.&#10;- Take photos of the 4 corners.&#10;- Verify temperature is below 50°C."
-            />
-          </div>
+                  />
+                </div>
               </div>
       );
 
@@ -997,9 +997,9 @@ function renderActionConfigBasic(
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Task Category
             </label>
-            <select
+                <select
               value={config.taskSubType || "generic"}
-              onChange={(e) =>
+                  onChange={(e) =>
                 onUpdate({ config: { ...config, taskSubType: e.target.value as any } })
               }
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
@@ -1009,7 +1009,7 @@ function renderActionConfigBasic(
               <option value="logistics">📦 Logistics / Physical (Shipping, Moving, Delivering)</option>
               <option value="admin">🗄️ Admin / Archive (Scanning, Filing, Printing)</option>
               <option value="maintenance">🔧 Maintenance (Repair, Install, Inspect)</option>
-            </select>
+                </select>
             <p className="mt-1.5 text-xs text-slate-500">
               Categorize the task to help operators understand the type of work required.
             </p>
@@ -1032,15 +1032,15 @@ function renderActionConfigBasic(
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
               placeholder="e.g., Call the client, Inspect the machine"
                     />
-                  </div>
+            </div>
 
-          <div>
+              <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Instructions <span className="text-rose-500">*</span>
-            </label>
+                </label>
             <textarea
               value={config.instruction || config.instructions || ""}
-              onChange={(e) =>
+                  onChange={(e) =>
                 onUpdate({ config: { ...config, instruction: e.target.value, instructions: e.target.value } })
               }
               rows={10}
@@ -1055,9 +1055,9 @@ function renderActionConfigBasic(
               <p className="text-xs text-slate-700">
                 <span className="font-semibold">💡 Note:</span> This step is for <strong>offline execution</strong>. If you need the user to enter data, use an <strong>Input Step</strong>. If you need a manager's decision, use an <strong>Approval Step</strong>.
             </p>
+            </div>
           </div>
-                  </div>
-              </div>
+        </div>
       );
 
     case "CALCULATE":
@@ -1090,8 +1090,8 @@ function renderActionConfigBasic(
             </p>
             <p className="mt-1 text-xs text-slate-500">
               Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-              </p>
-            </div>
+            </p>
+          </div>
         </div>
       );
 
@@ -1139,6 +1139,7 @@ function renderActionConfigBasic(
                     operator: "eq" as const,
                     value: "",
                     nextStepId: "",
+                    label: "",
                   };
                   onUpdate({
                     config: {
@@ -1188,6 +1189,27 @@ function renderActionConfigBasic(
                       </button>
             </div>
 
+                    {/* Label */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                        Label <span className="text-slate-400 text-xs">(Optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={condition.label || ""}
+                        onChange={(e) => {
+                          const updatedConditions = [...(config.conditions || [])];
+                          updatedConditions[index] = { ...updatedConditions[index], label: e.target.value };
+                          onUpdate({ config: { ...config, conditions: updatedConditions } });
+                        }}
+                        placeholder="e.g., High Value > 10k, VIP, Approved"
+                        className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+                        This label will appear on the connection point in the visual canvas.
+            </p>
+          </div>
+
                     {/* Variable */}
               <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -1206,7 +1228,7 @@ function renderActionConfigBasic(
                         currentStepId={step.id}
                         procedureTrigger={procedureTrigger}
                       />
-              </div>
+                  </div>
 
                     {/* Operator */}
                     <div>
@@ -1225,11 +1247,17 @@ function renderActionConfigBasic(
                         }}
                         className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                       >
-                        <option value="eq">Equals (=)</option>
-                        <option value="neq">Not Equals (≠)</option>
+                        <option value="eq">Equals (==)</option>
+                        <option value="neq">Not Equals (!=)</option>
                         <option value="gt">Greater Than (&gt;)</option>
+                        <option value="gte">Greater Than or Equal (&gt;=)</option>
                         <option value="lt">Less Than (&lt;)</option>
-                    <option value="contains">Contains</option>
+                        <option value="lte">Less Than or Equal (&lt;=)</option>
+                        <option value="contains">Contains</option>
+                        <option value="not_contains">Does Not Contain</option>
+                        <option value="starts_with">Starts With</option>
+                        <option value="is_empty">Is Empty</option>
+                        <option value="is_not_empty">Is Not Empty</option>
                   </select>
                     </div>
 
@@ -1276,11 +1304,11 @@ function renderActionConfigBasic(
                       </option>
                     ))}
                 </select>
-            </div>
+              </div>
                   </div>
                 ))}
-              </div>
-            )}
+            </div>
+          )}
           </div>
         </div>
       );
@@ -1336,7 +1364,7 @@ function renderActionConfigBasic(
               <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Comparison Type <span className="text-rose-500">*</span>
             </label>
-              <select
+            <select
                 value={config.comparisonType || "exact"}
               onChange={(e) =>
                   onUpdate({ config: { ...config, comparisonType: e.target.value as any } })
@@ -1347,8 +1375,8 @@ function renderActionConfigBasic(
                 <option value="fuzzy">Fuzzy Match</option>
                 <option value="numeric">Numeric Comparison</option>
                 <option value="date">Date Comparison</option>
-              </select>
-              </div>
+            </select>
+          </div>
           </div>
 
           {/* Routing Section */}
@@ -1365,7 +1393,7 @@ function renderActionConfigBasic(
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   On Match (Success) → Go To
             </label>
-            <select
+                  <select
                   value={compareRoutes.onSuccessStepId || ""}
               onChange={(e) =>
                 onUpdate({
@@ -1377,15 +1405,15 @@ function renderActionConfigBasic(
                   {getRoutingOptions(allSteps, step.id, true).map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
-                  </option>
-                ))}
-            </select>
-          </div>
+                      </option>
+                    ))}
+                  </select>
+                </div>
           <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   On Mismatch (Failure) → Go To
             </label>
-                  <select
+                <select
                   value={compareRoutes.onFailureStepId || ""}
                   onChange={(e) =>
                     onUpdate({
@@ -1399,11 +1427,11 @@ function renderActionConfigBasic(
                       {option.label}
                       </option>
                     ))}
-                  </select>
+                </select>
                 <p className="mt-1 text-xs text-slate-500">
                   Useful for error loops: send user back to correction step
                 </p>
-                </div>
+              </div>
               </div>
           </div>
         </div>

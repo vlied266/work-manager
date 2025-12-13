@@ -108,14 +108,16 @@ export const GatewayNode = memo((props: NodeProps<Node<GatewayNodeData>>) => {
         <>
           {step.config.conditions.map((condition: any, idx: number) => {
             // Distribute handles evenly
-            const totalHandles = conditionCount + (hasDefault ? 1 : 0);
+            const totalHandles = conditionCount + 1; // Always include default handle
             const spacing = totalHandles > 1 ? 80 / (totalHandles + 1) : 50;
             const position = 10 + (idx + 1) * spacing;
             
-            // Generate label from condition
-            const conditionLabel = condition.variable 
-              ? `${condition.variable} ${condition.operator || "=="} ${condition.value || ""}`.substring(0, 20)
-              : `Condition ${idx + 1}`;
+            // Use label if provided, otherwise fallback to generated label
+            const conditionLabel = condition.label?.trim() 
+              ? condition.label.trim()
+              : condition.variable 
+                ? `${condition.variable} ${condition.operator || "=="} ${condition.value || ""}`.substring(0, 20)
+                : `Condition ${idx + 1}`;
             
             return (
               <div key={`condition-${idx}`} className="relative">
@@ -142,8 +144,8 @@ export const GatewayNode = memo((props: NodeProps<Node<GatewayNodeData>>) => {
         </>
       ) : null}
 
-      {/* Default Handle (Bottom Right) */}
-      {hasDefault && (
+      {/* Default Handle (Always shown if there are conditions, or if defaultNextStepId is set) */}
+      {(conditionCount > 0 || hasDefault) && (
         <div className="relative">
           <Handle
             type="source"
@@ -152,21 +154,21 @@ export const GatewayNode = memo((props: NodeProps<Node<GatewayNodeData>>) => {
             isConnectable={true}
             className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white !rounded-full !cursor-crosshair"
             style={{
-              left: conditionCount > 0 ? "85%" : "50%",
+              left: conditionCount > 0 ? `${10 + (conditionCount + 1) * (80 / (conditionCount + 2))}%` : "50%",
               bottom: "-6px",
             }}
           />
           {/* Label */}
           <div 
             className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 text-[10px] font-semibold text-slate-600 whitespace-nowrap pointer-events-none"
-            style={{ left: conditionCount > 0 ? "85%" : "50%" }}
+            style={{ left: conditionCount > 0 ? `${10 + (conditionCount + 1) * (80 / (conditionCount + 2))}%` : "50%" }}
           >
             Default / Else
           </div>
         </div>
       )}
 
-      {/* Fallback: Single handle if no conditions */}
+      {/* Fallback: Single handle if no conditions and no default */}
       {conditionCount === 0 && !hasDefault && (
         <Handle
           type="source"
