@@ -6,7 +6,7 @@ import { isHumanStep, isAutoStep, getStepExecutionType } from "@/lib/constants";
 import { resolveConfig } from "@/lib/engine/resolver";
 import { sendEmail, textToHtml } from "@/lib/email/sender";
 import { ProcessStep as ProcessStepType } from "@/components/process/VariableSelector";
-import { executeStep } from "@/lib/process/execute-step";
+import { executeStep, continueProcessRun } from "@/lib/process/execute-step";
 
 interface ExecuteStepRequest {
   runId: string;

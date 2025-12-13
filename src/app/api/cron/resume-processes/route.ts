@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 import { ProcessRun } from "@/types/schema";
-import { resumeProcessRunAfterDelay } from "@/lib/process/execute-step";
+import { resumeProcessRunAfterDelay, continueProcessRun } from "@/lib/process/execute-step";
 
 /**
  * Cron Endpoint: Resume Processes After Delay
@@ -14,15 +14,41 @@ import { resumeProcessRunAfterDelay } from "@/lib/process/execute-step";
  */
 export async function GET(req: NextRequest) {
   try {
-    // Security: Check for CRON_SECRET in headers
-    const cronSecret = req.headers.get("x-cron-secret") || req.headers.get("authorization")?.replace("Bearer ", "");
+    // Security: Verify request comes from external cron service
+    const authHeader = req.headers.get("authorization");
     const expectedSecret = process.env.CRON_SECRET;
 
-    if (expectedSecret && cronSecret !== expectedSecret) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+    // In production, require valid CRON_SECRET
+    if (process.env.NODE_ENV === "production") {
+      if (!expectedSecret) {
+        console.error("CRON_SECRET environment variable is not set");
+        return NextResponse.json(
+          { error: "Server configuration error" },
+          { status: 500 }
+        );
+      }
+
+      if (authHeader !== `Bearer ${expectedSecret}`) {
+        console.warn("Unauthorized cron job attempt", {
+          hasHeader: !!authHeader,
+          nodeEnv: process.env.NODE_ENV,
+        });
+        return NextResponse.json(
+          { error: "Unauthorized" },
+          { status: 401 }
+        );
+      }
+    } else {
+      // In development, log but allow (for testing)
+      if (authHeader !== `Bearer ${expectedSecret}`) {
+        console.warn(
+          "[DEV MODE] Cron job called without valid secret. Allowing for testing.",
+          {
+            hasHeader: !!authHeader,
+            expectedFormat: "Bearer <CRON_SECRET>",
+          }
+        );
+      }
     }
 
     const db = getAdminDb();
@@ -66,7 +92,8 @@ export async function GET(req: NextRequest) {
 
         console.log(`[Cron] Resuming ProcessRun ${processRunId} (was due at ${resumeAtDate.toISOString()})`);
 
-        // Resume the process
+        // Resume the process using continueProcessRun logic
+        // For delay steps, resumeProcessRunAfterDelay handles the continuation
         await resumeProcessRunAfterDelay(db, processRunId);
 
         resumedCount++;
