@@ -596,6 +596,13 @@ function renderActionConfigBasic(
     case "INSPECT":
       return (
         <div className="space-y-4">
+          {/* Helper Text */}
+          <div className="rounded-lg bg-amber-50/80 border border-amber-200/50 p-3">
+            <p className="text-xs text-slate-700 font-medium leading-relaxed">
+              💡 <strong>Note:</strong> Use this for quality checks or physical inspections where a checklist or photo evidence is required. For simple execution tasks, use <strong>Manual Task</strong>.
+            </p>
+          </div>
+
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Instruction <span className="text-rose-500">*</span>
@@ -607,7 +614,7 @@ function renderActionConfigBasic(
               }
               rows={6}
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
-              placeholder="Enter detailed instructions..."
+              placeholder="List inspection criteria and acceptance standards.&#10;Example:&#10;- Check for physical damage.&#10;- Take photos of the 4 corners.&#10;- Verify temperature is below 50°C."
             />
           </div>
         </div>
@@ -1506,7 +1513,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
   // Determine if Logic tab should be shown
-  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, and NEGOTIATE (branching handled in Basic tab or by connecting to GATEWAY on canvas)
+  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, and INSPECT (branching handled in Basic tab or by connecting to GATEWAY on canvas)
   const shouldShowLogicTab = step && (
     step.action !== "GATEWAY" && 
     step.action !== "VALIDATE" && 
@@ -1514,7 +1521,8 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
     step.action !== "INPUT" &&
     step.action !== "APPROVAL" &&
     step.action !== "MANUAL_TASK" &&
-    step.action !== "NEGOTIATE"
+    step.action !== "NEGOTIATE" &&
+    step.action !== "INSPECT"
   );
   
   const [activeTab, setActiveTab] = useState<"basic" | "settings" | "logic">("basic");

@@ -5,7 +5,7 @@ import { Handle, Position, NodeProps, Node } from "@xyflow/react";
 import { AtomicStep } from "@/types/schema";
 import { ATOMIC_ACTION_METADATA } from "@/types/schema";
 import * as LucideIcons from "lucide-react";
-import { Edit2, Trash2, Phone, Mail, Package, Truck, FileText, Archive, Wrench, ClipboardList, Handshake } from "lucide-react";
+import { Edit2, Trash2, Phone, Mail, Package, Truck, FileText, Archive, Wrench, ClipboardList, Handshake, Search } from "lucide-react";
 
 interface CustomNodeData extends Record<string, unknown> {
   step: AtomicStep;
@@ -23,10 +23,12 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
     icon: "Type",
   };
 
-  // Get icon component - Dynamic for MANUAL_TASK based on taskSubType, and NEGOTIATE
+  // Get icon component - Dynamic for MANUAL_TASK based on taskSubType, NEGOTIATE, and INSPECT
   let IconComponent: React.ElementType;
   if (step.action === "NEGOTIATE") {
     IconComponent = Handshake;
+  } else if (step.action === "INSPECT") {
+    IconComponent = Search;
   } else if (step.action === "MANUAL_TASK" && step.config?.taskSubType) {
     const taskSubType = step.config.taskSubType;
     switch (taskSubType) {
@@ -112,8 +114,8 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
           {step.title || "Untitled Step"}
         </h3>
 
-        {/* Output Variable (for INPUT, APPROVAL, MANUAL_TASK, and NEGOTIATE steps) */}
-        {(step.action === "INPUT" || step.action === "APPROVAL" || step.action === "MANUAL_TASK" || step.action === "NEGOTIATE") && step.config?.outputVariableName && (
+        {/* Output Variable (for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, and INSPECT steps) */}
+        {(step.action === "INPUT" || step.action === "APPROVAL" || step.action === "MANUAL_TASK" || step.action === "NEGOTIATE" || step.action === "INSPECT") && step.config?.outputVariableName && (
           <p className="text-[10px] font-mono text-purple-600 font-semibold">
             Var: {step.config.outputVariableName}
           </p>
