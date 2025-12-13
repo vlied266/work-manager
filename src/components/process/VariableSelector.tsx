@@ -5,13 +5,30 @@ import { ChevronDown, Link2, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Procedure } from "@/types/schema";
 
-// Process Step with Data Mapping (shared type)
-export interface ProcessStep {
+// Process Step Type (Discriminated Union)
+export type ProcessStepType = 'procedure' | 'logic_delay';
+
+export interface BaseProcessStep {
   instanceId: string; // Unique ID for this specific step in the timeline
+  type: ProcessStepType;
+}
+
+export interface ProcedureStep extends BaseProcessStep {
+  type: 'procedure';
   procedureId: string;
   procedureData: Procedure; // The full metadata we grabbed during drag
   inputMappings: Record<string, string>; // e.g. { "email": "{{step_1.output.email}}" }
 }
+
+export interface DelayStep extends BaseProcessStep {
+  type: 'logic_delay';
+  config: {
+    duration: number;
+    unit: 'minutes' | 'hours' | 'days';
+  };
+}
+
+export type ProcessStep = ProcedureStep | DelayStep;
 
 interface VariableSelectorProps {
   value: string;
@@ -45,8 +62,11 @@ export function VariableSelector({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Generate variable options from previous steps
+  // Generate variable options from previous steps (only from procedure steps)
   const variableOptions = previousSteps.flatMap((step, stepIndex) => {
+    // Skip delay steps - they don't produce outputs
+    if (step.type !== 'procedure') return [];
+    
     const stepNum = stepIndex + 1;
     const stepTitle = step.procedureData.title || `Step ${stepNum}`;
     const options: Array<{ label: string; value: string }> = [];

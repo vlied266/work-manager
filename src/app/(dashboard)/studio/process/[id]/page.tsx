@@ -7,7 +7,7 @@ import { ProcessGroup, Procedure } from "@/types/schema";
 import { DndContext, DragEndEvent, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from "@dnd-kit/core";
 import { arrayMove, useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowLeft, X, ArrowRight, GripVertical, ArrowDown, Search, Trash2, Workflow, FileText, Loader2, AlertTriangle, ChevronDown, ChevronUp, Link2 } from "lucide-react";
+import { ArrowLeft, X, ArrowRight, GripVertical, ArrowDown, Search, Trash2, Workflow, FileText, Loader2, AlertTriangle, ChevronDown, ChevronUp, Link2, Clock } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -162,6 +162,7 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
               const proc = procedures.find(p => p.id === procId);
               if (proc) {
                 return {
+                  type: 'procedure' as const,
                   instanceId: `step-${index + 1}-${procId}`,
                   procedureId: procId,
                   procedureData: proc,
@@ -192,13 +193,15 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
       return;
     }
     
-    if (!processGroup || !processGroup.procedureSequence || processGroup.procedureSequence.length === 0) {
+    // Check for at least one procedure step (logic steps don't count)
+    const procedureSteps = processSteps.filter(step => step.type === 'procedure');
+    if (procedureSteps.length === 0) {
       alert("Please add at least one procedure from the library before creating the process.");
       return;
     }
 
     // Validate procedure IDs exist
-    const procedureIds = processGroup.procedureSequence;
+    const procedureIds = procedureSteps.map(step => step.procedureId);
     console.log("🔍 Validating procedure IDs:", procedureIds);
     
     // Verify all procedure IDs exist in the procedures list
@@ -216,7 +219,8 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
         title: processTitle.trim(),
         description: processDescription.trim(),
         icon: "FolderOpen",
-        procedureSequence: validIds.length > 0 ? validIds : procedureIds, // Use validated IDs or original
+        procedureSequence: validIds.length > 0 ? validIds : procedureIds, // Backward compatibility (only procedures)
+        processSteps: processSteps, // New: includes logic steps
         isActive: isActive !== undefined ? isActive : true,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -264,13 +268,16 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
 
     setSaving(true);
     try {
-      const procedureSequence = processSteps.map(step => step.procedureId);
+      // Only include procedure steps in procedureSequence (backward compatibility)
+      const procedureSequence = processSteps
+        .filter(step => step.type === 'procedure')
+        .map(step => step.procedureId);
       const updateData = {
         title: processTitle.trim(),
         description: processDescription.trim() || undefined,
         isActive,
-        procedureSequence, // Backward compatibility
-        processSteps, // New: richer data with input mappings
+        procedureSequence, // Backward compatibility (only procedures)
+        processSteps, // New: richer data with input mappings and logic steps
         updatedAt: serverTimestamp(),
       };
       
@@ -303,7 +310,7 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
       const procedureMetadata = active.data.current.procedure; // Full procedure metadata
       
       // Check if procedure already exists in steps
-      if (processSteps.some(step => step.procedureId === procedureId)) {
+      if (processSteps.some(step => step.type === 'procedure' && step.procedureId === procedureId)) {
         return; // Already added
       }
       
@@ -313,6 +320,7 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
       
       // Create new ProcessStep
       const newStep: ProcessStep = {
+        type: 'procedure',
         instanceId: `step-${Date.now()}-${procedureId}`,
         procedureId: procedureId,
         procedureData: procedureMetadata || procedure,
@@ -322,8 +330,10 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
       const updatedSteps = [...processSteps, newStep];
       setProcessSteps(updatedSteps);
       
-      // Update processGroup procedureSequence for backward compatibility
-      const updatedSequence = updatedSteps.map(step => step.procedureId);
+      // Update processGroup procedureSequence for backward compatibility (only procedures)
+      const updatedSequence = updatedSteps
+        .filter(step => step.type === 'procedure')
+        .map(step => step.procedureId);
       const tempGroup: ProcessGroup = processGroup || {
         id: `temp-${Date.now()}`,
         organizationId,
@@ -350,17 +360,65 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
       return;
     }
 
-    // Handle reordering procedures in sequence
+    // Handle dropping delay/logic step onto canvas
+    if (active.data.current?.type === "logic_delay" && over.id === "process-timeline") {
+      // Create new Delay Step
+      const newStep: ProcessStep = {
+        type: 'logic_delay',
+        instanceId: `delay-${Date.now()}`,
+        config: {
+          duration: 1,
+          unit: 'days',
+        },
+      };
+      
+      const updatedSteps = [...processSteps, newStep];
+      setProcessSteps(updatedSteps);
+      
+      // Update processGroup procedureSequence for backward compatibility (only procedures)
+      const updatedSequence = updatedSteps
+        .filter(step => step.type === 'procedure')
+        .map(step => step.procedureId);
+      const tempGroup: ProcessGroup = processGroup || {
+        id: `temp-${Date.now()}`,
+        organizationId,
+        title: processTitle || "New Process",
+        description: processDescription || "",
+        icon: "FolderOpen",
+        procedureSequence: updatedSequence,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      const updated = { ...tempGroup, procedureSequence: updatedSequence };
+      setProcessGroup(updated);
+      
+      // Auto-save to Firestore only if process group already exists in DB
+      if (processGroup?.id && !processGroup.id.startsWith("temp-")) {
+        updateDoc(doc(db, "process_groups", processGroup.id), {
+          procedureSequence: updatedSequence,
+          processSteps: updatedSteps,
+          updatedAt: serverTimestamp(),
+        }).catch(console.error);
+      }
+      return;
+    }
+
+    // Handle reordering steps in sequence (works for both procedures and logic steps)
     if (active.data.current?.type === "sequence-item" && active.id !== over.id) {
-      const oldIndex = processSteps.findIndex((step) => step.procedureId === active.id);
-      const newIndex = processSteps.findIndex((step) => step.procedureId === over.id);
+      // Find by instanceId (works for both procedure and delay steps)
+      const oldIndex = processSteps.findIndex((step) => step.instanceId === active.id);
+      const newIndex = processSteps.findIndex((step) => step.instanceId === over.id);
 
       if (oldIndex !== -1 && newIndex !== -1) {
         const newSteps = arrayMove(processSteps, oldIndex, newIndex);
         setProcessSteps(newSteps);
         
-        // Update procedureSequence
-        const newSequence = newSteps.map(step => step.procedureId);
+        // Update procedureSequence (only procedures)
+        const newSequence = newSteps
+          .filter(step => step.type === 'procedure')
+          .map(step => step.procedureId);
         const updated = { ...processGroup!, procedureSequence: newSequence };
         setProcessGroup(updated);
         
@@ -376,10 +434,10 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
     }
   };
   
-  // Update input mapping for a step
+  // Update input mapping for a step (only for procedure steps)
   const handleUpdateInputMapping = (instanceId: string, inputField: string, value: string) => {
     const updatedSteps = processSteps.map(step => {
-      if (step.instanceId === instanceId) {
+      if (step.instanceId === instanceId && step.type === 'procedure') {
         return {
           ...step,
           inputMappings: {
@@ -401,11 +459,36 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
     }
   };
 
+  // Update delay step config
+  const handleUpdateDelayConfig = (instanceId: string, config: { duration: number; unit: 'minutes' | 'hours' | 'days' }) => {
+    const updatedSteps = processSteps.map(step => {
+      if (step.instanceId === instanceId && step.type === 'logic_delay') {
+        return {
+          ...step,
+          config,
+        };
+      }
+      return step;
+    });
+    setProcessSteps(updatedSteps);
+    
+    // Auto-save if process group exists in DB
+    if (processGroup?.id && !processGroup.id.startsWith("temp-")) {
+      updateDoc(doc(db, "process_groups", processGroup.id), {
+        processSteps: updatedSteps,
+        updatedAt: serverTimestamp(),
+      }).catch(console.error);
+    }
+  };
+
   const handleRemoveProcedure = async (instanceId: string) => {
     const updatedSteps = processSteps.filter((step) => step.instanceId !== instanceId);
     setProcessSteps(updatedSteps);
     
-    const updatedSequence = updatedSteps.map(step => step.procedureId);
+    // Update procedureSequence (only procedures)
+    const updatedSequence = updatedSteps
+      .filter(step => step.type === 'procedure')
+      .map(step => step.procedureId);
     const updated = { ...processGroup!, procedureSequence: updatedSequence };
     setProcessGroup(updated);
     
@@ -418,7 +501,7 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
           updatedAt: serverTimestamp(),
         });
       } catch (error) {
-        console.error("Error removing procedure:", error);
+        console.error("Error removing step:", error);
       }
     }
   };
@@ -446,11 +529,7 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
     }
   };
 
-  // Filter procedures by search query
-  const filteredProcedures = procedures.filter((proc) =>
-    proc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    proc.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Note: Filtering is now handled inside ProcedureLibrary component
 
   if (loading) {
     return (
@@ -585,7 +664,7 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
           <div className="grid grid-cols-[320px_1fr] gap-6 h-full">
             {/* Left Pane: Procedure Library - Floating Glass Island */}
             <ProcedureLibrary 
-              procedures={filteredProcedures} 
+              procedures={procedures} 
               searchQuery={searchQuery} 
               onSearchChange={setSearchQuery}
               loading={proceduresLoading}
@@ -598,6 +677,7 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
               procedures={procedures}
               onRemoveProcedure={handleRemoveProcedure}
               onUpdateInputMapping={handleUpdateInputMapping}
+              onUpdateDelayConfig={handleUpdateDelayConfig}
             />
           </div>
         </ProcessDndContext>
@@ -644,49 +724,89 @@ function ProcedureLibrary({
   loading: boolean;
   error: string | null;
 }) {
+  const [activeTab, setActiveTab] = useState<"procedures" | "logic">("procedures");
+  const filteredProcedures = procedures.filter((proc) =>
+    proc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    proc.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="h-full overflow-hidden rounded-[2rem] bg-white/60 backdrop-blur-xl border border-white/40 shadow-2xl shadow-black/5 flex flex-col">
       {/* Header */}
       <div className="flex-shrink-0 p-6 border-b border-white/20">
         <h2 className="text-lg font-extrabold text-slate-800 tracking-tight mb-1">Smart Toolbox</h2>
-        <p className="text-xs text-slate-600 mb-4">Drag published procedures to build your process</p>
+        <p className="text-xs text-slate-600 mb-4">Drag items to build your process</p>
         
-        {/* macOS Spotlight-style Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search procedures..."
-            className="w-full rounded-full bg-white/50 shadow-inner pl-9 pr-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-black/5 focus:bg-white/70 transition-all"
-          />
+        {/* Tabs */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setActiveTab("procedures")}
+            className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
+              activeTab === "procedures"
+                ? "bg-[#007AFF] text-white shadow-sm"
+                : "bg-white/50 text-slate-600 hover:bg-white/70"
+            }`}
+          >
+            Procedures
+          </button>
+          <button
+            onClick={() => setActiveTab("logic")}
+            className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
+              activeTab === "logic"
+                ? "bg-[#007AFF] text-white shadow-sm"
+                : "bg-white/50 text-slate-600 hover:bg-white/70"
+            }`}
+          >
+            Logic
+          </button>
         </div>
+        
+        {/* macOS Spotlight-style Search (only for procedures) */}
+        {activeTab === "procedures" && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search procedures..."
+              className="w-full rounded-full bg-white/50 shadow-inner pl-9 pr-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-black/5 focus:bg-white/70 transition-all"
+            />
+          </div>
+        )}
       </div>
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-3">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 text-blue-500 animate-spin mb-3" />
-            <p className="text-sm text-slate-600 font-medium">Loading procedures...</p>
-          </div>
-        ) : error ? (
-          <div className="text-center py-12">
-            <AlertTriangle className="h-12 w-12 text-rose-300 mx-auto mb-3" />
-            <p className="text-sm text-slate-600 font-medium">{error}</p>
-            <p className="text-xs text-slate-500 mt-1">Please refresh the page</p>
-          </div>
-        ) : procedures.length === 0 ? (
-          <div className="text-center py-12">
-            <FileText className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-sm text-slate-600 font-medium">No published procedures found</p>
-            <p className="text-xs text-slate-500 mt-1">Publish procedures in Studio to add them here</p>
-          </div>
+        {activeTab === "procedures" ? (
+          <>
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 text-blue-500 animate-spin mb-3" />
+                <p className="text-sm text-slate-600 font-medium">Loading procedures...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <AlertTriangle className="h-12 w-12 text-rose-300 mx-auto mb-3" />
+                <p className="text-sm text-slate-600 font-medium">{error}</p>
+                <p className="text-xs text-slate-500 mt-1">Please refresh the page</p>
+              </div>
+            ) : filteredProcedures.length === 0 ? (
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-sm text-slate-600 font-medium">No published procedures found</p>
+                <p className="text-xs text-slate-500 mt-1">Publish procedures in Studio to add them here</p>
+              </div>
+            ) : (
+              filteredProcedures.map((procedure) => (
+                <DraggableProcedureCard key={procedure.id} procedure={procedure} />
+              ))
+            )}
+          </>
         ) : (
-          procedures.map((procedure) => (
-            <DraggableProcedureCard key={procedure.id} procedure={procedure} />
-          ))
+          <div className="space-y-3">
+            <DraggableDelayCard />
+          </div>
         )}
       </div>
     </div>
@@ -781,23 +901,69 @@ function DraggableProcedureCard({ procedure }: { procedure: Procedure }) {
   );
 }
 
+// Draggable Delay Card - Logic Step
+function DraggableDelayCard() {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: "logic_delay",
+    data: {
+      type: "logic_delay",
+    },
+  });
+
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+      }
+    : undefined;
+
+  return (
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={`group relative cursor-grab active:cursor-grabbing rounded-xl bg-white shadow-lg border-2 border-amber-200 p-4 transition-all ${
+        isDragging ? "shadow-2xl z-50 opacity-90 scale-105" : "hover:shadow-xl hover:-translate-y-1"
+      }`}
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.98 }}
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center shadow-sm">
+          <Clock className="h-5 w-5 text-amber-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="text-sm font-semibold text-slate-800 tracking-tight leading-tight mb-1">Wait / Delay</h4>
+          <p className="text-xs text-slate-600 line-clamp-2 mb-2">Add a delay between steps</p>
+          <div className="text-xs text-slate-500 font-medium">
+            Configure duration on drop
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 // Right Canvas: Process Flow - Apple Aesthetic
 function ProcessTimeline({
   processSteps,
   procedures,
   onRemoveProcedure,
   onUpdateInputMapping,
+  onUpdateDelayConfig,
 }: {
   processSteps: ProcessStep[];
   procedures: Procedure[];
   onRemoveProcedure: (instanceId: string) => void;
   onUpdateInputMapping: (instanceId: string, inputField: string, value: string) => void;
+  onUpdateDelayConfig: (instanceId: string, config: { duration: number; unit: 'minutes' | 'hours' | 'days' }) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: "process-timeline",
   });
 
-  const sequence = processSteps.map(step => step.procedureId);
+  // Use instanceId for sortable items (works for both procedures and logic steps)
+  const sequence = processSteps.map(step => step.instanceId);
 
   return (
     <div
@@ -840,6 +1006,7 @@ function ProcessTimeline({
                     previousSteps={processSteps.slice(0, index)}
                     onRemove={() => onRemoveProcedure(step.instanceId)}
                     onUpdateInputMapping={onUpdateInputMapping}
+                    onUpdateDelayConfig={onUpdateDelayConfig}
                   />
                 ))}
               </AnimatePresence>
@@ -859,6 +1026,7 @@ function SortableProcedureItem({
   previousSteps,
   onRemove,
   onUpdateInputMapping,
+  onUpdateDelayConfig,
 }: {
   step: ProcessStep;
   index: number;
@@ -866,10 +1034,11 @@ function SortableProcedureItem({
   previousSteps: ProcessStep[];
   onRemove: () => void;
   onUpdateInputMapping: (instanceId: string, inputField: string, value: string) => void;
+  onUpdateDelayConfig: (instanceId: string, config: { duration: number; unit: 'minutes' | 'hours' | 'days' }) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: step.procedureId,
+    id: step.instanceId, // Use instanceId for both procedures and delay steps
     data: {
       type: "sequence-item",
     },
@@ -881,6 +1050,102 @@ function SortableProcedureItem({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  // Handle Delay Step rendering
+  if (step.type === 'logic_delay') {
+    return (
+      <>
+        <motion.div
+          ref={setNodeRef}
+          style={style}
+          layout
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className={`group relative rounded-xl bg-white shadow-lg border-2 border-amber-200 transition-all ${
+            isDragging ? "shadow-2xl scale-105 ring-1 ring-amber-300" : "hover:shadow-xl hover:-translate-y-1"
+          }`}
+        >
+          <div className="p-4">
+            <div className="flex items-start gap-3">
+              {/* Drag Handle */}
+              <div
+                {...attributes}
+                {...listeners}
+                className="flex-shrink-0 cursor-grab active:cursor-grabbing p-2 hover:bg-gray-100/50 rounded-lg transition-colors"
+              >
+                <GripVertical className="h-5 w-5 text-slate-500" strokeWidth={2} />
+              </div>
+
+              {/* Clock Icon */}
+              <div className="flex-shrink-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 shadow-sm">
+                  <Clock className="h-5 w-5 text-amber-600" />
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-slate-800 tracking-tight mb-2">Wait / Delay</h3>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="1"
+                    value={step.config.duration}
+                    onChange={(e) => {
+                      const duration = parseInt(e.target.value) || 1;
+                      onUpdateDelayConfig(step.instanceId, { ...step.config, duration });
+                    }}
+                    className="w-20 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
+                  />
+                  <select
+                    value={step.config.unit}
+                    onChange={(e) => {
+                      const unit = e.target.value as 'minutes' | 'hours' | 'days';
+                      onUpdateDelayConfig(step.instanceId, { ...step.config, unit });
+                    }}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
+                  >
+                    <option value="minutes">Minutes</option>
+                    <option value="hours">Hours</option>
+                    <option value="days">Days</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Remove Button */}
+              <button
+                onClick={onRemove}
+                className="flex-shrink-0 rounded-lg p-2 text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100"
+              >
+                <X className="h-4 w-4" strokeWidth={2} />
+              </button>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Connecting Arrow */}
+        {!isLast && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex justify-center my-3"
+          >
+            <div className="relative">
+              <svg className="h-6 w-6 text-blue-400/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path
+                  d="M12 2 L12 18 M8 14 L12 18 L16 14"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          </motion.div>
+        )}
+      </>
+    );
+  }
+
+  // Procedure Step rendering (existing logic)
   // Extract input fields from first INPUT step
   const inputStep = step.procedureData.steps?.find(s => s.action === "INPUT");
   const inputFields = inputStep?.config?.fields && Array.isArray(inputStep.config.fields) 

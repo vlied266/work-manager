@@ -26,7 +26,7 @@ The Workflow Studio is a **drag-and-drop workflow builder** that allows users to
 src/app/(dashboard)/studio/
 ├── page.tsx                          # Entry point: Studio Hub (AI generation + navigation)
 ├── procedure/[id]/page.tsx           # Procedure Builder (main editor)
-├── process/[id]/page.tsx             # Process Composer (chain Procedures)
+├── process/[id]/page                  .tsx             # Process Composer (chain Procedures)
 └── templates/page.tsx                # Template Gallery
 
 src/components/studio/
