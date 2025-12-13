@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AtomicStep, ActiveRun } from "@/types/schema";
 import { CheckCircle2, Loader2, Hash, Calendar, FileText, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
@@ -37,6 +37,24 @@ export function InputDataRenderer({
   const inputType = stepConfig.inputType || "text";
   const placeholder = stepConfig.placeholder || (inputType === "select" ? "Select an option" : `Enter ${inputType}`);
   const fieldLabel = stepConfig.fieldLabel || "Input";
+  
+  // Initialize output from defaultValue if provided and output is empty
+  useEffect(() => {
+    if (stepConfig.defaultValue && !output) {
+      // For now, only use defaultValue if it's a simple string (not a variable)
+      // Variable resolution would need runContext, which is handled separately
+      const defaultValue = stepConfig.defaultValue;
+      // Check if it contains variables ({{...}})
+      // If it does, we'll need to resolve it from runContext or backend
+      // For now, only initialize if it's a plain string
+      if (typeof defaultValue === "string" && !defaultValue.includes("{{")) {
+        setOutput(defaultValue);
+      }
+      // TODO: Resolve variables from runContext if available
+      // This would require passing runContext to InputDataRenderer
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stepConfig.defaultValue]);
   
   // Parse options for select type - handle both array format and comma-separated string
   const parseOptions = (): Array<{ label: string; value: string }> => {
@@ -339,6 +357,16 @@ export function InputDataRenderer({
                 </option>
               ))}
             </select>
+          ) : inputType === "multiline" ? (
+            <textarea
+              value={output || ""}
+              onChange={(e) => handleChange(e.target.value)}
+              placeholder={placeholder}
+              required={stepConfig.required}
+              disabled={isSubmitting}
+              rows={6}
+              className="w-full rounded-2xl border-2 border-slate-200 bg-white pl-14 pr-6 py-5 text-base font-semibold text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+            />
           ) : (
             <input
               type={inputType === "number" ? "number" : inputType === "email" ? "email" : "text"}

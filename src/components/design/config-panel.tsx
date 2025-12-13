@@ -1144,6 +1144,35 @@ function renderActionConfigSettings(
             </p>
           </div>
 
+          {/* Default Value - Only show for relevant input types */}
+          {(config.inputType === "text" || 
+            config.inputType === "number" || 
+            config.inputType === "email" || 
+            config.inputType === "multiline" || 
+            config.inputType === "date" || 
+            config.inputType === "select") && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Default Value
+              </label>
+              <VariableInput
+                type={config.inputType === "multiline" ? "textarea" : "text"}
+                value={config.defaultValue || ""}
+                onChange={(value) =>
+                  onUpdate({ config: { ...config, defaultValue: value || undefined } })
+                }
+                placeholder="Enter default value or use {{step_1.output.field}}"
+                allSteps={allSteps}
+                currentStepId={step.id}
+                procedureTrigger={procedureTrigger}
+                rows={config.inputType === "multiline" ? 4 : undefined}
+              />
+              <p className="mt-1.5 text-xs text-slate-500">
+                The initial value shown to the user. Use variables to pre-fill data for verification (e.g. from AI extraction). Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+              </p>
+            </div>
+          )}
+
           <div className="flex items-center justify-between p-4 rounded-xl border-2 border-slate-200 bg-slate-50">
             <div>
               <label className="text-sm font-semibold text-slate-900 block mb-0.5">
