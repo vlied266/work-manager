@@ -397,9 +397,9 @@ function renderActionConfigBasic(
             <p className="mt-1 text-xs text-slate-500">
               Click the <Zap className="inline h-3 w-3" /> button to insert variables.
             </p>
-        </div>
+          </div>
 
-                  <div>
+          <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Subject <span className="text-rose-500">*</span>
             </label>
@@ -417,8 +417,80 @@ function renderActionConfigBasic(
             <p className="mt-1 text-xs text-slate-500">
               Click the <Zap className="inline h-3 w-3" /> button to insert variables.
             </p>
-              </div>
-            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Email Body <span className="text-rose-500">*</span>
+            </label>
+            <VariableInput
+              type="textarea"
+              value={config.body || config.emailBody || ""}
+              onChange={(value) =>
+                onUpdate({ config: { ...config, body: value || undefined, emailBody: value || undefined } })
+              }
+              rows={8}
+              placeholder="Hello {{step_1.output.name}},\n\nYour request has been approved.\n\nThank you!"
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Plain text or HTML. Click the <Zap className="inline h-3 w-3" /> button to insert variables. Line breaks are preserved.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              HTML Content (Optional)
+            </label>
+            <VariableInput
+              type="textarea"
+              value={config.html || ""}
+              onChange={(value) =>
+                onUpdate({ config: { ...config, html: value || undefined } })
+              }
+              rows={6}
+              placeholder="<h1>Welcome!</h1><p>Hello {{step_1.output.name}}</p>"
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
+            />
+            <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+              <strong className="font-semibold text-blue-900">What is HTML Content?</strong>
+              <br />
+              Optional. Use HTML code here for styled emails (images, buttons, colors). If filled, this overrides the plain 'Email Body' text.
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              From Address (Optional)
+            </label>
+            <VariableInput
+              type="input"
+              value={config.from || ""}
+              onChange={(value) =>
+                onUpdate({ config: { ...config, from: value || undefined } })
+              }
+              placeholder="Sender Name <sender@example.com> or {{step_1.output.sender}}"
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
+            />
+            <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+              <strong className="font-semibold text-blue-900">From Address:</strong>
+              <br />
+              Optional. The name/email the receiver sees (e.g. 'Support Team &lt;support@example.com&gt;'). If empty, uses the system default.
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+            </p>
+          </div>
+        </div>
       );
 
     case "GOOGLE_SHEET":
@@ -1252,71 +1324,8 @@ function renderActionConfigSettings(
       return null;
 
     case "SEND_EMAIL":
-      return (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Email Body <span className="text-rose-500">*</span>
-            </label>
-            <VariableInput
-              type="textarea"
-              value={config.body || config.emailBody || ""}
-              onChange={(value) =>
-                onUpdate({ config: { ...config, body: value || undefined, emailBody: value || undefined } })
-              }
-              rows={8}
-              placeholder="Hello {{step_1.output.name}},\n\nYour request has been approved.\n\nThank you!"
-              allSteps={allSteps}
-              currentStepId={step.id}
-              procedureTrigger={procedureTrigger}
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              Plain text or HTML. Click the <Zap className="inline h-3 w-3" /> button to insert variables. Line breaks are preserved.
-            </p>
-              </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              HTML Content (Optional)
-            </label>
-            <VariableInput
-              type="textarea"
-              value={config.html || ""}
-              onChange={(value) =>
-                onUpdate({ config: { ...config, html: value || undefined } })
-              }
-              rows={6}
-              placeholder="<h1>Welcome!</h1><p>Hello {{step_1.output.name}}</p>"
-              allSteps={allSteps}
-              currentStepId={step.id}
-              procedureTrigger={procedureTrigger}
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              If HTML is provided, it will be used instead of the body. Leave empty to use plain text body.
-            </p>
-            </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              From Address (Optional)
-            </label>
-            <VariableInput
-              type="input"
-              value={config.from || ""}
-              onChange={(value) =>
-                onUpdate({ config: { ...config, from: value || undefined } })
-              }
-              placeholder="Sender Name <sender@example.com> or {{step_1.output.sender}}"
-              allSteps={allSteps}
-              currentStepId={step.id}
-              procedureTrigger={procedureTrigger}
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              Default: Atomic Work &lt;alerts@theatomicwork.com&gt;. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-            </p>
-          </div>
-        </div>
-      );
+      // Email Body, HTML Content, and From Address are now in Basic tab
+      return null;
 
     case "GOOGLE_SHEET":
       return (
@@ -1600,7 +1609,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
   // Determine if Logic tab should be shown
-  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, AI_PARSE, DB_INSERT, and HTTP_REQUEST (branching handled in Basic tab or by connecting to GATEWAY on canvas)
+  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, AI_PARSE, DB_INSERT, HTTP_REQUEST, and SEND_EMAIL (branching handled in Basic tab or by connecting to GATEWAY on canvas)
   const shouldShowLogicTab = step && (
     step.action !== "GATEWAY" && 
     step.action !== "VALIDATE" && 
@@ -1612,7 +1621,8 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
     step.action !== "INSPECT" &&
     step.action !== "AI_PARSE" &&
     step.action !== "DB_INSERT" &&
-    step.action !== "HTTP_REQUEST"
+    step.action !== "HTTP_REQUEST" &&
+    step.action !== "SEND_EMAIL"
   );
   
   const [activeTab, setActiveTab] = useState<"basic" | "settings" | "logic">("basic");
