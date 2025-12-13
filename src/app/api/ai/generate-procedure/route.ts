@@ -20,29 +20,232 @@ const ATOMIC_ACTIONS: AtomicAction[] = [
 
 const GUARDRAIL_CLAUSE = `CRITICAL RULE: You are a strict Process Architect. If the user input is NOT a description of a business process, workflow, or task sequence (e.g., if it is a joke, a greeting, random characters, or code request), you must return a JSON array with a SINGLE step: { "id": "error", "title": "Invalid Request", "action": "INSPECT", "description": "I can only generate business workflows. Please describe a process." }. Do NOT attempt to interpret nonsense.`;
 
+const STRATEGIC_RULES = `
+### 🎯 WORKFLOW STRATEGY & BEST PRACTICES:
+
+These rules help you choose the RIGHT step for the RIGHT job and ensure logical workflow design.
+
+---
+
+1. **VALIDATE vs. COMPARE (Critical Distinction):**
+
+   - **Use VALIDATE** when checking the *quality* or *format* of a **single variable**:
+     * "Is email valid?"
+     * "Is age > 18?"
+     * "Is field not empty?"
+     * "Does phone number match format?"
+     * VALIDATE checks ONE value against rules/criteria.
+
+   - **Use COMPARE** when checking for *reconciliation* between **two different data sources**:
+     * "Does Invoice Amount (from AI Parse) match PO Amount (from Database)?"
+     * "Does extracted total match calculated total?"
+     * "Does user input match stored record?"
+     * COMPARE checks TWO values against each other (with optional tolerance).
+
+   **Example:**
+   - User says: "Check if email is valid" → Use **VALIDATE** (single value check)
+   - User says: "Verify invoice amount matches purchase order" → Use **COMPARE** (two sources)
+
+---
+
+2. **GATEWAY Usage (Business Logic Routing):**
+
+   - Use **GATEWAY** for *business logic branching* (routing decisions):
+     * "If Amount > 10k, route to Manager Approval. Else, route to Auto-Save."
+     * "If Status is 'VIP', route to Priority Queue. Else, route to Standard Queue."
+     * "If Region is 'US', route to US Team. If 'EU', route to EU Team. Else, route to Global Team."
+
+   - **Do NOT** use Gateway for simple data validation errors:
+     * ❌ Wrong: Use Gateway to check "if email is invalid, terminate"
+     * ✅ Right: Use **VALIDATE** with "On Fail" route to handle validation errors
+
+   - Gateway is for **business decisions**, not **data quality checks**.
+
+---
+
+3. **INPUT & DATA FLOW (Logical Sequence):**
+
+   - **Every workflow usually starts with a TRIGGER or INPUT step** to get data:
+     * Manual workflows: Start with **INPUT** step (file upload, form fields)
+     * Automated workflows: Start with **TRIGGER** (ON_FILE_CREATED, WEBHOOK)
+
+   - **If the user asks to "Read a file" or "Parse a document":**
+     * You MUST place an **AI_PARSE** (Read Document) step immediately after the Trigger/Input.
+     * Example: INPUT (file) → AI_PARSE (extract data) → DB_INSERT (save)
+
+   - **Before a DOC_GENERATE step:**
+     * Ensure you have collected ALL necessary variables (via Input or AI Parse).
+     * Example: INPUT (collect name, date) → DOC_GENERATE (create invoice)
+
+   - **Data Flow Pattern:**
+     * Collect → Process → Validate → Save/Notify
+     * Example: INPUT → AI_PARSE → VALIDATE → DB_INSERT → SEND_EMAIL
+
+---
+
+4. **LOOPING & CORRECTION (Error Handling):**
+
+   - **If a VALIDATE step fails** (e.g., wrong email format):
+     * Route the "On Fail" path back to the **INPUT** step (creating a correction loop).
+     * This allows users to fix errors and resubmit.
+     * Example: INPUT (email) → VALIDATE (email format) → [On Fail → back to INPUT]
+
+   - **Do NOT** terminate on first validation failure:
+     * ❌ Wrong: VALIDATE → [On Fail → __END_FAILURE__]
+     * ✅ Right: VALIDATE → [On Fail → INPUT (loop back)]
+
+   - **For critical errors** (e.g., unauthorized access):
+     * You may route to __END_FAILURE__ to terminate the workflow.
+
+---
+
+5. **DB SAVING (Final Step Pattern):**
+
+   - **Usually, DB_INSERT (Save to DB) is the last step** in a successful branch:
+     * After all validation, processing, and approval steps are complete.
+     * Example: INPUT → AI_PARSE → VALIDATE → APPROVAL → DB_INSERT
+
+   - **Exception:** If user wants to send notifications or generate documents AFTER saving:
+     * DB_INSERT → SEND_EMAIL (notify user)
+     * DB_INSERT → DOC_GENERATE (create receipt)
+
+---
+
+6. **APPROVAL vs. VALIDATE (Human vs. Automated):**
+
+   - **Use APPROVAL** when a **human decision** is required:
+     * "Manager must approve", "Require signature", "Needs review"
+     * This pauses the workflow and waits for human input.
+
+   - **Use VALIDATE** when an **automated check** is sufficient:
+     * "Email format is valid", "Amount is positive", "Required field is not empty"
+     * This runs automatically without human intervention.
+
+---
+
+7. **CALCULATE Usage:**
+
+   - Use **CALCULATE** for mathematical operations:
+     * "Total = Price × Quantity"
+     * "Discount = Amount × 0.1"
+     * "Final = Subtotal + Tax - Discount"
+
+   - **Do NOT** use Calculate for simple comparisons (use COMPARE instead).
+
+---
+
+8. **MANUAL_TASK vs. NEGOTIATE vs. INSPECT:**
+
+   - **MANUAL_TASK**: Generic human task (e.g., "Call customer", "Archive document")
+   - **NEGOTIATE**: Human-to-human interaction (e.g., "Discuss terms with client")
+   - **INSPECT**: Review/audit task (e.g., "Review contract", "Audit invoice")
+
+   Choose based on the nature of the human interaction required.
+
+---
+
+9. **HTTP_REQUEST Usage:**
+
+   - Use **HTTP_REQUEST** to call external APIs:
+     * "Fetch customer data from CRM", "Send data to webhook", "Get exchange rates"
+   - Use it when you need to integrate with external systems.
+
+---
+
+10. **SEND_EMAIL Usage:**
+
+   - Use **SEND_EMAIL** for notifications:
+     * "Send confirmation email", "Notify manager", "Alert user"
+   - Usually placed after successful operations (DB_INSERT, APPROVAL, etc.)
+
+---
+
+**Summary Checklist:**
+
+✅ Start with TRIGGER or INPUT to get data
+✅ Use AI_PARSE immediately after file input/trigger
+✅ Use VALIDATE for single-value quality checks
+✅ Use COMPARE for two-source reconciliation
+✅ Use GATEWAY for business logic routing (not validation)
+✅ Route validation failures back to INPUT (correction loop)
+✅ Save to DB as the final step (usually)
+✅ Use APPROVAL for human decisions, VALIDATE for automated checks
+✅ Collect all data before DOC_GENERATE
+✅ Send notifications after successful operations
+`;
+
 const GOOGLE_SHEET_INSTRUCTION = `
 SPECIAL RULE FOR "GOOGLE_SHEET":
 
-If the user asks to save data to a spreadsheet/excel, use action "GOOGLE_SHEET".
+If the user asks to save data to a spreadsheet/excel or read/lookup data from a spreadsheet, use action "GOOGLE_SHEET".
 
-You MUST generate a "config" object:
+1. **When to Use:**
+   - User says: "Save to spreadsheet", "Add to Google Sheet", "Update Excel", "Lookup in sheet", "Read from spreadsheet"
+   - User mentions: "Google Sheets", "Excel", "Spreadsheet"
 
-{
-  "sheetId": "",
-  "mapping": {
-    "A": "{{step_x.output}}", 
-    "B": "Static Value"
-  }
-}
+2. **Config Structure (NEW ARCHITECTURE):**
 
-- Leave "sheetId" empty.
-- Intelligently map previous steps' data to columns using mustache syntax.
-- Use meaningful column mappings based on the data flow. For example:
-  * If step 1 collects "Full Name", map it to column A: "{{step_1.output.fullName}}" or "{{step_1.output.name}}"
-  * If step 2 collects "Email", map it to column B: "{{step_2.output.email}}"
-  * If step 3 calculates "Total Amount", map it to column C: "{{step_3.output.total}}"
-- You can also use static text combined with variables, e.g., "Applicant: {{step_1.output.name}}"
-- Always include at least 2-3 column mappings (A, B, C) to make the template useful.
+   {
+     "spreadsheetId": "abc123...",  // REQUIRED: Google Sheet ID (extract from URL or ask user)
+     "sheetName": "Sheet1",  // REQUIRED: Name of the sheet tab
+     "operation": "APPEND_ROW" | "UPDATE_ROW" | "LOOKUP_ROW",  // REQUIRED: Default is "APPEND_ROW"
+     "columnMapping": {  // REQUIRED if operation === "APPEND_ROW" or "UPDATE_ROW"
+       "Header Name": "{{step_1.output.field}}",
+       "Email": "{{step_2.output.email}}",
+       "Total": "{{step_3.output.total}}"
+     },
+     "rowNumber": "5",  // REQUIRED if operation === "UPDATE_ROW": Row number to update
+     "lookupColumn": "Email",  // REQUIRED if operation === "LOOKUP_ROW": Column header to search
+     "lookupValue": "{{step_1.output.email}}"  // REQUIRED if operation === "LOOKUP_ROW": Value to find
+   }
+
+3. **Operation Types:**
+   - **"APPEND_ROW"** (default): Add a new row to the sheet.
+     * Requires "columnMapping" object: { "Column Header": "{{variable}}" }
+     * Maps workflow variables to column headers
+   - **"UPDATE_ROW"**: Update an existing row.
+     * Requires "rowNumber" (row index, e.g., "5")
+     * Requires "columnMapping" for fields to update
+   - **"LOOKUP_ROW"**: Read/find a row by searching a column.
+     * Requires "lookupColumn" (column header name, e.g., "Email")
+     * Requires "lookupValue" (value to search for, e.g., "{{step_1.output.email}}")
+     * Returns the entire row data as output
+
+4. **Spreadsheet ID:**
+   - Extract from Google Sheet URL: https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit
+   - If user provides full URL, extract the ID from it
+   - If user only provides name, use placeholder (system will need manual update)
+
+5. **Column Mapping:**
+   - Keys are column headers (exact match with sheet headers)
+   - Values are workflow variables using mustache syntax: {{step_x.output.fieldName}}
+   - Example: { "Name": "{{step_1.output.name}}", "Email": "{{step_1.output.email}}", "Amount": "{{step_2.output.total}}" }
+
+6. **Examples:**
+   - User says: "Save invoice data to Google Sheet"
+     → action: "GOOGLE_SHEET", config: { 
+         spreadsheetId: "abc123...",
+         sheetName: "Invoices",
+         operation: "APPEND_ROW",
+         columnMapping: {
+           "Invoice Date": "{{step_1.output.invoice_date}}",
+           "Amount": "{{step_1.output.total_amount}}",
+           "Vendor": "{{step_1.output.vendor}}"
+         }
+       }
+   
+   - User says: "Lookup customer by email in spreadsheet"
+     → action: "GOOGLE_SHEET", config: { 
+         spreadsheetId: "abc123...",
+         sheetName: "Customers",
+         operation: "LOOKUP_ROW",
+         lookupColumn: "Email",
+         lookupValue: "{{step_1.output.email}}"
+       }
+
+7. **Output:**
+   - APPEND_ROW/UPDATE_ROW: Returns success status
+   - LOOKUP_ROW: Returns the found row data as JSON object (accessible via {{step_x.output.fieldName}})
 `;
 
 const ASSIGNMENT_INSTRUCTION = `
@@ -224,7 +427,7 @@ If the user wants to SAVE/STORE data into a specific table/collection (e.g., "Sa
 `;
 
 const AI_PARSE_INSTRUCTION = `
-SPECIAL RULE FOR "AI_PARSE" (Document Parser):
+SPECIAL RULE FOR "AI_PARSE" (Read Document / Document Parser):
 
 If the user wants to EXTRACT/READ/PARSE data from a file (PDF, Excel, Image), use action "AI_PARSE".
 
@@ -233,12 +436,17 @@ If the user wants to EXTRACT/READ/PARSE data from a file (PDF, Excel, Image), us
    - User mentions extracting specific fields from a document
    - User wants to process uploaded files automatically
 
-2. **Config Structure:**
+2. **Config Structure (NEW ARCHITECTURE):**
 
    {
-     "fileUrl": "{{step_1.output.fileUrl}}",  // URL or path to the file (use variable from previous step)
-     "fieldsToExtract": ["invoice_date", "amount", "vendor", "invoice_number"],  // List of field names to extract
-     "fileType": "pdf"  // Optional: "pdf", "excel", or "image" (auto-detected if not provided)
+     "fileSourceStepId": "step_1" | "TRIGGER_EVENT",  // REQUIRED: ID of step providing file, or "TRIGGER_EVENT" if first step with automated trigger
+     "extractionMode": "specific_fields" | "summary_qa" | "full_text",  // REQUIRED: Default is "specific_fields"
+     "fieldsToExtract": [  // ONLY if extractionMode === "specific_fields"
+       { "name": "invoice_date", "description": "Date of invoice" },
+       { "name": "total_amount", "description": "Total amount" },
+       { "name": "vendor", "description": "Vendor name" }
+     ],
+     "prompt": "..."  // ONLY if extractionMode === "summary_qa" - Question or prompt for AI
    }
 
 3. **CRITICAL RULE FOR FIELD NAMING:**
@@ -251,32 +459,60 @@ If the user wants to EXTRACT/READ/PARSE data from a file (PDF, Excel, Image), us
      * User asks for "Invoice Date" → You MUST use: "invoice_date"
      * User asks for "Total Amount" → You MUST use: "total_amount"
 
-4. **Field Extraction:**
-   - The "fieldsToExtract" array should contain meaningful field names based on what the user wants to extract.
-   - Examples:
-     * Invoice: ["invoice_date", "amount", "vendor", "invoice_number", "due_date"]
-     * Contract: ["contract_date", "parties", "expiry_date", "terms"]
-     * Receipt: ["date", "total", "merchant", "items"]
+4. **File Source Logic:**
+   - **IF AI_PARSE is the FIRST step (index 0) AND procedure has automated trigger (ON_FILE_CREATED or WEBHOOK):**
+     * You MUST set \`fileSourceStepId\` to the string literal: \`"TRIGGER_EVENT"\`.
+     * The file comes from the trigger, not from a previous step.
+   - **IF AI_PARSE comes AFTER an INPUT step:**
+     * Set \`fileSourceStepId\` to the ID of the previous INPUT step (e.g., "step_1").
+   - **IF AI_PARSE comes AFTER a DOC_GENERATE step:**
+     * Set \`fileSourceStepId\` to the ID of the DOC_GENERATE step.
 
-4. **File URL Source:**
-   - If the file comes from a previous INPUT step, use: "{{step_x.output.fileUrl}}" or "{{step_x.output.filePath}}"
-   - If triggered by file upload, use: "{{initialInput.fileUrl}}" or "{{initialInput.filePath}}"
+5. **Extraction Modes:**
+   - **"specific_fields"** (default): Extract structured data with specific field names.
+     * Requires "fieldsToExtract" array with objects: { "name": "field_name", "description": "Field description" }
+     * Example: Invoice extraction → fieldsToExtract: [{ "name": "invoice_date", "description": "Invoice date" }, { "name": "total_amount", "description": "Total amount" }]
+   - **"summary_qa"**: Generate a summary or answer questions about the document.
+     * Requires "prompt" field with the question or instruction.
+     * Example: "Summarize the key terms of this contract, specifically liability clauses"
+   - **"full_text"**: Extract the entire text content (OCR).
+     * No additional fields needed.
 
-5. **Examples:**
+6. **Examples:**
    - User says: "Read the invoice and extract date, amount, and vendor"
-     → action: "AI_PARSE", config: { fileUrl: "{{step_1.output.fileUrl}}", fieldsToExtract: ["invoice_date", "amount", "vendor"] }
+     → action: "AI_PARSE", config: { 
+         fileSourceStepId: "step_1", 
+         extractionMode: "specific_fields",
+         fieldsToExtract: [
+           { "name": "invoice_date", "description": "Date of invoice" },
+           { "name": "total_amount", "description": "Total amount" },
+           { "name": "vendor", "description": "Vendor name" }
+         ]
+       }
    
-   - User says: "Parse the contract PDF"
-     → action: "AI_PARSE", config: { fileUrl: "{{step_1.output.fileUrl}}", fieldsToExtract: ["contract_date", "parties", "expiry_date"], fileType: "pdf" }
+   - User says: "When a file is uploaded, parse it and extract contract details"
+     → action: "AI_PARSE", config: { 
+         fileSourceStepId: "TRIGGER_EVENT",  // First step with automated trigger
+         extractionMode: "specific_fields",
+         fieldsToExtract: [
+           { "name": "contract_date", "description": "Contract date" },
+           { "name": "parties", "description": "Contracting parties" },
+           { "name": "expiry_date", "description": "Expiry date" }
+         ]
+       }
    
-   - User says: "Extract data from the uploaded Excel file"
-     → action: "AI_PARSE", config: { fileUrl: "{{step_1.output.fileUrl}}", fieldsToExtract: ["name", "email", "amount"], fileType: "excel" }
+   - User says: "Summarize the contract terms"
+     → action: "AI_PARSE", config: { 
+         fileSourceStepId: "step_1",
+         extractionMode: "summary_qa",
+         prompt: "Summarize the key terms of this contract, specifically liability clauses and payment terms"
+       }
 
-6. **Output:** The AI_PARSE step will output a JSON object with the extracted fields, which can be used in subsequent steps using {{step_x.output.fieldName}}.
+7. **Output:** The AI_PARSE step will output a JSON object with the extracted fields, which can be used in subsequent steps using {{step_x.output.fieldName}}.
 `;
 
 const DOC_GENERATE_INSTRUCTION = `
-SPECIAL RULE FOR "DOC_GENERATE" (Document Generator):
+SPECIAL RULE FOR "DOC_GENERATE" (Generate Document):
 
 If the user wants to CREATE/GENERATE a document (Contract, Invoice, Letter, Report, PDF), use action "DOC_GENERATE".
 
@@ -285,41 +521,261 @@ If the user wants to CREATE/GENERATE a document (Contract, Invoice, Letter, Repo
    - User mentions: "Generate [document type]", "Create [document type] from template"
    - User wants to produce a formatted document automatically
 
-2. **Config Structure:**
+2. **Config Structure (NEW ARCHITECTURE):**
 
    {
-     "templateId": "template_123",  // ID of template record in 'templates' collection
-     "docData": {
-       "clientName": "{{step_1.output.name}}",
-       "date": "{{step_2.output.date}}",
-       "amount": "{{step_3.output.total}}",
-       "invoiceNumber": "{{step_1.output.invoiceNumber}}"
+     "sourceType": "template" | "inline",  // REQUIRED: "template" for DOCX template, "inline" for HTML/text content
+     "templateId": "template_123",  // REQUIRED if sourceType === "template": ID of template record in 'templates' collection
+     "dataMapping": {  // REQUIRED if sourceType === "template": Maps template placeholders to variables
+       "{{clientName}}": "{{step_1.output.name}}",
+       "{{invoiceDate}}": "{{step_2.output.date}}",
+       "{{totalAmount}}": "{{step_3.output.total}}"
+     },
+     "inlineContent": "<html>...</html>",  // REQUIRED if sourceType === "inline": HTML/Text content with variables
+     "outputFormat": "pdf"  // Optional: "pdf" (default) or "docx"
+   }
+
+3. **Source Types:**
+   - **"template"**: Use an uploaded DOCX template file.
+     * Requires "templateId": ID of the template (from /dashboard/templates)
+     * Requires "dataMapping": Object mapping template placeholders to workflow variables
+     * Example: { "{{clientName}}": "{{step_1.output.name}}", "{{amount}}": "{{step_1.output.total}}" }
+   - **"inline"**: Generate document from inline HTML/text content.
+     * Requires "inlineContent": HTML or plain text with variables
+     * Example: "<h1>Invoice</h1><p>Client: {{step_1.output.name}}</p><p>Amount: {{step_1.output.total}}</p>"
+
+4. **Template ID:**
+   - If user names a template (e.g., "Service Agreement", "Invoice Template", "Contract Template"), try to find its ID.
+   - If template name is unknown, use a placeholder like "invoice_template" or "contract_template".
+   - The template must exist in the 'templates' collection (uploaded via /dashboard/templates).
+
+5. **Data Mapping (for templates):**
+   - Maps template placeholders (e.g., "{{clientName}}") to workflow variables (e.g., "{{step_1.output.name}}")
+   - Keys are template placeholder names (must match what's in the DOCX template)
+   - Values are workflow variables using mustache syntax
+   - Example: { "{{clientName}}": "{{step_1.output.name}}", "{{invoiceDate}}": "{{step_2.output.date}}" }
+
+6. **Inline Content (for inline mode):**
+   - Can be HTML or plain text
+   - Use variables with mustache syntax: {{step_x.output.fieldName}}
+   - Example: "<h1>Invoice #{{step_1.output.invoice_number}}</h1><p>Client: {{step_1.output.client_name}}</p>"
+
+7. **Examples:**
+   - User says: "Create an invoice using the invoice template with client name and amount"
+     → action: "DOC_GENERATE", config: { 
+         sourceType: "template",
+         templateId: "invoice_template",
+         dataMapping: {
+           "{{clientName}}": "{{step_1.output.name}}",
+           "{{amount}}": "{{step_1.output.amount}}"
+         }
+       }
+   
+   - User says: "Generate a simple contract document"
+     → action: "DOC_GENERATE", config: { 
+         sourceType: "inline",
+         inlineContent: "<h1>Contract Agreement</h1><p>Party 1: {{step_1.output.party1}}</p><p>Party 2: {{step_1.output.party2}}</p><p>Date: {{step_2.output.date}}</p>"
+       }
+   
+   - User says: "Create a PDF invoice from template"
+     → action: "DOC_GENERATE", config: { 
+         sourceType: "template",
+         templateId: "invoice_template",
+         dataMapping: {
+           "{{invoiceNumber}}": "{{step_1.output.invoice_number}}",
+           "{{clientName}}": "{{step_1.output.client}}",
+           "{{total}}": "{{step_2.output.total}}"
+         },
+         outputFormat: "pdf"
+       }
+
+8. **Output:** The DOC_GENERATE step will output { fileUrl: "...", fileName: "..." }, which can be used in subsequent steps (e.g., email attachment, storage) using {{step_x.output.fileUrl}}.
+
+9. **Important:** DOC_GENERATE is an AUTOMATED step (no assignee needed). It runs automatically and generates the document.
+`;
+
+const GATEWAY_INSTRUCTION = `
+SPECIAL RULE FOR "GATEWAY" (Conditional Branching):
+
+If the user wants to split the workflow into multiple paths based on conditions (If/Else logic), use action "GATEWAY".
+
+1. **When to Use:**
+   - User says: "If amount is over 10k, route to manager", "Check if status is approved", "Split based on value"
+   - User mentions: "If... then...", "Route based on...", "Conditional logic"
+
+2. **Config Structure (NEW ARCHITECTURE):**
+
+   {
+     "conditions": [  // REQUIRED: Array of condition objects
+       {
+         "label": "High Value",  // REQUIRED: Human-readable name for this route (e.g., "VIP", "Approved", "High Value > 10k")
+         "variable": "{{step_1.output.amount}}",  // REQUIRED: Variable to check
+         "operator": "gt",  // REQUIRED: One of: "eq", "neq", "gt", "gte", "lt", "lte", "contains", "not_contains", "starts_with", "is_empty", "is_not_empty"
+         "value": "10000",  // REQUIRED: Value to compare against
+         "nextStepId": "step_3"  // REQUIRED: Step ID to go to if condition is true
+       },
+       {
+         "label": "Standard",
+         "variable": "{{step_1.output.amount}}",
+         "operator": "lte",
+         "value": "10000",
+         "nextStepId": "step_4"
+       }
+     ],
+     "defaultNextStepId": "step_5"  // REQUIRED: Step ID to go to if NO conditions match (the "else" case)
+   }
+
+3. **Operators:**
+   - **"eq"**: Equals (==)
+   - **"neq"**: Not Equals (!=)
+   - **"gt"**: Greater Than (>)
+   - **"gte"**: Greater Than or Equal (>=)
+   - **"lt"**: Less Than (<)
+   - **"lte"**: Less Than or Equal (<=)
+   - **"contains"**: String contains text
+   - **"not_contains"**: String does not contain text
+   - **"starts_with"**: String starts with text
+   - **"is_empty"**: Value is empty/null
+   - **"is_not_empty"**: Value is not empty
+
+4. **Label Field:**
+   - Each condition MUST have a "label" field.
+   - This label appears on the visual canvas connection point.
+   - Use descriptive names: "High Value", "VIP", "Approved", "Rejected", "Standard"
+   - Example: "High Value > 10k", "VIP Customer", "Needs Review"
+
+5. **Condition Evaluation:**
+   - Conditions are evaluated in order (top to bottom).
+   - First matching condition routes to its nextStepId.
+   - If no conditions match, route to defaultNextStepId.
+
+6. **Examples:**
+   - User says: "If amount is over 10k, route to manager approval, else route to standard approval"
+     → action: "GATEWAY", config: {
+         conditions: [
+           {
+             label: "High Value",
+             variable: "{{step_1.output.amount}}",
+             operator: "gt",
+             value: "10000",
+             nextStepId: "step_3"
+           }
+         ],
+         defaultNextStepId: "step_4"
+       }
+   
+   - User says: "Route based on status: if approved go to step 3, if rejected go to step 4, else go to step 5"
+     → action: "GATEWAY", config: {
+         conditions: [
+           {
+             label: "Approved",
+             variable: "{{step_1.output.status}}",
+             operator: "eq",
+             value: "approved",
+             nextStepId: "step_3"
+           },
+           {
+             label: "Rejected",
+             variable: "{{step_1.output.status}}",
+             operator: "eq",
+             value: "rejected",
+             nextStepId: "step_4"
+           }
+         ],
+         defaultNextStepId: "step_5"
+       }
+
+7. **Output:** Gateway steps don't produce output. They route the workflow to different steps based on conditions.
+`;
+
+const VALIDATE_INSTRUCTION = `
+SPECIAL RULE FOR "VALIDATE" (Data Validation):
+
+If the user wants to CHECK/VALIDATE data (email format, required field, value range), use action "VALIDATE".
+
+1. **When to Use:**
+   - User says: "Validate email", "Check if required", "Ensure amount is positive", "Verify phone number"
+   - User mentions: "Validate", "Check", "Verify", "Ensure"
+
+2. **Config Structure (NEW ARCHITECTURE):**
+
+   {
+     "target": "{{step_1.output.email}}",  // REQUIRED: Variable to validate (renamed from "valueToValidate" for consistency)
+     "rule": "IS_VALID_EMAIL",  // REQUIRED: Validation rule type
+     "value": "100",  // CONDITIONAL: Only required if rule needs comparison (e.g., "gt", "lt", "contains", "eq")
+     "errorMessage": "Email format is invalid",  // Optional: Custom error message
+     "routes": {  // REQUIRED: Routing configuration
+       "onSuccessStepId": "step_3",  // Step to go to if validation passes
+       "onFailureStepId": "step_4"  // Step to go to if validation fails (or "__END_FAILURE__" to terminate)
      }
    }
 
-3. **Template ID:**
-   - If user names a template (e.g., "Service Agreement", "Invoice Template", "Contract Template"), try to find its ID.
-   - If template name is unknown, use a placeholder like "invoice_template" or "contract_template".
-   - The template must exist in the 'templates' collection with an 'htmlContent' field.
+3. **Validation Rules:**
+   - **"IS_NOT_EMPTY"**: Value must not be empty (Required field check)
+     * No "value" field needed
+   - **"IS_VALID_EMAIL"**: Value must be a valid email format
+     * No "value" field needed
+   - **"IS_VALID_PHONE"**: Value must be a valid phone number format
+     * No "value" field needed
+   - **"CONTAINS"**: Value must contain specified text
+     * Requires "value" field: text to find
+   - **"GREATER_THAN"**: Value must be greater than specified number
+     * Requires "value" field: limit number
+   - **"LESS_THAN"**: Value must be less than specified number
+     * Requires "value" field: limit number
+   - **"EQUAL"**: Value must equal specified value
+     * Requires "value" field: expected value
+   - **"REGEX"**: Value must match regex pattern
+     * Requires "value" field: regex pattern
 
-4. **Data Mapping:**
-   - Map fields from previous steps using mustache syntax: {{step_x.output.fieldName}}
-   - Include all relevant data that should appear in the document.
-   - Field names should match what the template expects (e.g., "clientName", "invoiceDate", "totalAmount").
+4. **Routing:**
+   - **"onSuccessStepId"**: Step to go to if validation passes (default: next step)
+   - **"onFailureStepId"**: Step to go to if validation fails
+     * Can be a step ID (e.g., "step_2") to loop back for correction
+     * Can be "__END_FAILURE__" to terminate the workflow
+     * Can be "__END_SUCCESS__" to complete successfully
 
-5. **Examples:**
-   - User says: "Create an invoice with client name and amount"
-     → action: "DOC_GENERATE", config: { templateId: "invoice_template", docData: { clientName: "{{step_1.output.name}}", amount: "{{step_1.output.amount}}" } }
+5. **Error Message:**
+   - Optional but recommended for better UX
+   - Should explain what went wrong
+   - Example: "Email format is invalid", "Amount must be greater than 0", "This field is required"
+
+6. **Examples:**
+   - User says: "Validate that email is in correct format"
+     → action: "VALIDATE", config: {
+         target: "{{step_1.output.email}}",
+         rule: "IS_VALID_EMAIL",
+         errorMessage: "Email format is invalid",
+         routes: {
+           onSuccessStepId: "step_3",
+           onFailureStepId: "step_2"  // Loop back to input step
+         }
+       }
    
-   - User says: "Generate a contract document"
-     → action: "DOC_GENERATE", config: { templateId: "contract_template", docData: { party1: "{{step_1.output.party1}}", party2: "{{step_1.output.party2}}", date: "{{step_2.output.date}}" } }
+   - User says: "Check if amount is greater than 100"
+     → action: "VALIDATE", config: {
+         target: "{{step_1.output.amount}}",
+         rule: "GREATER_THAN",
+         value: "100",
+         errorMessage: "Amount must be greater than 100",
+         routes: {
+           onSuccessStepId: "step_3",
+           onFailureStepId: "__END_FAILURE__"
+         }
+       }
    
-   - User says: "Create a PDF invoice"
-     → action: "DOC_GENERATE", config: { templateId: "invoice_template", docData: { invoiceNumber: "{{step_1.output.invoiceNumber}}", clientName: "{{step_1.output.client}}", total: "{{step_2.output.total}}" } }
+   - User says: "Ensure the field is not empty"
+     → action: "VALIDATE", config: {
+         target: "{{step_1.output.name}}",
+         rule: "IS_NOT_EMPTY",
+         errorMessage: "Name is required",
+         routes: {
+           onSuccessStepId: "step_3",
+           onFailureStepId: "step_1"  // Loop back
+         }
+       }
 
-6. **Output:** The DOC_GENERATE step will output { fileUrl: "...", fileName: "..." }, which can be used in subsequent steps (e.g., email attachment, storage) using {{step_x.output.fileUrl}}.
-
-7. **Important:** DOC_GENERATE is an AUTOMATED step (no assignee needed). It runs automatically and generates the PDF document.
+7. **Output:** Validate steps don't produce output. They route the workflow based on validation result.
 `;
 
 const TRIGGER_INSTRUCTION = `
@@ -1167,18 +1623,20 @@ Example: For a collection with fields ["invoice_date", "total_amount", "vendor",
     let systemPrompt = [
       baseSystemPrompt, // Base prompt (from Firestore or default)
       GUARDRAIL_CLAUSE,
+      STRATEGIC_RULES, // 🎯 HIGH PRIORITY: Workflow strategy and best practices (when to use which step)
       staffContextSection, // The list of users
       collectionsSchemaText, // Available collections/tables
       COLLECTION_CREATION_INSTRUCTION, // Auto-create collections instruction
       DASHBOARD_LAYOUT_INSTRUCTION, // Dashboard layout generation instruction
-      ALERT_RULE_INSTRUCTION, // Alert rule creation instruction
       ASSIGNMENT_INSTRUCTION, // Smart Mentions logic
-      GOOGLE_SHEET_INSTRUCTION, // Smart Sheet Mapping logic
+      GOOGLE_SHEET_INSTRUCTION, // Google Sheet operations (Append/Update/Lookup)
       METADATA_INSTRUCTION, // Professional Title & Description generation
       SLACK_INSTRUCTION, // Smart Slack channel & message extraction
       DB_INSERT_INSTRUCTION, // Database insert logic
-      AI_PARSE_INSTRUCTION, // AI Document Parser logic
+      AI_PARSE_INSTRUCTION, // AI Document Parser logic (Read Document)
       DOC_GENERATE_INSTRUCTION, // Document Generator logic
+      GATEWAY_INSTRUCTION, // Gateway conditional branching logic
+      VALIDATE_INSTRUCTION, // Data validation logic
       TRIGGER_INSTRUCTION, // Workflow trigger logic
       CONFIGURATION_REFINEMENT_RULES // Configuration refinement and variable mapping rules
     ].join("\n\n");
@@ -1479,11 +1937,11 @@ Example: For a collection with fields ["invoice_date", "total_amount", "vendor",
               systemPrompt = [
                 baseSystemPrompt,
                 GUARDRAIL_CLAUSE,
+                STRATEGIC_RULES, // 🎯 HIGH PRIORITY: Workflow strategy and best practices
                 staffContextSection,
                 collectionsSchemaText,
                 COLLECTION_CREATION_INSTRUCTION,
                 DASHBOARD_LAYOUT_INSTRUCTION,
-                ALERT_RULE_INSTRUCTION,
                 ASSIGNMENT_INSTRUCTION,
                 GOOGLE_SHEET_INSTRUCTION,
                 METADATA_INSTRUCTION,
@@ -1491,6 +1949,8 @@ Example: For a collection with fields ["invoice_date", "total_amount", "vendor",
                 DB_INSERT_INSTRUCTION,
                 AI_PARSE_INSTRUCTION,
                 DOC_GENERATE_INSTRUCTION,
+                GATEWAY_INSTRUCTION,
+                VALIDATE_INSTRUCTION,
                 TRIGGER_INSTRUCTION,
                 CONFIGURATION_REFINEMENT_RULES,
               ].join("\n\n");
