@@ -229,14 +229,15 @@ function renderActionConfigBasic(
         sourceOptions.push({ label: "⚡️ Start Trigger (Automated File)", value: "TRIGGER_EVENT" });
       }
       
-      // Add previous steps that can provide files - RELAXED FILTER
+      // Add previous steps that can provide files - ULTRA RELAXED FILTER
       const currentStepIndex = allSteps.findIndex((s) => s.id === step.id);
       const previousSteps = allSteps
         .filter((s) => {
           const stepIndex = allSteps.findIndex((st) => st.id === s.id);
+          // Only show steps that come BEFORE the current step
           if (stepIndex >= currentStepIndex) return false;
           
-          // Show ALL INPUT steps (relaxed - let user choose)
+          // Show ALL INPUT steps (no inputType checking - let user choose)
           if (s.action === "INPUT") {
             return true;
           }
@@ -2467,38 +2468,41 @@ function FieldExtractionBuilder({ fields, onChange }: FieldExtractionBuilderProp
       </label>
       
       {/* Input Fields + Add Button */}
-      <div className="space-y-2 mb-3">
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={newFieldKey}
-            onChange={(e) => setNewFieldKey(e.target.value)}
-            onKeyPress={handleKeyPress}
-            className="flex-1 rounded-xl border-0 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-            placeholder="Field name (e.g., invoice_date)"
-          />
-          <input
-            type="text"
-            value={newFieldDescription}
-            onChange={(e) => setNewFieldDescription(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleAddField();
-              }
-            }}
-            className="flex-1 rounded-xl border-0 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-            placeholder="Description (optional)"
-          />
+      <div className="mb-3">
+        <div className="flex gap-2 items-end">
+          <div className="flex-1">
+            <input
+              type="text"
+              value={newFieldKey}
+              onChange={(e) => setNewFieldKey(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+              placeholder="Field name (e.g., invoice_date)"
+            />
+          </div>
+          <div className="flex-1">
+            <input
+              type="text"
+              value={newFieldDescription}
+              onChange={(e) => setNewFieldDescription(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddField();
+                }
+              }}
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+              placeholder="Description (optional)"
+            />
+          </div>
           <button
             type="button"
             onClick={handleAddField}
             disabled={!newFieldKey.trim()}
-            className="flex-shrink-0 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5 shadow-sm hover:shadow-md"
+            className="flex-shrink-0 h-[42px] w-[42px] rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center shadow-md hover:shadow-lg"
             title="Add field to extraction list"
           >
-            <Plus className="h-4 w-4" />
-            Add Field
+            <Plus className="h-5 w-5" strokeWidth={2.5} />
           </button>
         </div>
       </div>
