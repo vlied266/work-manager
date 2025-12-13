@@ -7,10 +7,11 @@ import { ProcessGroup, Procedure } from "@/types/schema";
 import { DndContext, DragEndEvent, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from "@dnd-kit/core";
 import { arrayMove, useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowLeft, X, ArrowRight, GripVertical, ArrowDown, Search, Trash2, Workflow, FileText, Loader2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, X, ArrowRight, GripVertical, ArrowDown, Search, Trash2, Workflow, FileText, Loader2, AlertTriangle, ChevronDown, ChevronUp, Link2 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { VariableSelector, ProcessStep } from "@/components/process/VariableSelector";
 
 interface ProcessComposerPageProps {
   params: Promise<{ id: string }>;
@@ -22,6 +23,8 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
   const [organizationId] = useState("default-org"); // TODO: Get from auth context
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [processGroup, setProcessGroup] = useState<ProcessGroup | null>(null);
+  // Local state for ProcessSteps (richer than procedureSequence)
+  const [processSteps, setProcessSteps] = useState<ProcessStep[]>([]);
   const [processTitle, setProcessTitle] = useState("");
   const [processDescription, setProcessDescription] = useState("");
   const [isActive, setIsActive] = useState(true);
@@ -95,6 +98,26 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
           setProcessTitle(group.title);
           setProcessDescription(group.description || "");
           setIsActive(group.isActive);
+          
+          // Initialize processSteps from saved data or migrate from procedureSequence
+          if (data.processSteps && Array.isArray(data.processSteps)) {
+            setProcessSteps(data.processSteps as ProcessStep[]);
+          } else {
+            // Migrate from old format: create ProcessSteps from procedureSequence
+            const steps: ProcessStep[] = (data.procedureSequence || []).map((procId: string, index: number) => {
+              const proc = procedures.find(p => p.id === procId);
+              if (proc) {
+                return {
+                  instanceId: `step-${index + 1}-${procId}`,
+                  procedureId: procId,
+                  procedureData: proc,
+                  inputMappings: {},
+                };
+              }
+              return null;
+            }).filter((s): s is ProcessStep => s !== null);
+            setProcessSteps(steps);
+          }
         } else {
           router.push("/studio/process/new");
         }
@@ -107,7 +130,7 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
     );
 
     return () => unsubscribe();
-  }, [id, router]);
+  }, [id, router, procedures]);
 
   const handleCreateProcess = async () => {
     if (!processTitle.trim() || !processDescription.trim()) {
@@ -180,40 +203,34 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
       return;
     }
     
-    const procedureIds = processGroup.procedureSequence || [];
-    if (procedureIds.length === 0) {
+    if (processSteps.length === 0) {
       alert("Please add at least one procedure before saving.");
       return;
     }
 
-    // Validate procedure IDs
-    const validIds = procedureIds.filter(id => procedures.some(p => p.id === id));
-    if (validIds.length !== procedureIds.length) {
-      const invalidIds = procedureIds.filter(id => !procedures.some(p => p.id === id));
-      console.warn("⚠️ Invalid procedure IDs found:", invalidIds);
-    }
-
     setSaving(true);
     try {
+      const procedureSequence = processSteps.map(step => step.procedureId);
       const updateData = {
         title: processTitle.trim(),
         description: processDescription.trim() || undefined,
         isActive,
-        procedureSequence: validIds.length > 0 ? validIds : procedureIds,
+        procedureSequence, // Backward compatibility
+        processSteps, // New: richer data with input mappings
         updatedAt: serverTimestamp(),
       };
       
       console.log("💾 Saving Process Group:", {
         id: processGroup.id,
         ...updateData,
-        procedureCount: updateData.procedureSequence.length,
-        procedureIds: updateData.procedureSequence,
+        procedureCount: procedureSequence.length,
+        processStepsCount: processSteps.length,
       });
       
       await updateDoc(doc(db, "process_groups", processGroup.id), updateData);
       
       console.log("✅ Process Group saved successfully");
-      alert(`Process saved successfully with ${updateData.procedureSequence.length} procedure(s)!`);
+      alert(`Process saved successfully with ${processSteps.length} procedure(s)!`);
     } catch (error) {
       console.error("❌ Error saving process group:", error);
       alert("Failed to save process group. Please check the console for details.");
@@ -226,89 +243,124 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
     const { active, over } = event;
     if (!over) return;
 
-    // Create process group in memory if it doesn't exist yet
-    if (!processGroup) {
-      // Handle dropping procedure onto canvas
-      if (active.data.current?.type === "procedure" && over.id === "process-timeline") {
-        const procedureId = active.data.current.procedureId as string;
-        const tempGroup: ProcessGroup = {
-          id: `temp-${Date.now()}`,
-          organizationId,
-          title: processTitle || "New Process",
-          description: processDescription || "",
-          icon: "FolderOpen",
-          procedureSequence: [procedureId],
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-        setProcessGroup(tempGroup);
-      }
-      return;
-    }
-
     // Handle dropping procedure onto canvas
     if (active.data.current?.type === "procedure" && over.id === "process-timeline") {
       const procedureId = active.data.current.procedureId as string;
       const procedureMetadata = active.data.current.procedure; // Full procedure metadata
       
-      // Log the dropped procedure metadata for debugging
-      if (procedureMetadata) {
-        console.log("📦 Dropped procedure:", {
-          id: procedureMetadata.id,
-          title: procedureMetadata.title,
-          trigger: procedureMetadata.trigger,
-          stepCount: procedureMetadata.steps?.length || 0,
-          hasInputs: !!procedureMetadata.inputSchema,
-        });
+      // Check if procedure already exists in steps
+      if (processSteps.some(step => step.procedureId === procedureId)) {
+        return; // Already added
       }
       
-      if (!processGroup.procedureSequence.includes(procedureId)) {
-        const updatedSequence = [...processGroup.procedureSequence, procedureId];
-        const updated = { ...processGroup, procedureSequence: updatedSequence };
-        setProcessGroup(updated);
-        // Auto-save to Firestore only if process group already exists in DB
-        if (processGroup.id && !processGroup.id.startsWith("temp-")) {
-          updateDoc(doc(db, "process_groups", processGroup.id), {
-            procedureSequence: updatedSequence,
-            updatedAt: serverTimestamp(),
-          }).catch(console.error);
-        }
+      // Find the full procedure object
+      const procedure = procedures.find(p => p.id === procedureId);
+      if (!procedure) return;
+      
+      // Create new ProcessStep
+      const newStep: ProcessStep = {
+        instanceId: `step-${Date.now()}-${procedureId}`,
+        procedureId: procedureId,
+        procedureData: procedureMetadata || procedure,
+        inputMappings: {},
+      };
+      
+      const updatedSteps = [...processSteps, newStep];
+      setProcessSteps(updatedSteps);
+      
+      // Update processGroup procedureSequence for backward compatibility
+      const updatedSequence = updatedSteps.map(step => step.procedureId);
+      const tempGroup: ProcessGroup = processGroup || {
+        id: `temp-${Date.now()}`,
+        organizationId,
+        title: processTitle || "New Process",
+        description: processDescription || "",
+        icon: "FolderOpen",
+        procedureSequence: updatedSequence,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      const updated = { ...tempGroup, procedureSequence: updatedSequence };
+      setProcessGroup(updated);
+      
+      // Auto-save to Firestore only if process group already exists in DB
+      if (processGroup?.id && !processGroup.id.startsWith("temp-")) {
+        updateDoc(doc(db, "process_groups", processGroup.id), {
+          procedureSequence: updatedSequence,
+          processSteps: updatedSteps, // Store richer data
+          updatedAt: serverTimestamp(),
+        }).catch(console.error);
       }
       return;
     }
 
     // Handle reordering procedures in sequence
     if (active.data.current?.type === "sequence-item" && active.id !== over.id) {
-      const sequence = processGroup.procedureSequence;
-      const oldIndex = sequence.findIndex((id) => id === active.id);
-      const newIndex = sequence.findIndex((id) => id === over.id);
+      const oldIndex = processSteps.findIndex((step) => step.procedureId === active.id);
+      const newIndex = processSteps.findIndex((step) => step.procedureId === over.id);
 
       if (oldIndex !== -1 && newIndex !== -1) {
-        const newSequence = arrayMove(sequence, oldIndex, newIndex);
-        const updated = { ...processGroup, procedureSequence: newSequence };
+        const newSteps = arrayMove(processSteps, oldIndex, newIndex);
+        setProcessSteps(newSteps);
+        
+        // Update procedureSequence
+        const newSequence = newSteps.map(step => step.procedureId);
+        const updated = { ...processGroup!, procedureSequence: newSequence };
         setProcessGroup(updated);
+        
         // Auto-save to Firestore only if process group already exists in DB
-        if (processGroup.id && !processGroup.id.startsWith("temp-")) {
+        if (processGroup?.id && !processGroup.id.startsWith("temp-")) {
           updateDoc(doc(db, "process_groups", processGroup.id), {
             procedureSequence: newSequence,
+            processSteps: newSteps,
             updatedAt: serverTimestamp(),
           }).catch(console.error);
         }
       }
     }
   };
+  
+  // Update input mapping for a step
+  const handleUpdateInputMapping = (instanceId: string, inputField: string, value: string) => {
+    const updatedSteps = processSteps.map(step => {
+      if (step.instanceId === instanceId) {
+        return {
+          ...step,
+          inputMappings: {
+            ...step.inputMappings,
+            [inputField]: value,
+          },
+        };
+      }
+      return step;
+    });
+    setProcessSteps(updatedSteps);
+    
+    // Auto-save if process group exists in DB
+    if (processGroup?.id && !processGroup.id.startsWith("temp-")) {
+      updateDoc(doc(db, "process_groups", processGroup.id), {
+        processSteps: updatedSteps,
+        updatedAt: serverTimestamp(),
+      }).catch(console.error);
+    }
+  };
 
-  const handleRemoveProcedure = async (procedureId: string) => {
-    if (!processGroup) return;
-    const updatedSequence = processGroup.procedureSequence.filter((id) => id !== procedureId);
-    const updated = { ...processGroup, procedureSequence: updatedSequence };
+  const handleRemoveProcedure = async (instanceId: string) => {
+    const updatedSteps = processSteps.filter((step) => step.instanceId !== instanceId);
+    setProcessSteps(updatedSteps);
+    
+    const updatedSequence = updatedSteps.map(step => step.procedureId);
+    const updated = { ...processGroup!, procedureSequence: updatedSequence };
     setProcessGroup(updated);
+    
     // Auto-save only if process group already exists in DB
-    if (processGroup.id && !processGroup.id.startsWith("temp-")) {
+    if (processGroup?.id && !processGroup.id.startsWith("temp-")) {
       try {
         await updateDoc(doc(db, "process_groups", processGroup.id), {
           procedureSequence: updatedSequence,
+          processSteps: updatedSteps,
           updatedAt: serverTimestamp(),
         });
       } catch (error) {
@@ -448,8 +500,7 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
                   disabled={
                     !processTitle.trim() ||
                     !processDescription.trim() ||
-                    !processGroup ||
-                    processGroup.procedureSequence.length === 0 ||
+                    processSteps.length === 0 ||
                     saving
                   }
                   whileHover={{ scale: 1.02 }}
@@ -489,19 +540,10 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
 
             {/* Right Canvas: Process Flow - Floating Glass Island */}
             <ProcessTimeline
-              processGroup={processGroup || {
-                id: "temp",
-                organizationId,
-                title: processTitle || "New Process",
-                description: processDescription || "",
-                icon: "FolderOpen",
-                procedureSequence: [],
-                isActive: true,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              }}
+              processSteps={processSteps}
               procedures={procedures}
               onRemoveProcedure={handleRemoveProcedure}
+              onUpdateInputMapping={handleUpdateInputMapping}
             />
           </div>
         </ProcessDndContext>
@@ -687,22 +729,21 @@ function DraggableProcedureCard({ procedure }: { procedure: Procedure }) {
 
 // Right Canvas: Process Flow - Apple Aesthetic
 function ProcessTimeline({
-  processGroup,
+  processSteps,
   procedures,
   onRemoveProcedure,
+  onUpdateInputMapping,
 }: {
-  processGroup: ProcessGroup;
+  processSteps: ProcessStep[];
   procedures: Procedure[];
-  onRemoveProcedure: (procedureId: string) => void;
+  onRemoveProcedure: (instanceId: string) => void;
+  onUpdateInputMapping: (instanceId: string, inputField: string, value: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: "process-timeline",
   });
 
-  const sequence = processGroup.procedureSequence || [];
-  const sequenceProcedures = sequence
-    .map((id) => procedures.find((p) => p.id === id))
-    .filter((p): p is Procedure => p !== undefined);
+  const sequence = processSteps.map(step => step.procedureId);
 
   return (
     <div
@@ -712,7 +753,7 @@ function ProcessTimeline({
       }`}
     >
       <div className="h-full overflow-y-auto overflow-x-hidden p-8">
-        {sequence.length === 0 ? (
+        {processSteps.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -736,13 +777,15 @@ function ProcessTimeline({
           <SortableContext items={sequence} strategy={verticalListSortingStrategy}>
             <div className="space-y-4 max-w-2xl mx-auto">
               <AnimatePresence>
-                {sequenceProcedures.map((procedure, index) => (
+                {processSteps.map((step, index) => (
                   <SortableProcedureItem
-                    key={procedure.id}
-                    procedure={procedure}
+                    key={step.instanceId}
+                    step={step}
                     index={index}
-                    isLast={index === sequenceProcedures.length - 1}
-                    onRemove={() => onRemoveProcedure(procedure.id)}
+                    isLast={index === processSteps.length - 1}
+                    previousSteps={processSteps.slice(0, index)}
+                    onRemove={() => onRemoveProcedure(step.instanceId)}
+                    onUpdateInputMapping={onUpdateInputMapping}
                   />
                 ))}
               </AnimatePresence>
@@ -754,20 +797,25 @@ function ProcessTimeline({
   );
 }
 
-// Sortable Procedure Item in Timeline - Apple Aesthetic
+// Sortable Procedure Item in Timeline - Apple Aesthetic (Enhanced with Input Mapping)
 function SortableProcedureItem({
-  procedure,
+  step,
   index,
   isLast,
+  previousSteps,
   onRemove,
+  onUpdateInputMapping,
 }: {
-  procedure: Procedure;
+  step: ProcessStep;
   index: number;
   isLast: boolean;
+  previousSteps: ProcessStep[];
   onRemove: () => void;
+  onUpdateInputMapping: (instanceId: string, inputField: string, value: string) => void;
 }) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: procedure.id,
+    id: step.procedureId,
     data: {
       type: "sequence-item",
     },
@@ -779,6 +827,13 @@ function SortableProcedureItem({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  // Extract input fields from first INPUT step
+  const inputStep = step.procedureData.steps?.find(s => s.action === "INPUT");
+  const inputFields = inputStep?.config?.fields && Array.isArray(inputStep.config.fields) 
+    ? inputStep.config.fields 
+    : [];
+  const hasInputs = inputFields.length > 0;
+
   return (
     <>
       <motion.div
@@ -788,47 +843,91 @@ function SortableProcedureItem({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className={`group relative rounded-xl bg-white shadow-lg p-5 transition-all ${
+        className={`group relative rounded-xl bg-white shadow-lg transition-all ${
           isDragging ? "shadow-2xl scale-105 ring-1 ring-[#007AFF]/30" : "hover:shadow-xl hover:-translate-y-1"
         }`}
       >
-        <div className="flex items-start gap-4">
-          {/* Drag Handle */}
-          <div
-            {...attributes}
-            {...listeners}
-            className="flex-shrink-0 cursor-grab active:cursor-grabbing p-2 hover:bg-gray-100/50 rounded-lg transition-colors"
-          >
-            <GripVertical className="h-5 w-5 text-slate-500" strokeWidth={2} />
-          </div>
-
-          {/* Step Number Badge */}
-          <div className="flex-shrink-0">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-sm shadow-lg">
-              {index + 1}
+        <div className="p-5">
+          <div className="flex items-start gap-4">
+            {/* Drag Handle */}
+            <div
+              {...attributes}
+              {...listeners}
+              className="flex-shrink-0 cursor-grab active:cursor-grabbing p-2 hover:bg-gray-100/50 rounded-lg transition-colors"
+            >
+              <GripVertical className="h-5 w-5 text-slate-500" strokeWidth={2} />
             </div>
-          </div>
 
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-sm font-semibold text-slate-800 tracking-tight">{procedure.title}</h3>
+            {/* Step Number Badge */}
+            <div className="flex-shrink-0">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-sm shadow-lg">
+                {index + 1}
+              </div>
             </div>
-            {procedure.description && (
-              <p className="text-xs text-slate-600 mb-2 line-clamp-2">{procedure.description}</p>
-            )}
-            <p className="text-xs text-slate-500 font-medium">
-              {procedure.steps.length} step{procedure.steps.length !== 1 ? "s" : ""}
-            </p>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-sm font-semibold text-slate-800 tracking-tight">{step.procedureData.title}</h3>
+              </div>
+              {step.procedureData.description && (
+                <p className="text-xs text-slate-600 mb-2 line-clamp-2">{step.procedureData.description}</p>
+              )}
+              <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+                <span>{step.procedureData.steps.length} step{step.procedureData.steps.length !== 1 ? "s" : ""}</span>
+                {hasInputs && (
+                  <>
+                    <span className="text-slate-300">•</span>
+                    <button
+                      onClick={() => setIsExpanded(!isExpanded)}
+                      className="flex items-center gap-1 text-blue-600 hover:text-blue-700 transition-colors"
+                    >
+                      {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      <span>{inputFields.length} input{inputFields.length !== 1 ? "s" : ""}</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Remove Button */}
+            <button
+              onClick={onRemove}
+              className="flex-shrink-0 rounded-lg p-2 text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100"
+            >
+              <X className="h-4 w-4" strokeWidth={2} />
+            </button>
           </div>
 
-          {/* Remove Button */}
-          <button
-            onClick={onRemove}
-            className="flex-shrink-0 rounded-lg p-2 text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100"
-          >
-            <X className="h-4 w-4" strokeWidth={2} />
-          </button>
+          {/* Input Mapping Section (Expandable) */}
+          {hasInputs && isExpanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 pt-4 border-t border-slate-200"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Link2 className="h-4 w-4 text-blue-500" />
+                  <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Input Mapping</h4>
+                </div>
+                {inputFields.map((field: string) => (
+                  <div key={field} className="space-y-1.5">
+                    <label className="block text-xs font-medium text-slate-700">
+                      {field} {inputStep?.config?.required && <span className="text-rose-500">*</span>}
+                    </label>
+                    <VariableSelector
+                      value={step.inputMappings[field] || ""}
+                      onChange={(value) => onUpdateInputMapping(step.instanceId, field, value)}
+                      previousSteps={previousSteps}
+                      placeholder={`Map ${field} from previous steps...`}
+                    />
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
         </div>
       </motion.div>
 
