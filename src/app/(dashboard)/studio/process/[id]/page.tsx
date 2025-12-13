@@ -12,6 +12,8 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { VariableSelector, ProcessStep } from "@/components/process/VariableSelector";
+import { useOrgId } from "@/hooks/useOrgData";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 interface ProcessComposerPageProps {
   params: Promise<{ id: string }>;
@@ -20,7 +22,10 @@ interface ProcessComposerPageProps {
 export default function ProcessComposerPage({ params: paramsPromise }: ProcessComposerPageProps) {
   const { id } = use(paramsPromise);
   const router = useRouter();
-  const [organizationId] = useState("default-org"); // TODO: Get from auth context
+  // Get organizationId from auth context
+  const orgIdFromHook = useOrgId();
+  const { organizationId: orgIdFromContext } = useOrganization();
+  const organizationId = orgIdFromHook || orgIdFromContext || "default-org";
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [processGroup, setProcessGroup] = useState<ProcessGroup | null>(null);
   // Local state for ProcessSteps (richer than procedureSequence)
@@ -36,18 +41,52 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
 
   // Fetch Active/Published Procedures for this organization (Smart Toolbox)
   useEffect(() => {
+    // Debug logging
+    console.log("🔍 ProcedureLibrary useEffect triggered:", {
+      organizationId,
+      orgIdFromHook,
+      orgIdFromContext,
+      isLoaded: !!organizationId && organizationId !== "default-org",
+    });
+
+    // Don't run query if organizationId is not available
+    if (!organizationId || organizationId === "default-org") {
+      console.warn("⚠️ Organization ID not available yet, skipping query");
+      setProceduresLoading(false);
+      return;
+    }
+
     setProceduresLoading(true);
     setProceduresError(null);
     
+    console.log("📡 Fetching procedures with query:", {
+      collection: "procedures",
+      organizationId,
+      // Temporarily removing isPublished filter for testing
+      // isPublished: true,
+    });
+    
+    // Build query - temporarily removing isPublished filter to test
     const q = query(
       collection(db, "procedures"),
-      where("organizationId", "==", organizationId),
-      where("isPublished", "==", true) // Only show published procedures
+      where("organizationId", "==", organizationId)
+      // Temporarily commented out for testing
+      // where("isPublished", "==", true) // Only show published procedures
     );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
+        console.log("📦 Procedures snapshot received:", {
+          count: snapshot.docs.length,
+          docs: snapshot.docs.map(doc => ({
+            id: doc.id,
+            title: doc.data().title,
+            organizationId: doc.data().organizationId,
+            isPublished: doc.data().isPublished,
+          })),
+        });
+
         const procs = snapshot.docs
           .map((doc) => {
             const data = doc.data();
@@ -61,18 +100,33 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
             } as Procedure;
           });
         procs.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
-        setProcedures(procs);
+        
+        // Filter by isPublished in memory (temporary workaround)
+        const publishedProcs = procs.filter(p => p.isPublished === true);
+        
+        console.log("✅ Procedures processed:", {
+          total: procs.length,
+          published: publishedProcs.length,
+          unpublished: procs.length - publishedProcs.length,
+        });
+        
+        setProcedures(publishedProcs);
         setProceduresLoading(false);
       },
       (error) => {
-        console.error("Error fetching procedures:", error);
+        console.error("❌ Error fetching procedures:", error);
+        console.error("Error details:", {
+          code: error.code,
+          message: error.message,
+          organizationId,
+        });
         setProceduresError("Failed to load procedures. Please try again.");
         setProceduresLoading(false);
       }
     );
 
     return () => unsubscribe();
-  }, [organizationId]);
+  }, [organizationId, orgIdFromHook, orgIdFromContext]);
 
   // Fetch Process Group if editing
   useEffect(() => {
