@@ -157,41 +157,28 @@ function renderActionConfigBasic(
       );
 
     case "DB_INSERT":
+      // Convert real collections to options format
       const collectionOptions = collections.map((col) => ({
         value: col.name,
         label: col.name,
       }));
       
-      // Add common collection suggestions if collections list is empty
-      const commonCollections = [
-        { value: "invoices", label: "invoices" },
-        { value: "requests", label: "requests" },
-        { value: "users", label: "users" },
-        { value: "orders", label: "orders" },
-        { value: "employees", label: "employees" },
-        { value: "deals", label: "deals" },
-      ];
-      
-      const allCollectionOptions = collectionOptions.length > 0 
-        ? collectionOptions 
-        : commonCollections;
-      
       return (
         <div className="space-y-4">
-            <div>
+          <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Collection Name <span className="text-rose-500">*</span>
-              </label>
+            </label>
             <CreatableSelect
               value={config.collectionName || ""}
               onChange={(value) =>
                 onUpdate({ config: { ...config, collectionName: value || undefined } })
               }
-              options={allCollectionOptions}
+              options={collectionOptions}
               placeholder="Select an existing collection or type a new name..."
-              helperText="Select an existing collection or type a new name to create one."
-              />
-            </div>
+              helperText="Select an existing database collection or type a new name to create one."
+            />
+          </div>
 
           {/* Show KeyValueBuilder only after collection is selected */}
           {config.collectionName && (
@@ -1600,7 +1587,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
   // Determine if Logic tab should be shown
-  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, and AI_PARSE (branching handled in Basic tab or by connecting to GATEWAY on canvas)
+  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, AI_PARSE, and DB_INSERT (branching handled in Basic tab or by connecting to GATEWAY on canvas)
   const shouldShowLogicTab = step && (
     step.action !== "GATEWAY" && 
     step.action !== "VALIDATE" && 
@@ -1610,7 +1597,8 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
     step.action !== "MANUAL_TASK" &&
     step.action !== "NEGOTIATE" &&
     step.action !== "INSPECT" &&
-    step.action !== "AI_PARSE"
+    step.action !== "AI_PARSE" &&
+    step.action !== "DB_INSERT"
   );
   
   const [activeTab, setActiveTab] = useState<"basic" | "settings" | "logic">("basic");

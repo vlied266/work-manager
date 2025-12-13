@@ -114,8 +114,8 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
           {step.title || "Untitled Step"}
         </h3>
 
-        {/* Output Variable (for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, and AI_PARSE steps) */}
-        {(step.action === "INPUT" || step.action === "APPROVAL" || step.action === "MANUAL_TASK" || step.action === "NEGOTIATE" || step.action === "INSPECT" || step.action === "AI_PARSE") && step.config?.outputVariableName && (
+        {/* Output Variable (for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, AI_PARSE, and DB_INSERT steps) */}
+        {(step.action === "INPUT" || step.action === "APPROVAL" || step.action === "MANUAL_TASK" || step.action === "NEGOTIATE" || step.action === "INSPECT" || step.action === "AI_PARSE" || step.action === "DB_INSERT") && step.config?.outputVariableName && (
           <p className="text-[10px] font-mono text-purple-600 font-semibold">
             Var: {step.config.outputVariableName}
           </p>
