@@ -1346,7 +1346,7 @@ Example: For a collection with fields ["invoice_date", "total_amount", "vendor",
         messages,
         tools: maxIterations === 2 ? tools : undefined, // Only provide tools on first call
         tool_choice: maxIterations === 2 ? "auto" : undefined,
-        temperature: 0.7,
+      temperature: 0.7,
       });
 
       const message = completion.choices[0]?.message;

@@ -97,33 +97,33 @@ function renderActionConfigBasic(
 
   switch (action) {
     case "INPUT":
-    return (
+  return (
         <div className="space-y-4">
-          <div>
+            <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Field Label <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
+              </label>
+              <input
+                type="text"
               value={config.fieldLabel || ""}
               onChange={(e) =>
                 onUpdate({ config: { ...config, fieldLabel: e.target.value } })
               }
-              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
               placeholder="e.g., What is your name?"
-            />
+              />
             <p className="mt-1.5 text-xs text-slate-500">
               The question the user will see (e.g., "What is your name?").
           </p>
-        </div>
+            </div>
 
-          <div>
+            <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Input Type <span className="text-rose-500">*</span>
-            </label>
+              </label>
             <select
               value={config.inputType || "text"}
-              onChange={(e) =>
+                onChange={(e) =>
                 onUpdate({ config: { ...config, inputType: e.target.value as any } })
               }
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
@@ -153,7 +153,7 @@ function renderActionConfigBasic(
               onChange={(extensions) => onUpdate({ config: { ...config, allowedExtensions: extensions.length > 0 ? extensions : undefined } })}
             />
           )}
-        </div>
+            </div>
       );
 
     case "DB_INSERT":
@@ -165,10 +165,10 @@ function renderActionConfigBasic(
       
       return (
         <div className="space-y-4">
-          <div>
+            <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Collection Name <span className="text-rose-500">*</span>
-            </label>
+              </label>
             <CreatableSelect
               value={config.collectionName || ""}
               onChange={(value) =>
@@ -178,11 +178,11 @@ function renderActionConfigBasic(
               placeholder="Select an existing collection or type a new name..."
               helperText="Select from your existing collections (fetched from DB) or type a new name to create one."
             />
-          </div>
+            </div>
 
           {/* Show KeyValueBuilder only after collection is selected */}
           {config.collectionName && (
-            <div>
+              <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Data Mapping <span className="text-rose-500">*</span>
               </label>
@@ -266,9 +266,9 @@ function renderActionConfigBasic(
                     </option>
                   ))}
                 </select>
-            <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-slate-500">
               Select the step that provides the file to parse (e.g., a File Upload Input, Document Generator, or Trigger Event).
-            </p>
+                  </p>
               </div>
         </div>
       );
@@ -276,7 +276,7 @@ function renderActionConfigBasic(
     case "HTTP_REQUEST":
       return (
         <div className="space-y-4">
-          <div>
+              <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               URL <span className="text-rose-500">*</span>
             </label>
@@ -306,20 +306,20 @@ function renderActionConfigBasic(
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Method <span className="text-rose-500">*</span>
-            </label>
-            <select
+                </label>
+                <select
               value={config.method || "GET"}
-              onChange={(e) =>
+                  onChange={(e) =>
                 onUpdate({ config: { ...config, method: e.target.value as any } })
-              }
-              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-            >
+                  }
+                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                >
               <option value="GET">GET - Retrieve data (Read)</option>
               <option value="POST">POST - Send new data (Create)</option>
               <option value="PUT">PUT - Update existing data</option>
               <option value="PATCH">PATCH - Partially update data</option>
               <option value="DELETE">DELETE - Remove data</option>
-            </select>
+                </select>
           </div>
 
           <div>
@@ -347,7 +347,7 @@ function renderActionConfigBasic(
               <br />
               <span className="font-mono text-xs mt-1 block">Example: Key = <code className="bg-white/50 px-1 rounded">Authorization</code>, Value = <code className="bg-white/50 px-1 rounded">Bearer sk_test_123...</code></span>
             </p>
-          </div>
+              </div>
 
           {/* Conditional: Show body only for POST/PUT/PATCH */}
           {(config.method === "POST" || config.method === "PUT" || config.method === "PATCH") && (
@@ -371,9 +371,9 @@ function renderActionConfigBasic(
               <p className="mt-1 text-xs text-slate-500">
                 Click the <Zap className="inline h-3 w-3" /> button to insert variables.
               </p>
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
       );
 
     case "SEND_EMAIL":
@@ -396,8 +396,8 @@ function renderActionConfigBasic(
             />
             <p className="mt-1 text-xs text-slate-500">
               Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-            </p>
-          </div>
+                </p>
+              </div>
 
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
@@ -417,9 +417,9 @@ function renderActionConfigBasic(
             <p className="mt-1 text-xs text-slate-500">
               Click the <Zap className="inline h-3 w-3" /> button to insert variables.
             </p>
-          </div>
+        </div>
 
-          <div>
+                  <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Email Body <span className="text-rose-500">*</span>
             </label>
@@ -438,7 +438,7 @@ function renderActionConfigBasic(
             <p className="mt-1 text-xs text-slate-500">
               Plain text or HTML. Click the <Zap className="inline h-3 w-3" /> button to insert variables. Line breaks are preserved.
             </p>
-          </div>
+              </div>
 
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
@@ -464,7 +464,7 @@ function renderActionConfigBasic(
             <p className="mt-1 text-xs text-slate-500">
               Click the <Zap className="inline h-3 w-3" /> button to insert variables.
             </p>
-          </div>
+        </div>
 
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
@@ -489,8 +489,8 @@ function renderActionConfigBasic(
             <p className="mt-1 text-xs text-slate-500">
               Click the <Zap className="inline h-3 w-3" /> button to insert variables.
             </p>
-          </div>
         </div>
+      </div>
       );
 
     case "GOOGLE_SHEET":
@@ -517,6 +517,8 @@ function renderActionConfigBasic(
         return input;
       };
       
+      const operation = config.operation || "APPEND_ROW";
+      
       return (
         <div className="space-y-4">
           <div>
@@ -541,6 +543,13 @@ function renderActionConfigBasic(
               placeholder="Spreadsheet ID or full URL or {{step_1.sheetId}}"
               availableVariables={availableVariables}
             />
+            <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+              <strong className="font-semibold text-blue-900">How to find Spreadsheet ID:</strong>
+              <br />
+              From URL: <code className="bg-white/50 px-1 rounded">docs.google.com/spreadsheets/d/</code><strong className="text-blue-900">ID_HERE</strong><code className="bg-white/50 px-1 rounded">/edit</code>
+              <br />
+              <span className="font-mono text-xs mt-1 block">Example: <code className="bg-white/50 px-1 rounded">1BxiMVs0XRA5nFMdKb...</code></span>
+            </p>
             <p className="mt-1 text-xs text-slate-500">
               Paste the full Google Sheet URL or just the ID. The ID will be extracted automatically.
             </p>
@@ -559,6 +568,11 @@ function renderActionConfigBasic(
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
               placeholder="e.g., Sheet1, Data"
             />
+            <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+              <strong className="font-semibold text-blue-900">Sheet Name:</strong>
+              <br />
+              Tab name at the bottom of your spreadsheet (e.g. 'Sheet1'). Case sensitive.
+            </p>
           </div>
 
           <div>
@@ -566,16 +580,146 @@ function renderActionConfigBasic(
               Operation <span className="text-rose-500">*</span>
             </label>
             <select
-              value={config.operation || "APPEND_ROW"}
+              value={operation}
               onChange={(e) =>
                 onUpdate({ config: { ...config, operation: e.target.value as any } })
               }
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
             >
-              <option value="APPEND_ROW">Append Row</option>
-              <option value="UPDATE_ROW">Update Row</option>
+              <option value="APPEND_ROW">Append Row (Write new data)</option>
+              <option value="UPDATE_ROW">Update Row (Edit existing data)</option>
+              <option value="LOOKUP_ROW">Lookup Row (Read data)</option>
             </select>
           </div>
+
+          {/* Append Row: Show Column Mapping */}
+          {operation === "APPEND_ROW" && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Column Mapping <span className="text-rose-500">*</span>
+              </label>
+              <KeyValueBuilder
+                value={config.columnMapping}
+                onChange={(value) => onUpdate({ config: { ...config, columnMapping: value } })}
+                keyPlaceholder="Column Header (e.g., Date, Name, Amount)"
+                valuePlaceholder="Value (e.g., {{step_1.date}})"
+                availableVariables={availableVariables.map(v => ({
+                  variableName: v.variableName,
+                  label: v.label,
+                }))}
+                allSteps={allSteps}
+                currentStepId={step.id}
+                procedureTrigger={procedureTrigger}
+              />
+              <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+                <strong className="font-semibold text-blue-900">Column Mapping:</strong>
+                <br />
+                Map your spreadsheet headers to workflow variables. Left = Column Header (e.g. &apos;Date&apos;), Right = Value (e.g. <code className="bg-white/50 px-1 rounded">{`{{step.date}}`}</code>).
+              </p>
+            </div>
+          )}
+
+          {/* Update Row: Show Row Number + Column Mapping */}
+          {operation === "UPDATE_ROW" && (
+            <>
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Row Number <span className="text-rose-500">*</span>
+                </label>
+                <VariableInput
+                  type="input"
+                  value={config.rowNumber || ""}
+                  onChange={(value) =>
+                    onUpdate({ config: { ...config, rowNumber: value || undefined } })
+                  }
+                  placeholder="2 or {{step_1.row}}"
+                  allSteps={allSteps}
+                  currentStepId={step.id}
+                  procedureTrigger={procedureTrigger}
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  Which row to update? (Row 1 is usually headers, so start from 2). Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Column Mapping <span className="text-rose-500">*</span>
+                </label>
+                <KeyValueBuilder
+                  value={config.columnMapping}
+                  onChange={(value) => onUpdate({ config: { ...config, columnMapping: value } })}
+                  keyPlaceholder="Column Header (e.g., Date, Name, Amount)"
+                  valuePlaceholder="New Value (e.g., {{step_1.newDate}})"
+                  availableVariables={availableVariables.map(v => ({
+                    variableName: v.variableName,
+                    label: v.label,
+                  }))}
+                  allSteps={allSteps}
+                  currentStepId={step.id}
+                  procedureTrigger={procedureTrigger}
+                />
+                <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+                  <strong className="font-semibold text-blue-900">Column Mapping:</strong>
+                  <br />
+                  Map your spreadsheet headers to new values. Left = Column Header (e.g. &apos;Date&apos;), Right = New Value (e.g. <code className="bg-white/50 px-1 rounded">{`{{step.newDate}}`}</code>).
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* Lookup Row: Show Lookup Column + Lookup Value */}
+          {operation === "LOOKUP_ROW" && (
+            <>
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Lookup Column <span className="text-rose-500">*</span>
+                </label>
+                <VariableInput
+                  type="input"
+                  value={config.lookupColumn || ""}
+                  onChange={(value) =>
+                    onUpdate({ config: { ...config, lookupColumn: value || undefined } })
+                  }
+                  placeholder="Product_ID or {{step_1.columnName}}"
+                  allSteps={allSteps}
+                  currentStepId={step.id}
+                  procedureTrigger={procedureTrigger}
+                />
+                <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+                  <strong className="font-semibold text-blue-900">Lookup Column:</strong>
+                  <br />
+                  The column header to search in (e.g. 'Product_ID'). The system will find the FIRST row where this column matches your Lookup Value.
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Lookup Value <span className="text-rose-500">*</span>
+                </label>
+                <VariableInput
+                  type="input"
+                  value={config.lookupValue || ""}
+                  onChange={(value) =>
+                    onUpdate({ config: { ...config, lookupValue: value || undefined } })
+                  }
+                  placeholder="ABC123 or {{step_1.product_id}}"
+                  allSteps={allSteps}
+                  currentStepId={step.id}
+                  procedureTrigger={procedureTrigger}
+                />
+                <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+                  <strong className="font-semibold text-blue-900">Lookup Value:</strong>
+                  <br />
+                  The value to find (e.g. <code className="bg-white/50 px-1 rounded">{`{{input.product_id}}`}</code>). The system will return all row data as output variables (e.g. <code className="bg-white/50 px-1 rounded">{`{{step_N.output.price}}`}</code>, <code className="bg-white/50 px-1 rounded">{`{{step_N.output.name}}`}</code>).
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+                </p>
+              </div>
+            </>
+          )}
         </div>
       );
 
@@ -703,15 +847,15 @@ function renderActionConfigBasic(
             <p className="text-xs text-slate-700 font-medium leading-relaxed">
               💡 <strong>Note:</strong> Use this for back-and-forth discussions to reach an agreement (Deal/Contract). For simple execution tasks, use <strong>Manual Task</strong>.
             </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
               Instruction <span className="text-rose-500">*</span>
-            </label>
+                </label>
             <textarea
               value={config.instruction || ""}
-              onChange={(e) =>
+                  onChange={(e) =>
                 onUpdate({ config: { ...config, instruction: e.target.value } })
               }
               rows={6}
@@ -729,13 +873,13 @@ function renderActionConfigBasic(
           <div className="rounded-lg bg-amber-50/80 border border-amber-200/50 p-3">
             <p className="text-xs text-slate-700 font-medium leading-relaxed">
               💡 <strong>Note:</strong> Use this for quality checks or physical inspections where a checklist or photo evidence is required. For simple execution tasks, use <strong>Manual Task</strong>.
-            </p>
-          </div>
+                </p>
+              </div>
 
-          <div>
+              <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Instruction <span className="text-rose-500">*</span>
-            </label>
+                </label>
             <textarea
               value={config.instruction || ""}
               onChange={(e) =>
@@ -745,8 +889,8 @@ function renderActionConfigBasic(
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
               placeholder="List inspection criteria and acceptance standards.&#10;Example:&#10;- Check for physical damage.&#10;- Take photos of the 4 corners.&#10;- Verify temperature is below 50°C."
             />
-          </div>
-        </div>
+                </div>
+              </div>
       );
 
     case "MANUAL_TASK":
@@ -860,9 +1004,9 @@ function renderActionConfigBasic(
             <p className="text-xs text-slate-600 mb-3">
               If no conditions match, go to this step:
             </p>
-            <select
+                <select
               value={config.defaultNextStepId || ""}
-              onChange={(e) =>
+                  onChange={(e) =>
                 onUpdate({ config: { ...config, defaultNextStepId: e.target.value || undefined } })
               }
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
@@ -872,7 +1016,7 @@ function renderActionConfigBasic(
                   {option.label}
                 </option>
               ))}
-            </select>
+                </select>
           </div>
 
           {/* Conditions List */}
@@ -1128,15 +1272,15 @@ function renderActionConfigBasic(
                   {getRoutingOptions(allSteps, step.id, true).map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   On Mismatch (Failure) → Go To
-                </label>
-                <select
+            </label>
+                  <select
                   value={compareRoutes.onFailureStepId || ""}
                   onChange={(e) =>
                     onUpdate({
@@ -1148,14 +1292,14 @@ function renderActionConfigBasic(
                   {getRoutingOptions(allSteps, step.id, true).map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
-                    </option>
-                  ))}
-                </select>
+                      </option>
+                    ))}
+                  </select>
                 <p className="mt-1 text-xs text-slate-500">
                   Useful for error loops: send user back to correction step
                 </p>
+                </div>
               </div>
-            </div>
           </div>
         </div>
       );
@@ -1328,28 +1472,8 @@ function renderActionConfigSettings(
       return null;
 
     case "GOOGLE_SHEET":
-      return (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Column Mapping <span className="text-rose-500">*</span>
-            </label>
-            <KeyValueBuilder
-              value={config.columnMapping}
-              onChange={(value) => onUpdate({ config: { ...config, columnMapping: value } })}
-              keyPlaceholder="Column (e.g., A, B, C)"
-              valuePlaceholder="Value (e.g., {{step_1.name}})"
-              availableVariables={availableVariables.map(v => ({
-                variableName: v.variableName,
-                label: v.label,
-              }))}
-              allSteps={allSteps}
-              currentStepId={step.id}
-              procedureTrigger={procedureTrigger}
-            />
-          </div>
-        </div>
-      );
+      // Column Mapping is now in Basic tab (conditional based on operation)
+      return null;
 
     case "DOC_GENERATE":
       return (
@@ -1371,8 +1495,8 @@ function renderActionConfigSettings(
               currentStepId={step.id}
               procedureTrigger={procedureTrigger}
             />
-          </div>
-        </div>
+              </div>
+            </div>
       );
 
     case "AI_PARSE":
@@ -1412,7 +1536,7 @@ function renderActionConfigSettings(
           )}
 
           {extractionMode === "summary_qa" && (
-            <div>
+          <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Prompt / Question <span className="text-rose-500">*</span>
               </label>
@@ -1609,7 +1733,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
   // Determine if Logic tab should be shown
-  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, AI_PARSE, DB_INSERT, HTTP_REQUEST, and SEND_EMAIL (branching handled in Basic tab or by connecting to GATEWAY on canvas)
+  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, AI_PARSE, DB_INSERT, HTTP_REQUEST, SEND_EMAIL, and GOOGLE_SHEET (branching handled in Basic tab or by connecting to GATEWAY on canvas)
   const shouldShowLogicTab = step && (
     step.action !== "GATEWAY" && 
     step.action !== "VALIDATE" && 
@@ -1622,7 +1746,8 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
     step.action !== "AI_PARSE" &&
     step.action !== "DB_INSERT" &&
     step.action !== "HTTP_REQUEST" &&
-    step.action !== "SEND_EMAIL"
+    step.action !== "SEND_EMAIL" &&
+    step.action !== "GOOGLE_SHEET"
   );
   
   const [activeTab, setActiveTab] = useState<"basic" | "settings" | "logic">("basic");
