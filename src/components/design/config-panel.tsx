@@ -1963,7 +1963,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
   const [templates, setTemplates] = useState<Array<{ id: string; name: string }>>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   // Determine if Logic tab should be shown
-  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, AI_PARSE, DB_INSERT, HTTP_REQUEST, SEND_EMAIL, GOOGLE_SHEET, and DOC_GENERATE (branching handled in Basic tab or by connecting to GATEWAY on canvas)
+  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, AI_PARSE, DB_INSERT, HTTP_REQUEST, SEND_EMAIL, GOOGLE_SHEET, DOC_GENERATE, and CALCULATE (branching handled in Basic tab or by connecting to GATEWAY on canvas)
   const shouldShowLogicTab = step && (
     step.action !== "GATEWAY" && 
     step.action !== "VALIDATE" && 
@@ -1978,7 +1978,8 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
     step.action !== "HTTP_REQUEST" &&
     step.action !== "SEND_EMAIL" &&
     step.action !== "GOOGLE_SHEET" &&
-    step.action !== "DOC_GENERATE"
+    step.action !== "DOC_GENERATE" &&
+    step.action !== "CALCULATE"
   );
   
   const [activeTab, setActiveTab] = useState<"basic" | "settings" | "logic">("basic");
