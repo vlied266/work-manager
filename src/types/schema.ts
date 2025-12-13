@@ -215,8 +215,10 @@ export interface AtomicStep {
     lookupValue?: string; // Required for LOOKUP_ROW: Value to find (supports {{variable}} syntax)
 
     // DOC_GENERATE
-    templateId?: string; // Required: ID of the template record in the 'templates' Firestore collection
-    dataMapping?: Record<string, string>; // Required: Maps variables to template placeholders (supports {{variable}} syntax)
+    sourceType?: "template" | "inline"; // Required: Source type (default: "template")
+    templateId?: string; // Required for template mode: ID of the template record in the 'document_templates' Firestore collection
+    dataMapping?: Record<string, string>; // Required for template mode: Maps variables to template placeholders (supports {{variable}} syntax)
+    inlineContent?: string; // Required for inline mode: Direct text/HTML content (supports {{variable}} syntax)
     outputFormat?: "pdf" | "docx"; // Optional: Output file format (default: "pdf")
 
     // CALCULATE

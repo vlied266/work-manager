@@ -723,31 +723,124 @@ function renderActionConfigBasic(
         </div>
       );
 
-    case "DOC_GENERATE":
+    case "DOC_GENERATE": {
+      const sourceType = config.sourceType || "template";
+
       return (
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Template ID <span className="text-rose-500">*</span>
+              Source Type <span className="text-rose-500">*</span>
             </label>
-            <input
-              type="text"
-              value={config.templateId || ""}
+            <select
+              value={sourceType}
               onChange={(e) =>
-                onUpdate({ config: { ...config, templateId: e.target.value || undefined } })
+                onUpdate({ config: { ...config, sourceType: e.target.value as any } })
               }
-              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-              placeholder="Template ID"
-            />
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+            >
+              <option value="template">Select Template (Uploaded .docx)</option>
+              <option value="inline">Simple Text/HTML</option>
+            </select>
           </div>
 
+          {sourceType === "template" ? (
+            <>
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Template <span className="text-rose-500">*</span>
+                </label>
+                {loadingTemplates ? (
+                  <div className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-600">
+                    Loading templates...
+                  </div>
+                ) : (
+                  <CreatableSelect
+                    value={config.templateId || ""}
+                    onChange={(value) =>
+                      onUpdate({ config: { ...config, templateId: value || undefined } })
+                    }
+                    options={templates.map((t) => ({
+                      value: t.id,
+                      label: t.name,
+                    }))}
+                    placeholder="Select a template or type an ID..."
+                    helperText="Select an uploaded template from the Template Manager, or type a template ID."
+                  />
+                )}
+                <p className="mt-2 text-xs text-slate-600">
+                  <a
+                    href="/dashboard/templates"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-700 underline"
+                  >
+                    Manage templates →
+                  </a>
+                </p>
+              </div>
+
+              {config.templateId && (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">
+                    Data Mapping <span className="text-rose-500">*</span>
+                  </label>
+                  <KeyValueBuilder
+                    value={config.dataMapping}
+                    onChange={(value) => onUpdate({ config: { ...config, dataMapping: value } })}
+                    keyPlaceholder="Placeholder in template (e.g., {{clientName}})"
+                    valuePlaceholder="Variable (e.g., {{step_1.name}})"
+                    availableVariables={availableVariables.map(v => ({
+                      variableName: v.variableName,
+                      label: v.label,
+                    }))}
+                    allSteps={allSteps}
+                    currentStepId={step.id}
+                    procedureTrigger={procedureTrigger}
+                  />
+                  <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+                    <strong className="font-semibold text-blue-900">Data Mapping:</strong>
+                    <br />
+                    Map placeholders in your template to workflow variables. Left = Placeholder (e.g. &apos;{"{{clientName}}"}&apos;), Right = Variable (e.g. <code className="bg-white/50 px-1 rounded">{`{{step_1.name}}`}</code>).
+                  </p>
+                </div>
+              )}
+            </>
+          ) : (
             <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Document Content <span className="text-rose-500">*</span>
+              </label>
+              <VariableInput
+                type="textarea"
+                value={config.inlineContent || ""}
+                onChange={(value) =>
+                  onUpdate({ config: { ...config, inlineContent: value || undefined } })
+                }
+                rows={12}
+                placeholder="Type your document content here...&#10;&#10;Use {{step_1.name}} for variables.&#10;Supports plain text or HTML."
+                allSteps={allSteps}
+                currentStepId={step.id}
+                procedureTrigger={procedureTrigger}
+              />
+              <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+                <strong className="font-semibold text-blue-900">Inline Content:</strong>
+                <br />
+                Type content here. Use <code className="bg-white/50 px-1 rounded">{`{{variable}}`}</code> for variables (e.g. <code className="bg-white/50 px-1 rounded">{`{{step_1.name}}`}</code>). Supports plain text or HTML.
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+              </p>
+            </div>
+          )}
+
+          <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Output Format
-              </label>
+            </label>
             <select
               value={config.outputFormat || "pdf"}
-                onChange={(e) =>
+              onChange={(e) =>
                 onUpdate({ config: { ...config, outputFormat: e.target.value as any } })
               }
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
@@ -758,6 +851,7 @@ function renderActionConfigBasic(
           </div>
         </div>
       );
+    }
 
     case "APPROVAL":
       const approvalRoutes = step.routes || {};
@@ -1476,28 +1570,8 @@ function renderActionConfigSettings(
       return null;
 
     case "DOC_GENERATE":
-      return (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Data Mapping <span className="text-rose-500">*</span>
-            </label>
-            <KeyValueBuilder
-              value={config.dataMapping}
-              onChange={(value) => onUpdate({ config: { ...config, dataMapping: value } })}
-              keyPlaceholder="Variable name (e.g., clientName)"
-              valuePlaceholder="Value (e.g., {{step_1.name}})"
-              availableVariables={availableVariables.map(v => ({
-                variableName: v.variableName,
-                label: v.label,
-              }))}
-              allSteps={allSteps}
-              currentStepId={step.id}
-              procedureTrigger={procedureTrigger}
-            />
-              </div>
-            </div>
-      );
+      // Data Mapping is now in Basic tab (conditional based on sourceType)
+      return null;
 
     case "AI_PARSE":
       const extractionMode = config.extractionMode || "specific_fields";
@@ -1732,8 +1806,10 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
   const [teams, setTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
+  const [templates, setTemplates] = useState<Array<{ id: string; name: string }>>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
   // Determine if Logic tab should be shown
-  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, AI_PARSE, DB_INSERT, HTTP_REQUEST, SEND_EMAIL, and GOOGLE_SHEET (branching handled in Basic tab or by connecting to GATEWAY on canvas)
+  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, AI_PARSE, DB_INSERT, HTTP_REQUEST, SEND_EMAIL, GOOGLE_SHEET, and DOC_GENERATE (branching handled in Basic tab or by connecting to GATEWAY on canvas)
   const shouldShowLogicTab = step && (
     step.action !== "GATEWAY" && 
     step.action !== "VALIDATE" && 
@@ -1747,7 +1823,8 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
     step.action !== "DB_INSERT" &&
     step.action !== "HTTP_REQUEST" &&
     step.action !== "SEND_EMAIL" &&
-    step.action !== "GOOGLE_SHEET"
+    step.action !== "GOOGLE_SHEET" &&
+    step.action !== "DOC_GENERATE"
   );
   
   const [activeTab, setActiveTab] = useState<"basic" | "settings" | "logic">("basic");
@@ -1844,6 +1921,32 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
     
     // Optionally: Set up polling or real-time updates if needed
     // For now, we'll refetch when organizationId changes
+  }, [organizationId]);
+
+  // Fetch templates for DOC_GENERATE template picker
+  useEffect(() => {
+    if (!organizationId) return;
+
+    const fetchTemplates = async () => {
+      try {
+        setLoadingTemplates(true);
+        const response = await fetch(`/api/templates?orgId=${organizationId}`);
+        if (!response.ok) throw new Error("Failed to fetch templates");
+        const data = await response.json();
+        const templatesData = (data.templates || []).map((t: any) => ({
+          id: t.id,
+          name: t.name || t.id,
+        }));
+        setTemplates(templatesData);
+      } catch (error) {
+        console.error("Error fetching templates:", error);
+        setTemplates([]);
+      } finally {
+        setLoadingTemplates(false);
+      }
+    };
+
+    fetchTemplates();
   }, [organizationId]);
 
   // Auto-detect assignment from assignee field (from AI @mentions)
