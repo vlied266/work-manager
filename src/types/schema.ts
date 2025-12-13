@@ -332,6 +332,8 @@ export interface ActiveRun {
   // Steps reference (for execution)
   steps?: AtomicStep[];
   currentStepId?: string;
+  // Process Run Link (if this ActiveRun is part of a ProcessRun orchestration)
+  processRunId?: string; // Link to parent ProcessRun
 }
 
 export interface RunLog {
@@ -341,6 +343,29 @@ export interface RunLog {
   output: any;
   timestamp: Date;
   outcome: "SUCCESS" | "FAILURE" | "FLAGGED";
+}
+
+/**
+ * Process Run (Orchestration Instance)
+ * Represents an active execution of a ProcessGroup (chained procedures)
+ */
+export interface ProcessRun {
+  id: string;
+  processGroupId: string; // The definition ID
+  organizationId: string;
+  status: "RUNNING" | "COMPLETED" | "FAILED" | "WAITING_DELAY";
+  currentStepInstanceId: string; // Which step are we on? (instanceId from ProcessStep)
+  contextData: Record<string, any>; // The "Global Bag" of variables (merged outputs)
+  stepHistory: Array<{
+    stepInstanceId: string;
+    status: string;
+    executedAt: Date;
+    activeRunId?: string; // If step was a procedure, link to its ActiveRun
+  }>;
+  createdAt: Date;
+  updatedAt: Date;
+  startedBy?: string; // User ID who started this process
+  resumeAt?: Date; // For delay steps: when to resume execution
 }
 
 /**

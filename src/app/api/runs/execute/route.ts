@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
-import { ActiveRun, Procedure, AtomicStep } from "@/types/schema";
+import { ActiveRun, Procedure, AtomicStep, ProcessRun, ProcessGroup } from "@/types/schema";
 import { isHumanStep, isAutoStep, getStepExecutionType } from "@/lib/constants";
 import { resolveConfig } from "@/lib/engine/resolver";
 import { sendEmail, textToHtml } from "@/lib/email/sender";
+import { ProcessStep as ProcessStepType } from "@/components/process/VariableSelector";
+import { executeStep } from "@/lib/process/execute-step";
 
 interface ExecuteStepRequest {
   runId: string;
@@ -1264,6 +1266,16 @@ export async function POST(req: NextRequest) {
 
       await db.collection("active_runs").doc(runId).update(updateData);
 
+      // CHAIN REACTION: If this ActiveRun is part of a ProcessRun, continue to next step
+      if (run.processRunId && newStatus === "COMPLETED") {
+        try {
+          await continueProcessRun(db, run.processRunId, runId, run);
+        } catch (processError: any) {
+          console.error(`[Execute] Error continuing ProcessRun ${run.processRunId}:`, processError);
+          // Don't fail the ActiveRun completion, just log the error
+        }
+      }
+
       // If next step is AUTO, recursively execute it
       if (newStatus !== "COMPLETED" && nextStepIndex < procedure.steps.length) {
         const nextStep = procedure.steps[nextStepIndex];
@@ -1349,5 +1361,139 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Continue ProcessRun execution after an ActiveRun completes
+ * Merges outputs into contextData and executes the next step
+ */
+async function continueProcessRun(
+  db: any,
+  processRunId: string,
+  completedActiveRunId: string,
+  completedActiveRun: ActiveRun
+): Promise<void> {
+  console.log(`[Process Chain] Continuing ProcessRun ${processRunId} after ActiveRun ${completedActiveRunId} completed`);
+
+  // Fetch ProcessRun
+  const processRunDoc = await db.collection("process_runs").doc(processRunId).get();
+  if (!processRunDoc.exists) {
+    throw new Error("ProcessRun not found");
+  }
+
+  const processRun = processRunDoc.data() as ProcessRun;
+
+  // Fetch ProcessGroup to get step definitions
+  const processGroupDoc = await db.collection("process_groups").doc(processRun.processGroupId).get();
+  if (!processGroupDoc.exists) {
+    throw new Error("ProcessGroup not found");
+  }
+
+  const processGroup = processGroupDoc.data() as ProcessGroup;
+
+  // Get processSteps
+  let processSteps: ProcessStepType[] = [];
+  if (processGroup.processSteps && Array.isArray(processGroup.processSteps)) {
+    processSteps = processGroup.processSteps as ProcessStepType[];
+  } else if (processGroup.procedureSequence && Array.isArray(processGroup.procedureSequence)) {
+    // Migrate from old format
+    const procedureDocs = await Promise.all(
+      processGroup.procedureSequence.map((procId: string) =>
+        db.collection("procedures").doc(procId).get()
+      )
+    );
+
+    processSteps = procedureDocs
+      .map((doc, index) => {
+        if (!doc.exists) return null;
+        const procData = doc.data();
+        return {
+          type: 'procedure' as const,
+          instanceId: `step-${index + 1}-${doc.id}`,
+          procedureId: doc.id,
+          procedureData: {
+            id: doc.id,
+            ...procData,
+            createdAt: procData.createdAt?.toDate() || new Date(),
+            updatedAt: procData.updatedAt?.toDate() || new Date(),
+            steps: procData.steps || [],
+          },
+          inputMappings: {},
+        };
+      })
+      .filter((s): s is ProcessStepType => s !== null);
+  }
+
+  // Find the current step index
+  const currentStepIndex = processSteps.findIndex(
+    (step) => step.instanceId === processRun.currentStepInstanceId
+  );
+
+  if (currentStepIndex === -1) {
+    throw new Error(`Current step ${processRun.currentStepInstanceId} not found in processSteps`);
+  }
+
+  const currentStep = processSteps[currentStepIndex];
+
+  // Merge outputs from completed ActiveRun into contextData
+  const contextData = { ...processRun.contextData };
+  
+  // Extract outputs from ActiveRun logs
+  if (completedActiveRun.logs && completedActiveRun.logs.length > 0) {
+    // Get the last log (final output)
+    const finalLog = completedActiveRun.logs[completedActiveRun.logs.length - 1];
+    
+    // Add to contextData with step reference
+    const stepNumber = currentStepIndex + 1;
+    contextData[`step_${stepNumber}_output`] = finalLog.output;
+    contextData[`step_${stepNumber}`] = { output: finalLog.output };
+    
+    // Also add procedure title for reference
+    contextData[`step_${stepNumber}_title`] = completedActiveRun.procedureTitle;
+  }
+
+  console.log(`[Process Chain] Merged outputs into contextData. Step ${currentStepIndex + 1} completed.`);
+
+  // Update step history
+  const stepHistory = processRun.stepHistory || [];
+  const stepHistoryEntry = stepHistory.find(
+    (entry) => entry.stepInstanceId === currentStep.instanceId
+  );
+  
+  if (stepHistoryEntry) {
+    stepHistoryEntry.status = "COMPLETED";
+    stepHistoryEntry.activeRunId = completedActiveRunId;
+  }
+
+  // Find next step
+  const nextStepIndex = currentStepIndex + 1;
+  
+  if (nextStepIndex >= processSteps.length) {
+    // ProcessRun is complete
+    await db.collection("process_runs").doc(processRunId).update({
+      status: "COMPLETED",
+      contextData,
+      stepHistory,
+      updatedAt: Timestamp.now(),
+    });
+    
+    console.log(`[Process Chain] ProcessRun ${processRunId} completed`);
+    return;
+  }
+
+  const nextStep = processSteps[nextStepIndex];
+
+  // Update ProcessRun to point to next step
+  await db.collection("process_runs").doc(processRunId).update({
+    currentStepInstanceId: nextStep.instanceId,
+    contextData,
+    stepHistory,
+    status: "RUNNING",
+    updatedAt: Timestamp.now(),
+  });
+
+  // Execute next step
+  console.log(`[Process Chain] Executing next step: ${nextStep.instanceId}`);
+  await executeStep(db, processRunId, nextStep, processSteps, processGroup);
 }
 

@@ -1,0 +1,212 @@
+/**
+ * Process Step Execution Helper
+ * 
+ * Executes a single step in a ProcessRun (either a Procedure or a Delay)
+ */
+
+import { Firestore } from "firebase-admin/firestore";
+import { Timestamp } from "firebase-admin/firestore";
+import { ProcessRun, ActiveRun, Procedure, ProcessGroup } from "@/types/schema";
+import { ProcessStep as ProcessStepType, ProcedureStep, DelayStep } from "@/components/process/VariableSelector";
+
+/**
+ * Execute a step in a ProcessRun
+ */
+export async function executeStep(
+  db: Firestore,
+  processRunId: string,
+  step: ProcessStepType,
+  allSteps: ProcessStepType[],
+  processGroup: ProcessGroup
+): Promise<void> {
+  const processRunDoc = await db.collection("process_runs").doc(processRunId).get();
+  if (!processRunDoc.exists) {
+    throw new Error("ProcessRun not found");
+  }
+
+  const processRun = processRunDoc.data() as ProcessRun;
+  const contextData = processRun.contextData || {};
+
+  if (step.type === "procedure") {
+    // Execute Procedure Step
+    await executeProcedureStep(db, processRunId, step, contextData, allSteps, processRun);
+  } else if (step.type === "logic_delay") {
+    // Execute Delay Step
+    await executeDelayStep(db, processRunId, step, processRun);
+  } else {
+    throw new Error(`Unknown step type: ${(step as any).type}`);
+  }
+}
+
+/**
+ * Execute a Procedure Step
+ */
+async function executeProcedureStep(
+  db: Firestore,
+  processRunId: string,
+  step: ProcedureStep,
+  contextData: Record<string, any>,
+  allSteps: ProcessStepType[],
+  processRun: ProcessRun
+): Promise<void> {
+  console.log(`[Process Execute] Executing procedure step: ${step.procedureId}`);
+
+  // Resolve input mappings using contextData
+  const resolvedInputs: Record<string, any> = {};
+  
+  for (const [inputField, mappingValue] of Object.entries(step.inputMappings)) {
+    if (mappingValue.startsWith("{{") && mappingValue.endsWith("}}")) {
+      // Variable reference: {{step_1.output.email}}
+      const variablePath = mappingValue.slice(2, -2).trim();
+      resolvedInputs[inputField] = resolveVariableFromContext(variablePath, contextData, allSteps);
+    } else {
+      // Static value
+      resolvedInputs[inputField] = mappingValue;
+    }
+  }
+
+  console.log(`[Process Execute] Resolved inputs:`, resolvedInputs);
+
+  // Create ActiveRun for this procedure
+  const procedure = step.procedureData;
+  const activeRunData: Omit<ActiveRun, "id"> = {
+    procedureId: procedure.id,
+    procedureTitle: procedure.title,
+    organizationId: processRun.organizationId,
+    status: "IN_PROGRESS",
+    currentStepIndex: 0,
+    startedAt: new Date(),
+    logs: [],
+    processRunId, // Link to parent ProcessRun
+    initialInput: resolvedInputs, // Pass resolved inputs as initialInput
+    startedBy: processRun.startedBy,
+  };
+
+  const activeRunRef = await db.collection("active_runs").add({
+    ...activeRunData,
+    startedAt: Timestamp.now(),
+  });
+
+  const activeRunId = activeRunRef.id;
+  console.log(`[Process Execute] Created ActiveRun ${activeRunId} for procedure ${procedure.id}`);
+
+  // Update ProcessRun step history
+  const currentStepHistory = processRun.stepHistory || [];
+  const stepHistory = [...currentStepHistory];
+  stepHistory.push({
+    stepInstanceId: step.instanceId,
+    status: "RUNNING",
+    executedAt: new Date(),
+    activeRunId,
+  });
+
+  await db.collection("process_runs").doc(processRunId).update({
+    stepHistory,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+/**
+ * Execute a Delay Step
+ */
+async function executeDelayStep(
+  db: Firestore,
+  processRunId: string,
+  step: DelayStep,
+  processRun: ProcessRun
+): Promise<void> {
+  console.log(`[Process Execute] Executing delay step: ${step.config.duration} ${step.config.unit}`);
+
+  // Calculate resume timestamp
+  const now = new Date();
+  let resumeAt: Date;
+
+  switch (step.config.unit) {
+    case "minutes":
+      resumeAt = new Date(now.getTime() + step.config.duration * 60 * 1000);
+      break;
+    case "hours":
+      resumeAt = new Date(now.getTime() + step.config.duration * 60 * 60 * 1000);
+      break;
+    case "days":
+      resumeAt = new Date(now.getTime() + step.config.duration * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      throw new Error(`Unknown delay unit: ${step.config.unit}`);
+  }
+
+  // Update ProcessRun status to WAITING_DELAY
+  const stepHistory = (await db.collection("process_runs").doc(processRunId).get()).data()?.stepHistory || [];
+  stepHistory.push({
+    stepInstanceId: step.instanceId,
+    status: "WAITING_DELAY",
+    executedAt: new Date(),
+  });
+
+  await db.collection("process_runs").doc(processRunId).update({
+    status: "WAITING_DELAY",
+    resumeAt: Timestamp.fromDate(resumeAt),
+    stepHistory,
+    updatedAt: Timestamp.now(),
+  });
+
+  console.log(`[Process Execute] ProcessRun ${processRunId} will resume at ${resumeAt.toISOString()}`);
+  // TODO: Schedule a cron job or cloud function to resume execution at resumeAt
+}
+
+/**
+ * Resolve a variable from contextData
+ * Supports patterns like:
+ * - step_1.output.email
+ * - step_1.output
+ * - step_1.email
+ */
+function resolveVariableFromContext(
+  variablePath: string,
+  contextData: Record<string, any>,
+  allSteps: ProcessStepType[]
+): any {
+  // Try direct access first
+  if (contextData[variablePath] !== undefined) {
+    return contextData[variablePath];
+  }
+
+  // Parse step reference (e.g., "step_1.output.email")
+  const stepMatch = variablePath.match(/^step_(\d+)(\.(.+))?$/);
+  if (stepMatch) {
+    const stepIndex = parseInt(stepMatch[1]) - 1;
+    if (stepIndex >= 0 && stepIndex < allSteps.length) {
+      const referencedStep = allSteps[stepIndex];
+      
+      // Build the context key for this step
+      // For procedure steps, we need to get output from the ActiveRun
+      // For now, we'll use a simplified approach: step_1_output format
+      const contextKey = `step_${stepIndex + 1}_output`;
+      const stepOutput = contextData[contextKey] || contextData[`step_${stepIndex + 1}`]?.output;
+      
+      if (stepOutput) {
+        // If there's a property path (e.g., ".email"), navigate into the output
+        const propertyPath = stepMatch[3];
+        if (propertyPath) {
+          return getNestedValue(stepOutput, propertyPath);
+        }
+        return stepOutput;
+      }
+    }
+  }
+
+  // Fallback: try to get nested value from contextData
+  return getNestedValue(contextData, variablePath);
+}
+
+/**
+ * Get nested value from object using dot notation
+ */
+function getNestedValue(obj: any, path: string): any {
+  if (!obj || !path) return undefined;
+  
+  return path.split('.').reduce((acc, part) => {
+    return (acc && acc[part] !== undefined) ? acc[part] : undefined;
+  }, obj);
+}
+
