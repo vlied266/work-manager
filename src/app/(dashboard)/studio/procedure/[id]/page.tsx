@@ -155,6 +155,7 @@ export default function ProcedureBuilderPage({ params: paramsPromise }: Procedur
         description: procedureDescription.trim(),
         isPublished,
         steps: procedure.steps,
+        trigger: procedure.trigger, // Include trigger settings when creating procedure
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });

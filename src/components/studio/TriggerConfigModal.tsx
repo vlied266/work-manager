@@ -174,12 +174,18 @@ export function TriggerConfigModal({
                   </label>
                   <select
                     value={provider}
-                    onChange={(e) => setProvider(e.target.value as typeof provider)}
+                    onChange={(e) => {
+                      // Prevent selecting disabled options
+                      if (e.target.value === "dropbox" || e.target.value === "local") {
+                        return;
+                      }
+                      setProvider(e.target.value as typeof provider);
+                    }}
                     className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors"
                   >
                     <option value="google_drive">Google Drive</option>
-                    <option value="dropbox">Dropbox</option>
-                    <option value="local">Local Storage</option>
+                    <option value="dropbox" disabled>Dropbox (Coming Soon)</option>
+                    <option value="local" disabled>Local Storage (Coming Soon)</option>
                   </select>
                 </div>
                 <div>
