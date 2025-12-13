@@ -176,7 +176,7 @@ function renderActionConfigBasic(
               }
               options={collectionOptions}
               placeholder="Select an existing collection or type a new name..."
-              helperText="Select an existing database collection or type a new name to create one."
+              helperText="Select from your existing collections (fetched from DB) or type a new name to create one."
             />
           </div>
 
@@ -1607,7 +1607,6 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
   const organizationId = useOrgId();
   const teamsQuery = useOrgQuery("teams");
   const usersQuery = useOrgQuery("users");
-  const collectionsQuery = useOrgQuery("collections");
 
   // Fetch teams and users for assignment
   useEffect(() => {
@@ -1671,31 +1670,32 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
     };
   }, [usersQuery, organizationId]);
 
-  // Fetch collections for DB_INSERT collection picker
+  // Fetch collections for DB_INSERT collection picker (using API endpoint like schema page)
   useEffect(() => {
-    if (!collectionsQuery) return;
+    if (!organizationId) return;
 
-    const unsubscribeCollections = onSnapshot(
-      collectionsQuery,
-      (snapshot) => {
-        const collectionsData = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            name: data.name || doc.id,
-          };
-        });
+    const fetchCollections = async () => {
+      try {
+        const response = await fetch(`/api/data/collections?orgId=${organizationId}`);
+        if (!response.ok) throw new Error("Failed to fetch collections");
+        const data = await response.json();
+        const collectionsData = (data.collections || []).map((col: any) => ({
+          id: col.id,
+          name: col.name || col.id,
+        }));
         setCollections(collectionsData);
-      },
-      (error) => {
+      } catch (error) {
         console.error("Error fetching collections:", error);
+        // On error, set empty array so user can still type new names
+        setCollections([]);
       }
-    );
-
-    return () => {
-      unsubscribeCollections();
     };
-  }, [collectionsQuery]);
+
+    fetchCollections();
+    
+    // Optionally: Set up polling or real-time updates if needed
+    // For now, we'll refetch when organizationId changes
+  }, [organizationId]);
 
   // Auto-detect assignment from assignee field (from AI @mentions)
   useEffect(() => {
