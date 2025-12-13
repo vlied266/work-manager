@@ -276,7 +276,7 @@ function renderActionConfigBasic(
     case "HTTP_REQUEST":
       return (
         <div className="space-y-4">
-              <div>
+          <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               URL <span className="text-rose-500">*</span>
             </label>
@@ -291,6 +291,13 @@ function renderActionConfigBasic(
               currentStepId={step.id}
               procedureTrigger={procedureTrigger}
             />
+            <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+              <strong className="font-semibold text-blue-900">What is a URL?</strong>
+              <br />
+              The 'address' of the external service (Endpoint). You must find this in the service's API Documentation.
+              <br />
+              <span className="font-mono text-xs mt-1 block">Example: <code className="bg-white/50 px-1 rounded">https://api.stripe.com/v1/charges</code></span>
+            </p>
             <p className="mt-1 text-xs text-slate-500">
               Click the <Zap className="inline h-3 w-3" /> button to insert variables.
             </p>
@@ -299,22 +306,74 @@ function renderActionConfigBasic(
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Method <span className="text-rose-500">*</span>
-                </label>
-                <select
+            </label>
+            <select
               value={config.method || "GET"}
-                  onChange={(e) =>
+              onChange={(e) =>
                 onUpdate({ config: { ...config, method: e.target.value as any } })
-                  }
-                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-                >
-              <option value="GET">GET</option>
-              <option value="POST">POST</option>
-              <option value="PUT">PUT</option>
-              <option value="DELETE">DELETE</option>
-              <option value="PATCH">PATCH</option>
-                </select>
-              </div>
-                </div>
+              }
+              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+            >
+              <option value="GET">GET - Retrieve data (Read)</option>
+              <option value="POST">POST - Send new data (Create)</option>
+              <option value="PUT">PUT - Update existing data</option>
+              <option value="PATCH">PATCH - Partially update data</option>
+              <option value="DELETE">DELETE - Remove data</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 mb-2">
+              Headers
+            </label>
+            <KeyValueBuilder
+              value={config.headers}
+              onChange={(value) => onUpdate({ config: { ...config, headers: value } })}
+              keyPlaceholder="Header name (e.g., Authorization)"
+              valuePlaceholder="Header value (e.g., Bearer {{step_1.token}})"
+              availableVariables={availableVariables.map(v => ({
+                variableName: v.variableName,
+                label: v.label,
+              }))}
+              allowEmpty={true}
+              allSteps={allSteps}
+              currentStepId={step.id}
+              procedureTrigger={procedureTrigger}
+            />
+            <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+              <strong className="font-semibold text-blue-900">What are Headers?</strong>
+              <br />
+              Used for security (Authentication) and data format. Most APIs require an API Key here.
+              <br />
+              <span className="font-mono text-xs mt-1 block">Example: Key = <code className="bg-white/50 px-1 rounded">Authorization</code>, Value = <code className="bg-white/50 px-1 rounded">Bearer sk_test_123...</code></span>
+            </p>
+          </div>
+
+          {/* Conditional: Show body only for POST/PUT/PATCH */}
+          {(config.method === "POST" || config.method === "PUT" || config.method === "PATCH") && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Request Body
+              </label>
+              <VariableInput
+                type="textarea"
+                value={config.requestBody || ""}
+                onChange={(value) =>
+                  onUpdate({ config: { ...config, requestBody: value || undefined } })
+                }
+                rows={6}
+                placeholder='{"key": "value"} or {{step_1.data}}'
+                allSteps={allSteps}
+                currentStepId={step.id}
+                procedureTrigger={procedureTrigger}
+                className="font-mono"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+              </p>
+            </div>
+          )}
+        </div>
       );
 
     case "SEND_EMAIL":
@@ -1189,54 +1248,8 @@ function renderActionConfigSettings(
       return null;
 
     case "HTTP_REQUEST":
-      return (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Headers
-            </label>
-            <KeyValueBuilder
-              value={config.headers}
-              onChange={(value) => onUpdate({ config: { ...config, headers: value } })}
-              keyPlaceholder="Header name (e.g., Authorization)"
-              valuePlaceholder="Header value (e.g., Bearer {{step_1.token}})"
-              availableVariables={availableVariables.map(v => ({
-                variableName: v.variableName,
-                label: v.label,
-              }))}
-              allowEmpty={true}
-              allSteps={allSteps}
-              currentStepId={step.id}
-              procedureTrigger={procedureTrigger}
-            />
-          </div>
-
-          {/* Conditional: Show body only for POST/PUT */}
-          {(config.method === "POST" || config.method === "PUT") && (
-            <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-2">
-                Request Body
-              </label>
-              <VariableInput
-                type="textarea"
-                value={config.requestBody || ""}
-                onChange={(value) =>
-                  onUpdate({ config: { ...config, requestBody: value || undefined } })
-                }
-                rows={6}
-                placeholder='{"key": "value"} or {{step_1.data}}'
-                allSteps={allSteps}
-                currentStepId={step.id}
-                procedureTrigger={procedureTrigger}
-                className="font-mono"
-              />
-              <p className="mt-1 text-xs text-slate-500">
-                Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-            </p>
-          </div>
-          )}
-        </div>
-      );
+      // Headers and Request Body are now in Basic tab
+      return null;
 
     case "SEND_EMAIL":
       return (
@@ -1587,7 +1600,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
   // Determine if Logic tab should be shown
-  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, AI_PARSE, and DB_INSERT (branching handled in Basic tab or by connecting to GATEWAY on canvas)
+  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, AI_PARSE, DB_INSERT, and HTTP_REQUEST (branching handled in Basic tab or by connecting to GATEWAY on canvas)
   const shouldShowLogicTab = step && (
     step.action !== "GATEWAY" && 
     step.action !== "VALIDATE" && 
@@ -1598,7 +1611,8 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
     step.action !== "NEGOTIATE" &&
     step.action !== "INSPECT" &&
     step.action !== "AI_PARSE" &&
-    step.action !== "DB_INSERT"
+    step.action !== "DB_INSERT" &&
+    step.action !== "HTTP_REQUEST"
   );
   
   const [activeTab, setActiveTab] = useState<"basic" | "settings" | "logic">("basic");
