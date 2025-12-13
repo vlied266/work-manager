@@ -244,7 +244,11 @@ export interface AtomicStep {
     targetA?: string; // Required: First value to compare (supports {{variable}} syntax)
     targetB?: string; // Required: Second value to compare against (supports {{variable}} syntax)
     comparisonType?: "exact" | "fuzzy" | "numeric" | "date"; // Required: Type of comparison to perform
-    requireMismatchReason?: boolean; // Optional: When enabled and comparison fails, workflow routes to user input step asking for explanation
+    numericTolerance?: number; // Optional: Allowed difference (+/-) for numeric comparisons (e.g., 100 means 10050 matches 10000)
+    textSimilarityThreshold?: number; // Optional: Minimum similarity percentage (0-100) for fuzzy text matching (default: 80)
+    dateToleranceValue?: number; // Optional: Allowed time difference value for date comparisons
+    dateToleranceUnit?: "hours" | "days"; // Optional: Unit for date tolerance (hours or days)
+    requireMismatchReason?: boolean; // Optional: When enabled and comparison fails, creates output variable with mismatch reason (e.g., "Values differ by 500")
   };
 }
 

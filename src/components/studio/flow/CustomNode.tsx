@@ -127,6 +127,27 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
           {metadata.label}
         </p>
 
+        {/* Tolerance Info for COMPARE */}
+        {step.action === "COMPARE" && step.config?.comparisonType && (
+          <div className="pt-1">
+            {step.config.comparisonType === "numeric" && step.config.numericTolerance !== undefined && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold text-blue-600 bg-blue-50">
+                Tolerance: +/- {step.config.numericTolerance}
+              </span>
+            )}
+            {step.config.comparisonType === "fuzzy" && step.config.textSimilarityThreshold !== undefined && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold text-blue-600 bg-blue-50">
+                Similarity: {step.config.textSimilarityThreshold}%
+              </span>
+            )}
+            {step.config.comparisonType === "date" && step.config.dateToleranceValue !== undefined && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold text-blue-600 bg-blue-50">
+                Window: {step.config.dateToleranceValue} {step.config.dateToleranceUnit || "hours"}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Step Number Badge */}
         <div className="pt-1">
           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold text-slate-500 bg-slate-100">

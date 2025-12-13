@@ -624,10 +624,10 @@ function renderActionConfigBasic(
           {/* Update Row: Show Row Number + Column Mapping */}
           {operation === "UPDATE_ROW" && (
             <>
-          <div>
+            <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   Row Number <span className="text-rose-500">*</span>
-            </label>
+              </label>
                 <VariableInput
                   type="input"
                   value={config.rowNumber || ""}
@@ -643,10 +643,10 @@ function renderActionConfigBasic(
                   Which row to update? (Row 1 is usually headers, so start from 2). Click the <Zap className="inline h-3 w-3" /> button to insert variables.
                 </p>
           </div>
-            <div>
+                <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   Column Mapping <span className="text-rose-500">*</span>
-              </label>
+                  </label>
                 <KeyValueBuilder
                   value={config.columnMapping}
                   onChange={(value) => onUpdate({ config: { ...config, columnMapping: value } })}
@@ -665,7 +665,7 @@ function renderActionConfigBasic(
                   <br />
                   Map your spreadsheet headers to new values. Left = Column Header (e.g. &apos;Date&apos;), Right = New Value (e.g. <code className="bg-white/50 px-1 rounded">{`{{step.newDate}}`}</code>).
               </p>
-            </div>
+                </div>
             </>
           )}
 
@@ -699,7 +699,7 @@ function renderActionConfigBasic(
               <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   Lookup Value <span className="text-rose-500">*</span>
-            </label>
+                </label>
                 <VariableInput
                   type="input"
                   value={config.lookupValue || ""}
@@ -719,7 +719,7 @@ function renderActionConfigBasic(
                 <p className="mt-1 text-xs text-slate-500">
                   Click the <Zap className="inline h-3 w-3" /> button to insert variables.
                 </p>
-          </div>
+              </div>
             </>
           )}
                 </div>
@@ -780,13 +780,13 @@ function renderActionConfigBasic(
                     Manage templates →
                   </a>
                 </p>
-                </div>
+              </div>
 
               {config.templateId && (
-                <div>
+              <div>
                   <label className="block text-sm font-semibold text-slate-900 mb-2">
                     Data Mapping <span className="text-rose-500">*</span>
-                  </label>
+                </label>
                   <KeyValueBuilder
                     value={config.dataMapping}
                     onChange={(value) => onUpdate({ config: { ...config, dataMapping: value } })}
@@ -805,7 +805,7 @@ function renderActionConfigBasic(
                     <br />
                     Map placeholders in your template to workflow variables. Left = Placeholder (e.g. &apos;{"{{clientName}}"}&apos;), Right = Variable (e.g. <code className="bg-white/50 px-1 rounded">{`{{step_1.name}}`}</code>).
                 </p>
-                </div>
+              </div>
               )}
             </>
           ) : (
@@ -836,7 +836,7 @@ function renderActionConfigBasic(
             </div>
           )}
 
-                <div>
+          <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Output Format
             </label>
@@ -850,8 +850,8 @@ function renderActionConfigBasic(
               <option value="pdf">PDF</option>
               <option value="docx">DOCX</option>
             </select>
-                </div>
-              </div>
+          </div>
+        </div>
       );
     }
 
@@ -874,10 +874,10 @@ function renderActionConfigBasic(
                 rows={6}
                 className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
                 placeholder="Enter detailed instructions for the approver..."
-                />
+                  />
                 </div>
-              </div>
-
+                </div>
+                
           {/* Routing Section */}
           <div className="pt-4 border-t border-slate-200">
             <h3 className="text-sm font-semibold text-slate-900 mb-4">Flow Logic</h3>
@@ -929,7 +929,7 @@ function renderActionConfigBasic(
                 <p className="mt-1 text-xs text-slate-500">
                   Route to a step that handles rejection (e.g., request revision or notify requester)
                 </p>
-                  </div>
+                </div>
               </div>
             </div>
                 </div>
@@ -951,13 +951,13 @@ function renderActionConfigBasic(
             </label>
             <textarea
               value={config.instruction || ""}
-              onChange={(e) =>
+                  onChange={(e) =>
                 onUpdate({ config: { ...config, instruction: e.target.value } })
-              }
+                  }
               rows={6}
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
               placeholder="Specify the negotiation topic and parties involved.&#10;Example:&#10;- Call the vendor to negotiate a 10% discount.&#10;- Finalize the contract terms with the client."
-            />
+                />
           </div>
         </div>
       );
@@ -984,8 +984,8 @@ function renderActionConfigBasic(
               rows={6}
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
               placeholder="List inspection criteria and acceptance standards.&#10;Example:&#10;- Check for physical damage.&#10;- Take photos of the 4 corners.&#10;- Verify temperature is below 50°C."
-                  />
-                </div>
+            />
+          </div>
               </div>
       );
 
@@ -997,9 +997,9 @@ function renderActionConfigBasic(
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Task Category
             </label>
-                <select
+            <select
               value={config.taskSubType || "generic"}
-                  onChange={(e) =>
+              onChange={(e) =>
                 onUpdate({ config: { ...config, taskSubType: e.target.value as any } })
               }
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
@@ -1009,7 +1009,7 @@ function renderActionConfigBasic(
               <option value="logistics">📦 Logistics / Physical (Shipping, Moving, Delivering)</option>
               <option value="admin">🗄️ Admin / Archive (Scanning, Filing, Printing)</option>
               <option value="maintenance">🔧 Maintenance (Repair, Install, Inspect)</option>
-                </select>
+            </select>
             <p className="mt-1.5 text-xs text-slate-500">
               Categorize the task to help operators understand the type of work required.
             </p>
@@ -1037,10 +1037,10 @@ function renderActionConfigBasic(
               <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Instructions <span className="text-rose-500">*</span>
-                </label>
+            </label>
             <textarea
               value={config.instruction || config.instructions || ""}
-                  onChange={(e) =>
+              onChange={(e) =>
                 onUpdate({ config: { ...config, instruction: e.target.value, instructions: e.target.value } })
               }
               rows={10}
@@ -1055,9 +1055,9 @@ function renderActionConfigBasic(
               <p className="text-xs text-slate-700">
                 <span className="font-semibold">💡 Note:</span> This step is for <strong>offline execution</strong>. If you need the user to enter data, use an <strong>Input Step</strong>. If you need a manager's decision, use an <strong>Approval Step</strong>.
             </p>
-            </div>
           </div>
-        </div>
+                  </div>
+              </div>
       );
 
     case "CALCULATE":
@@ -1090,8 +1090,8 @@ function renderActionConfigBasic(
             </p>
             <p className="mt-1 text-xs text-slate-500">
               Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-            </p>
-          </div>
+              </p>
+            </div>
         </div>
       );
 
@@ -1253,7 +1253,7 @@ function renderActionConfigBasic(
                         <option value="gte">Greater Than or Equal (&gt;=)</option>
                         <option value="lt">Less Than (&lt;)</option>
                         <option value="lte">Less Than or Equal (&lt;=)</option>
-                        <option value="contains">Contains</option>
+                    <option value="contains">Contains</option>
                         <option value="not_contains">Does Not Contain</option>
                         <option value="starts_with">Starts With</option>
                         <option value="is_empty">Is Empty</option>
@@ -1305,8 +1305,8 @@ function renderActionConfigBasic(
                     ))}
                 </select>
               </div>
-                  </div>
-                ))}
+              </div>
+            ))}
             </div>
           )}
           </div>
@@ -1315,68 +1315,198 @@ function renderActionConfigBasic(
 
     case "COMPARE":
       const compareRoutes = step.routes || {};
-      const compareOtherSteps = allSteps.filter((s) => s.id !== step.id);
+      const comparisonType = config.comparisonType || "exact";
+      
+      // Determine which dynamic settings to show
+      const showNumericTolerance = comparisonType === "numeric";
+      const showTextSimilarity = comparisonType === "fuzzy";
+      const showDateRange = comparisonType === "date";
       
       return (
         <div className="space-y-6">
         <div className="space-y-4">
-          <div>
+            {/* Field 1: First Value (Source) */}
+            <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
-                Target A <span className="text-rose-500">*</span>
-            </label>
+                First Value (Source) <span className="text-rose-500">*</span>
+              </label>
               <VariableInput
                 type="input"
                 value={config.targetA || ""}
                 onChange={(value) =>
                   onUpdate({ config: { ...config, targetA: value || undefined } })
                 }
-                placeholder="e.g., {{step_1.output.amount}}"
+                placeholder="e.g., {{step_1.output.invoice_amount}}"
                 allSteps={allSteps}
                 currentStepId={step.id}
                 procedureTrigger={procedureTrigger}
-            />
-            <p className="mt-1 text-xs text-slate-500">
-                First value to compare. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-            </p>
-          </div>
+              />
+              <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+                <strong className="font-semibold text-blue-900">Source Value:</strong>
+                <br />
+                The first value to compare (e.g. The Invoice Amount from AI). Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+              </p>
+            </div>
 
-          <div>
+            {/* Field 2: Second Value (Reference) */}
+            <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
-                Target B <span className="text-rose-500">*</span>
-            </label>
+                Second Value (Reference) <span className="text-rose-500">*</span>
+              </label>
               <VariableInput
                 type="input"
                 value={config.targetB || ""}
                 onChange={(value) =>
                   onUpdate({ config: { ...config, targetB: value || undefined } })
                 }
-                placeholder="e.g., {{step_2.output.amount}}"
+                placeholder="e.g., {{step_2.output.po_amount}}"
                 allSteps={allSteps}
                 currentStepId={step.id}
                 procedureTrigger={procedureTrigger}
               />
-            <p className="mt-1 text-xs text-slate-500">
-                Second value to compare. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+              <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+                <strong className="font-semibold text-blue-900">Reference Value:</strong>
+                <br />
+                The second value to compare against (e.g. The Purchase Order Amount from DB). Click the <Zap className="inline h-3 w-3" /> button to insert variables.
             </p>
           </div>
 
+            {/* Field 3: Comparison Type (Smart Presets) */}
           <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Comparison Type <span className="text-rose-500">*</span>
-            </label>
-            <select
-                value={config.comparisonType || "exact"}
-              onChange={(e) =>
+              </label>
+              <select
+                value={comparisonType}
+                onChange={(e) =>
                   onUpdate({ config: { ...config, comparisonType: e.target.value as any } })
                 }
                 className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
               >
-                <option value="exact">Exact Match</option>
-                <option value="fuzzy">Fuzzy Match</option>
-                <option value="numeric">Numeric Comparison</option>
-                <option value="date">Date Comparison</option>
-            </select>
+                <option value="exact">Exact Match (Strict)</option>
+                <option value="fuzzy">Text Similarity (Fuzzy)</option>
+                <option value="numeric">Numeric Range (Tolerance)</option>
+                <option value="date">Date Range (Window)</option>
+              </select>
+              <p className="mt-1 text-xs text-slate-500">
+                {comparisonType === "exact" && "Values must be identical (case-sensitive)."}
+                {comparisonType === "fuzzy" && "Good for names/addresses (e.g., 'Jon Doe' ≈ 'John Doe')."}
+                {comparisonType === "numeric" && "Good for prices with small rounding differences."}
+                {comparisonType === "date" && "Good for timestamps with small time differences."}
+              </p>
+                </div>
+
+            {/* Dynamic Settings: Numeric Tolerance */}
+            {showNumericTolerance && (
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Allowed Difference (+/-) <span className="text-rose-500">*</span>
+                </label>
+                <VariableInput
+                  type="input"
+                  value={config.numericTolerance !== undefined ? String(config.numericTolerance) : ""}
+                  onChange={(value) => {
+                    const numValue = value ? parseFloat(value) : undefined;
+                    onUpdate({ config: { ...config, numericTolerance: numValue } });
+                  }}
+                  placeholder="e.g., 100"
+                  allSteps={allSteps}
+                  currentStepId={step.id}
+                  procedureTrigger={procedureTrigger}
+                />
+                <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+                  <strong className="font-semibold text-blue-900">Tolerance Example:</strong>
+                  <br />
+                  If set to <code className="bg-white/50 px-1 rounded">100</code>, then <code className="bg-white/50 px-1 rounded">10050</code> matches <code className="bg-white/50 px-1 rounded">10000</code> (difference of 50 is within tolerance).
+                </p>
+              </div>
+            )}
+
+            {/* Dynamic Settings: Text Similarity */}
+            {showTextSimilarity && (
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Minimum Similarity % <span className="text-rose-500">*</span>
+            </label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={config.textSimilarityThreshold !== undefined ? config.textSimilarityThreshold : 80}
+              onChange={(e) =>
+                      onUpdate({ config: { ...config, textSimilarityThreshold: parseInt(e.target.value) } })
+                    }
+                    className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                  <span className="text-sm font-semibold text-slate-700 w-16 text-right">
+                    {config.textSimilarityThreshold !== undefined ? config.textSimilarityThreshold : 80}%
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Default: 80%. Higher values require more similarity (e.g., 90% = very similar, 70% = somewhat similar).
+            </p>
           </div>
+            )}
+
+            {/* Dynamic Settings: Date Range */}
+            {showDateRange && (
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Allowed Difference <span className="text-rose-500">*</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <VariableInput
+                    type="input"
+                    value={config.dateToleranceValue !== undefined ? String(config.dateToleranceValue) : ""}
+                    onChange={(value) => {
+                      const numValue = value ? parseFloat(value) : undefined;
+                      onUpdate({ config: { ...config, dateToleranceValue: numValue } });
+                    }}
+                    placeholder="e.g., 24"
+                    allSteps={allSteps}
+                    currentStepId={step.id}
+                    procedureTrigger={procedureTrigger}
+                    className="flex-1"
+                  />
+                  <select
+                    value={config.dateToleranceUnit || "hours"}
+                    onChange={(e) =>
+                      onUpdate({ config: { ...config, dateToleranceUnit: e.target.value as any } })
+                    }
+                    className="w-32 rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  >
+                    <option value="hours">Hours</option>
+                    <option value="days">Days</option>
+                  </select>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Maximum time difference allowed between dates (e.g., 24 hours = dates within 1 day are considered matching).
+                </p>
+              </div>
+            )}
+
+            {/* Save Mismatch Reason Checkbox */}
+          <div className="flex items-center justify-between p-4 rounded-xl border-2 border-slate-200 bg-slate-50">
+            <div>
+              <label className="text-sm font-semibold text-slate-900 block mb-0.5">
+                  Save Mismatch Reason?
+              </label>
+              <p className="text-xs text-slate-600">
+                  If checked, creates an output variable containing why the comparison failed (e.g., &quot;Values differ by 500&quot;)
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                  checked={config.requireMismatchReason || false}
+                onChange={(e) =>
+                    onUpdate({ config: { ...config, requireMismatchReason: e.target.checked } })
+                }
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              />
+            </label>
+            </div>
           </div>
 
           {/* Routing Section */}
@@ -1384,35 +1514,35 @@ function renderActionConfigBasic(
             <div className="flex items-center gap-2 mb-4">
               <Zap className="h-4 w-4 text-blue-600" />
               <h3 className="text-sm font-bold text-slate-900">Flow Logic</h3>
-                  </div>
+            </div>
             <p className="text-xs text-slate-600 mb-4">
               Define where the workflow should go based on comparison results
             </p>
-        <div className="space-y-4">
+            <div className="space-y-4">
           <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   On Match (Success) → Go To
             </label>
-                  <select
+                <select
                   value={compareRoutes.onSuccessStepId || ""}
               onChange={(e) =>
                 onUpdate({
                       routes: { ...compareRoutes, onSuccessStepId: e.target.value || undefined },
-                })
-              }
+                    })
+                  }
                   className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                 >
                   {getRoutingOptions(allSteps, step.id, true).map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-          <div>
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   On Mismatch (Failure) → Go To
-            </label>
+                </label>
                 <select
                   value={compareRoutes.onFailureStepId || ""}
                   onChange={(e) =>
@@ -1425,14 +1555,14 @@ function renderActionConfigBasic(
                   {getRoutingOptions(allSteps, step.id, true).map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
-                      </option>
-                    ))}
+                    </option>
+                  ))}
                 </select>
                 <p className="mt-1 text-xs text-slate-500">
                   Useful for error loops: send user back to correction step
                 </p>
               </div>
-              </div>
+            </div>
           </div>
         </div>
       );
@@ -1471,32 +1601,32 @@ function renderActionConfigBasic(
                 <strong className="font-semibold text-blue-900">What to check:</strong>
                 <br />
                 The variable you want to check (e.g. <code className="bg-white/50 px-1 rounded">{`{{input.email}}`}</code>). Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-              </p>
-            </div>
+            </p>
+          </div>
 
             {/* Field 2: Validation Rule */}
-            <div>
+          <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Validation Rule <span className="text-rose-500">*</span>
-              </label>
-              <select
+            </label>
+            <select
                 value={currentRule}
-                onChange={(e) =>
-                  onUpdate({ config: { ...config, rule: e.target.value as any } })
-                }
+              onChange={(e) =>
+                onUpdate({ config: { ...config, rule: e.target.value as any } })
+              }
                 className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-              >
+            >
                 <option value="">Select a rule...</option>
                 <option value="IS_NOT_EMPTY">Is Not Empty (Required)</option>
                 <option value="IS_VALID_EMAIL">Is Valid Email</option>
                 <option value="IS_VALID_PHONE">Is Valid Phone Number</option>
                 <option value="CONTAINS">Contains Text</option>
-                <option value="GREATER_THAN">Greater Than</option>
-                <option value="LESS_THAN">Less Than</option>
+              <option value="GREATER_THAN">Greater Than</option>
+              <option value="LESS_THAN">Less Than</option>
                 <option value="EQUAL">Equals</option>
                 <option value="REGEX">Custom Regex (Advanced)</option>
-              </select>
-            </div>
+            </select>
+          </div>
 
             {/* Field 3: Comparison Criteria (Dynamic) */}
             {needsComparisonValue && (
@@ -1513,7 +1643,7 @@ function renderActionConfigBasic(
                 <VariableInput
                   type="input"
                   value={config.value !== undefined ? String(config.value) : ""}
-                  onChange={(value) =>
+            onChange={(value) =>
                     onUpdate({ config: { ...config, value: value || undefined } })
                   }
                   placeholder={
@@ -1545,7 +1675,7 @@ function renderActionConfigBasic(
               <VariableInput
                 type="textarea"
                 value={config.errorMessage || ""}
-                onChange={(value) =>
+            onChange={(value) =>
                   onUpdate({ config: { ...config, errorMessage: value || undefined } })
                 }
                 rows={3}
@@ -1572,7 +1702,7 @@ function renderActionConfigBasic(
               Define where the workflow should go based on validation results
             </p>
             <div className="space-y-4">
-              <div>
+          <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   On Pass (Success) → Go To
                 </label>
@@ -1810,30 +1940,8 @@ function renderActionConfigSettings(
       return null;
 
     case "COMPARE":
-      return (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-xl border-2 border-slate-200 bg-slate-50">
-            <div>
-              <label className="text-sm font-semibold text-slate-900 block mb-0.5">
-                Require Mismatch Reason
-              </label>
-              <p className="text-xs text-slate-600">
-                If comparison fails, route to user input step asking for explanation
-            </p>
-          </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={config.requireMismatchReason || false}
-                onChange={(e) =>
-                  onUpdate({ config: { ...config, requireMismatchReason: e.target.checked } })
-                }
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-              />
-            </label>
-                  </div>
-              </div>
-      );
+      // COMPARE configuration is now in Basic tab
+      return null;
 
     default:
       return null;
@@ -2053,7 +2161,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
   }, [step?.id, step?.assignee, step?.assignment?.type, step?.assignment?.assigneeId, step?.assigneeType, step?.assigneeId, users.length]);
 
   if (!step) {
-    return (
+      return (
       <div className="h-full overflow-y-auto bg-gradient-to-br from-slate-50/50 via-white to-white border-l border-slate-200/80 p-10 backdrop-blur-sm">
         <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center">
           <motion.div
@@ -2066,8 +2174,8 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
           <h3 className="text-xl font-bold text-slate-900 mb-2 tracking-tight">No Step Selected</h3>
           <p className="text-sm text-slate-600 font-medium max-w-xs leading-relaxed">
             Select a step from the canvas to configure its settings
-          </p>
-            </div>
+            </p>
+          </div>
         </div>
       );
   }
@@ -2115,8 +2223,8 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
             <p className="text-xs text-[#FF9500] font-medium leading-relaxed">{validationError}</p>
           </motion.div>
         )}
-        
-        <div>
+
+          <div>
           <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight mb-1">{step.title}</h2>
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{metadata?.label || step.action || "Unknown"}</p>
         </div>
@@ -2217,8 +2325,8 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
                   <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
                       Assignment Type
-                    </label>
-                    <select
+            </label>
+            <select
                       value={
                         step.assignment?.type || 
                         (step.assigneeType === "TEAM" ? "TEAM_QUEUE" : 
@@ -2251,7 +2359,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
                       </label>
                       <select
                         value={step.assignment?.assigneeId || step.assigneeId || ""}
-                        onChange={(e) =>
+              onChange={(e) =>
                           onUpdate({
                             assignment: {
                               type: "TEAM_QUEUE",
@@ -2269,7 +2377,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
                             {team.name}
                           </option>
                         ))}
-                      </select>
+            </select>
                       {teams.length === 0 && (
                         <p className="mt-1 text-xs text-slate-500">
                           No teams available. Create teams in Settings.
