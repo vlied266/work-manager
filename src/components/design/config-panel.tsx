@@ -2125,7 +2125,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
         )}
 
         {/* Tab 3: Logic */}
-        {activeTab === "logic" && (
+        {activeTab === "logic" && shouldShowLogicTab && (
           <div className="space-y-6">
             {renderFlowLogic(step, allSteps, onUpdate)}
           </div>
