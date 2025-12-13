@@ -235,9 +235,9 @@ export interface AtomicStep {
     defaultNextStepId?: string; // Step to proceed to if no conditions match (the "else" case)
 
     // VALIDATE
-    rule?: "GREATER_THAN" | "LESS_THAN" | "EQUAL" | "CONTAINS" | "REGEX"; // Required: Type of validation to perform
+    rule?: "IS_NOT_EMPTY" | "IS_VALID_EMAIL" | "IS_VALID_PHONE" | "CONTAINS" | "GREATER_THAN" | "LESS_THAN" | "EQUAL" | "REGEX"; // Required: Type of validation to perform
     target?: string; // Required: Variable or value to validate (supports {{variable}} syntax)
-    value?: any; // Required: Expected value to compare against (can be variable or literal)
+    value?: any; // Required for some rules: Expected value to compare against (can be variable or literal) - Not needed for IS_NOT_EMPTY, IS_VALID_EMAIL, IS_VALID_PHONE
     errorMessage?: string; // Optional: Message to display/log if validation fails
 
     // COMPARE

@@ -1438,67 +1438,191 @@ function renderActionConfigBasic(
       );
 
     case "VALIDATE":
+      const validateRoutes = step.routes || {};
+      const currentRule = config.rule || "";
+      
+      // Determine if comparison criteria field should be shown
+      const needsComparisonValue = currentRule === "GREATER_THAN" || 
+                                   currentRule === "LESS_THAN" || 
+                                   currentRule === "EQUAL" || 
+                                   currentRule === "CONTAINS" || 
+                                   currentRule === "REGEX";
+      
       return (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Validation Rule <span className="text-rose-500">*</span>
-            </label>
-            <select
-              value={config.rule || "EQUAL"}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, rule: e.target.value as any } })
-              }
-              className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-            >
-              <option value="GREATER_THAN">Greater Than</option>
-              <option value="LESS_THAN">Less Than</option>
-              <option value="EQUAL">Equal</option>
-              <option value="CONTAINS">Contains</option>
-              <option value="REGEX">Regex Match</option>
-            </select>
+        <div className="space-y-6">
+          <div className="space-y-4">
+            {/* Field 1: Value to Validate */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Value to Validate <span className="text-rose-500">*</span>
+              </label>
+              <VariableInput
+                type="input"
+                value={config.target || ""}
+                onChange={(value) =>
+                  onUpdate({ config: { ...config, target: value || undefined } })
+                }
+                placeholder="e.g., {{step_1.output.email}}"
+                allSteps={allSteps}
+                currentStepId={step.id}
+                procedureTrigger={procedureTrigger}
+              />
+              <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+                <strong className="font-semibold text-blue-900">What to check:</strong>
+                <br />
+                The variable you want to check (e.g. <code className="bg-white/50 px-1 rounded">{`{{input.email}}`}</code>). Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+              </p>
             </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Target <span className="text-rose-500">*</span>
-            </label>
-            <VariableInput
-              type="input"
-              value={config.target || ""}
-              onChange={(value) =>
-                onUpdate({ config: { ...config, target: value || undefined } })
-              }
-              placeholder="e.g., {{step_1.output.amount}}"
-              allSteps={allSteps}
-              currentStepId={step.id}
-              procedureTrigger={procedureTrigger}
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              Variable or value to validate. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-            </p>
+            {/* Field 2: Validation Rule */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Validation Rule <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={currentRule}
+                onChange={(e) =>
+                  onUpdate({ config: { ...config, rule: e.target.value as any } })
+                }
+                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+              >
+                <option value="">Select a rule...</option>
+                <option value="IS_NOT_EMPTY">Is Not Empty (Required)</option>
+                <option value="IS_VALID_EMAIL">Is Valid Email</option>
+                <option value="IS_VALID_PHONE">Is Valid Phone Number</option>
+                <option value="CONTAINS">Contains Text</option>
+                <option value="GREATER_THAN">Greater Than</option>
+                <option value="LESS_THAN">Less Than</option>
+                <option value="EQUAL">Equals</option>
+                <option value="REGEX">Custom Regex (Advanced)</option>
+              </select>
+            </div>
+
+            {/* Field 3: Comparison Criteria (Dynamic) */}
+            {needsComparisonValue && (
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  {currentRule === "GREATER_THAN" || currentRule === "LESS_THAN" 
+                    ? "Limit Value" 
+                    : currentRule === "CONTAINS"
+                    ? "Text to Find"
+                    : currentRule === "REGEX"
+                    ? "Regex Pattern"
+                    : "Expected Value"} <span className="text-rose-500">*</span>
+                </label>
+                <VariableInput
+                  type="input"
+                  value={config.value !== undefined ? String(config.value) : ""}
+                  onChange={(value) =>
+                    onUpdate({ config: { ...config, value: value || undefined } })
+                  }
+                  placeholder={
+                    currentRule === "GREATER_THAN" || currentRule === "LESS_THAN"
+                      ? "e.g., 100 or {{step_1.output.threshold}}"
+                      : currentRule === "CONTAINS"
+                      ? "e.g., @company.com"
+                      : currentRule === "REGEX"
+                      ? "e.g., ^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$"
+                      : "e.g., 100 or {{step_1.output.threshold}}"
+                  }
+                  allSteps={allSteps}
+                  currentStepId={step.id}
+                  procedureTrigger={procedureTrigger}
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  {currentRule === "REGEX" 
+                    ? "Enter a regular expression pattern. Click the <Zap /> button to insert variables."
+                    : "Value to compare against. Click the <Zap className=\"inline h-3 w-3\" /> button to insert variables."}
+                </p>
+              </div>
+            )}
+
+            {/* Field 4: Error Message */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Error Message <span className="text-slate-400 text-xs">(Optional)</span>
+              </label>
+              <VariableInput
+                type="textarea"
+                value={config.errorMessage || ""}
+                onChange={(value) =>
+                  onUpdate({ config: { ...config, errorMessage: value || undefined } })
+                }
+                rows={3}
+                placeholder="e.g., Email format is wrong"
+                allSteps={allSteps}
+                currentStepId={step.id}
+                procedureTrigger={procedureTrigger}
+              />
+              <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+                <strong className="font-semibold text-blue-900">Error Message:</strong>
+                <br />
+                What to tell the user/system if validation fails (e.g. &apos;Email format is wrong&apos;). Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+              </p>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Expected Value <span className="text-rose-500">*</span>
-            </label>
-            <VariableInput
-              type="input"
-              value={config.value !== undefined ? String(config.value) : ""}
-              onChange={(value) =>
-                onUpdate({ config: { ...config, value: value || undefined } })
-              }
-              placeholder="e.g., 100 or {{step_1.output.threshold}}"
-              allSteps={allSteps}
-              currentStepId={step.id}
-              procedureTrigger={procedureTrigger}
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              Value to compare against. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+          {/* Routing Section */}
+          <div className="pt-6 mt-6 border-t-2 border-slate-300 bg-slate-50/50 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap className="h-4 w-4 text-blue-600" />
+              <h3 className="text-sm font-bold text-slate-900">Flow Logic</h3>
+            </div>
+            <p className="text-xs text-slate-600 mb-4">
+              Define where the workflow should go based on validation results
             </p>
-                </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  On Pass (Success) → Go To
+                </label>
+                <select
+                  value={validateRoutes.onSuccessStepId || ""}
+                  onChange={(e) =>
+                    onUpdate({
+                      routes: { ...validateRoutes, onSuccessStepId: e.target.value || undefined },
+                    })
+                  }
+                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                >
+                  {getRoutingOptions(allSteps, step.id, true).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-slate-500">
+                  Default: Next Step (continues workflow normally)
+                </p>
               </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  On Fail (Error) → Go To
+                </label>
+                <select
+                  value={validateRoutes.onFailureStepId || ""}
+                  onChange={(e) =>
+                    onUpdate({
+                      routes: { ...validateRoutes, onFailureStepId: e.target.value || undefined },
+                    })
+                  }
+                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
+                >
+                  {getRoutingOptions(allSteps, step.id, true).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs text-slate-600 bg-amber-50/50 border border-amber-100 rounded-lg p-3">
+                  <strong className="font-semibold text-amber-900">Error Loop:</strong>
+                  <br />
+                  If validation fails, you can route the flow back to an Input step to ask for correction. This creates a validation loop until the user provides valid data.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       );
 
     default:
@@ -1682,125 +1806,8 @@ function renderActionConfigSettings(
       );
 
     case "VALIDATE":
-      const validateRoutes = step.routes || {};
-      const validateOtherSteps = allSteps.filter((s) => s.id !== step.id);
-      
-      return (
-        <div className="space-y-6">
-          <div className="space-y-4">
-          <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-2">
-                Validation Rule <span className="text-rose-500">*</span>
-            </label>
-            <select
-                value={config.rule || ""}
-              onChange={(e) =>
-                onUpdate({ config: { ...config, rule: e.target.value as any } })
-              }
-                className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-            >
-                <option value="">Select a rule...</option>
-              <option value="GREATER_THAN">Greater Than</option>
-              <option value="LESS_THAN">Less Than</option>
-              <option value="EQUAL">Equal</option>
-              <option value="CONTAINS">Contains</option>
-              <option value="REGEX">Regex Pattern</option>
-            </select>
-          </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-2">
-                Target <span className="text-rose-500">*</span>
-              </label>
-              <VariableInput
-                type="input"
-            value={config.target || ""}
-            onChange={(value) =>
-              onUpdate({ config: { ...config, target: value || undefined } })
-            }
-                placeholder="e.g., {{step_1.output.amount}}"
-                allSteps={allSteps}
-                currentStepId={step.id}
-                procedureTrigger={procedureTrigger}
-              />
-              <p className="mt-1 text-xs text-slate-500">
-                Value to validate. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-2">
-                Error Message (Optional)
-              </label>
-              <VariableInput
-                type="textarea"
-                value={config.errorMessage || ""}
-            onChange={(value) =>
-                  onUpdate({ config: { ...config, errorMessage: value || undefined } })
-                }
-                rows={3}
-                placeholder="Custom error message if validation fails"
-                allSteps={allSteps}
-                currentStepId={step.id}
-                procedureTrigger={procedureTrigger}
-              />
-              <p className="mt-1 text-xs text-slate-500">
-                Message to display/log if validation fails. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-              </p>
-            </div>
-          </div>
-
-          {/* Routing Section */}
-          <div className="pt-4 border-t border-slate-200">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4">Routing</h3>
-            <div className="space-y-4">
-          <div>
-                <label className="block text-sm font-semibold text-slate-900 mb-2">
-                  On Pass (Success) → Go To
-            </label>
-                <select
-                  value={validateRoutes.onSuccessStepId || ""}
-              onChange={(e) =>
-                    onUpdate({
-                      routes: { ...validateRoutes, onSuccessStepId: e.target.value || undefined },
-                    })
-                  }
-                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-                >
-                  {getRoutingOptions(allSteps, step.id, true).map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-900 mb-2">
-                  On Fail → Go To
-                </label>
-                <select
-                  value={validateRoutes.onFailureStepId || ""}
-                  onChange={(e) =>
-                    onUpdate({
-                      routes: { ...validateRoutes, onFailureStepId: e.target.value || undefined },
-                    })
-                  }
-                  className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-                >
-                  {getRoutingOptions(allSteps, step.id, true).map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-slate-500">
-                  Useful for error loops: send user back to correction step
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
+      // VALIDATE configuration is now in Basic tab
+      return null;
 
     case "COMPARE":
       return (
