@@ -90,6 +90,8 @@ function renderActionConfigBasic(
   onUpdate: (updates: Partial<AtomicStep>) => void,
   allSteps: AtomicStep[],
   collections: Array<{ id: string; name: string }> = [],
+  templates: Array<{ id: string; name: string }> = [],
+  loadingTemplates: boolean = false,
   procedureTrigger?: { type: "MANUAL" | "ON_FILE_CREATED" | "WEBHOOK"; config?: any } | undefined
 ) {
   const { action, config } = step;
@@ -594,10 +596,10 @@ function renderActionConfigBasic(
 
           {/* Append Row: Show Column Mapping */}
           {operation === "APPEND_ROW" && (
-            <div>
+          <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Column Mapping <span className="text-rose-500">*</span>
-              </label>
+            </label>
               <KeyValueBuilder
                 value={config.columnMapping}
                 onChange={(value) => onUpdate({ config: { ...config, columnMapping: value } })}
@@ -616,16 +618,16 @@ function renderActionConfigBasic(
                 <br />
                 Map your spreadsheet headers to workflow variables. Left = Column Header (e.g. &apos;Date&apos;), Right = Value (e.g. <code className="bg-white/50 px-1 rounded">{`{{step.date}}`}</code>).
               </p>
-            </div>
+          </div>
           )}
 
           {/* Update Row: Show Row Number + Column Mapping */}
           {operation === "UPDATE_ROW" && (
             <>
-              <div>
+            <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   Row Number <span className="text-rose-500">*</span>
-                </label>
+              </label>
                 <VariableInput
                   type="input"
                   value={config.rowNumber || ""}
@@ -640,11 +642,11 @@ function renderActionConfigBasic(
                 <p className="mt-1 text-xs text-slate-500">
                   Which row to update? (Row 1 is usually headers, so start from 2). Click the <Zap className="inline h-3 w-3" /> button to insert variables.
                 </p>
-              </div>
-              <div>
+          </div>
+                <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   Column Mapping <span className="text-rose-500">*</span>
-                </label>
+                  </label>
                 <KeyValueBuilder
                   value={config.columnMapping}
                   onChange={(value) => onUpdate({ config: { ...config, columnMapping: value } })}
@@ -663,17 +665,17 @@ function renderActionConfigBasic(
                   <br />
                   Map your spreadsheet headers to new values. Left = Column Header (e.g. &apos;Date&apos;), Right = New Value (e.g. <code className="bg-white/50 px-1 rounded">{`{{step.newDate}}`}</code>).
                 </p>
-              </div>
+                </div>
             </>
           )}
 
           {/* Lookup Row: Show Lookup Column + Lookup Value */}
           {operation === "LOOKUP_ROW" && (
             <>
-              <div>
+                <div>
                 <label className="block text-sm font-semibold text-slate-900 mb-2">
                   Lookup Column <span className="text-rose-500">*</span>
-                </label>
+                  </label>
                 <VariableInput
                   type="input"
                   value={config.lookupColumn || ""}
@@ -720,7 +722,7 @@ function renderActionConfigBasic(
               </div>
             </>
           )}
-        </div>
+                </div>
       );
 
     case "DOC_GENERATE": {
@@ -728,7 +730,7 @@ function renderActionConfigBasic(
 
       return (
         <div className="space-y-4">
-          <div>
+                <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Source Type <span className="text-rose-500">*</span>
             </label>
@@ -742,8 +744,8 @@ function renderActionConfigBasic(
               <option value="template">Select Template (Uploaded .docx)</option>
               <option value="inline">Simple Text/HTML</option>
             </select>
-          </div>
-
+              </div>
+              
           {sourceType === "template" ? (
             <>
               <div>
@@ -781,10 +783,10 @@ function renderActionConfigBasic(
               </div>
 
               {config.templateId && (
-                <div>
+              <div>
                   <label className="block text-sm font-semibold text-slate-900 mb-2">
                     Data Mapping <span className="text-rose-500">*</span>
-                  </label>
+                </label>
                   <KeyValueBuilder
                     value={config.dataMapping}
                     onChange={(value) => onUpdate({ config: { ...config, dataMapping: value } })}
@@ -802,15 +804,15 @@ function renderActionConfigBasic(
                     <strong className="font-semibold text-blue-900">Data Mapping:</strong>
                     <br />
                     Map placeholders in your template to workflow variables. Left = Placeholder (e.g. &apos;{"{{clientName}}"}&apos;), Right = Variable (e.g. <code className="bg-white/50 px-1 rounded">{`{{step_1.name}}`}</code>).
-                  </p>
-                </div>
+                </p>
+              </div>
               )}
             </>
           ) : (
             <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Document Content <span className="text-rose-500">*</span>
-              </label>
+                </label>
               <VariableInput
                 type="textarea"
                 value={config.inlineContent || ""}
@@ -874,8 +876,8 @@ function renderActionConfigBasic(
                 placeholder="Enter detailed instructions for the approver..."
                   />
                 </div>
-          </div>
-
+                </div>
+                
           {/* Routing Section */}
           <div className="pt-4 border-t border-slate-200">
             <h3 className="text-sm font-semibold text-slate-900 mb-4">Flow Logic</h3>
@@ -927,9 +929,9 @@ function renderActionConfigBasic(
                 <p className="mt-1 text-xs text-slate-500">
                   Route to a step that handles rejection (e.g., request revision or notify requester)
                 </p>
+                </div>
               </div>
             </div>
-                </div>
                 </div>
       );
               
@@ -940,7 +942,7 @@ function renderActionConfigBasic(
           <div className="rounded-lg bg-amber-50/80 border border-amber-200/50 p-3">
             <p className="text-xs text-slate-700 font-medium leading-relaxed">
               💡 <strong>Note:</strong> Use this for back-and-forth discussions to reach an agreement (Deal/Contract). For simple execution tasks, use <strong>Manual Task</strong>.
-            </p>
+                </p>
               </div>
               
               <div>
@@ -951,11 +953,11 @@ function renderActionConfigBasic(
               value={config.instruction || ""}
                   onChange={(e) =>
                 onUpdate({ config: { ...config, instruction: e.target.value } })
-              }
+                  }
               rows={6}
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
               placeholder="Specify the negotiation topic and parties involved.&#10;Example:&#10;- Call the vendor to negotiate a 10% discount.&#10;- Finalize the contract terms with the client."
-            />
+                />
           </div>
         </div>
       );
@@ -967,13 +969,13 @@ function renderActionConfigBasic(
           <div className="rounded-lg bg-amber-50/80 border border-amber-200/50 p-3">
             <p className="text-xs text-slate-700 font-medium leading-relaxed">
               💡 <strong>Note:</strong> Use this for quality checks or physical inspections where a checklist or photo evidence is required. For simple execution tasks, use <strong>Manual Task</strong>.
-                </p>
-              </div>
+            </p>
+          </div>
 
-              <div>
+          <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Instruction <span className="text-rose-500">*</span>
-                </label>
+            </label>
             <textarea
               value={config.instruction || ""}
               onChange={(e) =>
@@ -983,7 +985,7 @@ function renderActionConfigBasic(
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
               placeholder="List inspection criteria and acceptance standards.&#10;Example:&#10;- Check for physical damage.&#10;- Take photos of the 4 corners.&#10;- Verify temperature is below 50°C."
             />
-                </div>
+          </div>
               </div>
       );
 
@@ -991,13 +993,13 @@ function renderActionConfigBasic(
       return (
         <div className="space-y-4">
           {/* Task Category Dropdown */}
-              <div>
+          <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
               Task Category
-                </label>
-                <select
+            </label>
+            <select
               value={config.taskSubType || "generic"}
-                  onChange={(e) =>
+              onChange={(e) =>
                 onUpdate({ config: { ...config, taskSubType: e.target.value as any } })
               }
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
@@ -1007,7 +1009,7 @@ function renderActionConfigBasic(
               <option value="logistics">📦 Logistics / Physical (Shipping, Moving, Delivering)</option>
               <option value="admin">🗄️ Admin / Archive (Scanning, Filing, Printing)</option>
               <option value="maintenance">🔧 Maintenance (Repair, Install, Inspect)</option>
-                </select>
+            </select>
             <p className="mt-1.5 text-xs text-slate-500">
               Categorize the task to help operators understand the type of work required.
             </p>
@@ -1052,10 +1054,10 @@ function renderActionConfigBasic(
             <div className="mt-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
               <p className="text-xs text-slate-700">
                 <span className="font-semibold">💡 Note:</span> This step is for <strong>offline execution</strong>. If you need the user to enter data, use an <strong>Input Step</strong>. If you need a manager's decision, use an <strong>Approval Step</strong>.
-              </p>
-            </div>
+            </p>
           </div>
-        </div>
+                  </div>
+              </div>
       );
 
     case "CALCULATE":
@@ -1079,8 +1081,8 @@ function renderActionConfigBasic(
             />
             <p className="mt-1 text-xs text-slate-500">
               Mathematical formula using variables. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
-            </p>
-                </div>
+              </p>
+            </div>
         </div>
       );
 
@@ -1098,9 +1100,9 @@ function renderActionConfigBasic(
             <p className="text-xs text-slate-600 mb-3">
               If no conditions match, go to this step:
             </p>
-                <select
+            <select
               value={config.defaultNextStepId || ""}
-                  onChange={(e) =>
+              onChange={(e) =>
                 onUpdate({ config: { ...config, defaultNextStepId: e.target.value || undefined } })
               }
               className="w-full rounded-xl border-0 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
@@ -1108,17 +1110,17 @@ function renderActionConfigBasic(
               {getRoutingOptions(allSteps, step.id, false).map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
-                </option>
-              ))}
-                </select>
+                  </option>
+                ))}
+            </select>
           </div>
 
           {/* Conditions List */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <label className="block text-sm font-semibold text-slate-900">
-                Conditions
-              </label>
+              Conditions
+            </label>
               <button
                 type="button"
                 onClick={() => {
@@ -1202,9 +1204,9 @@ function renderActionConfigBasic(
                       <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                         Operator <span className="text-rose-500">*</span>
                       </label>
-                      <select
+                  <select
                         value={condition.operator || "eq"}
-                        onChange={(e) => {
+                    onChange={(e) => {
                           const updatedConditions = [...(config.conditions || [])];
                           updatedConditions[index] = {
                             ...updatedConditions[index],
@@ -1218,8 +1220,8 @@ function renderActionConfigBasic(
                         <option value="neq">Not Equals (≠)</option>
                         <option value="gt">Greater Than (&gt;)</option>
                         <option value="lt">Less Than (&lt;)</option>
-                        <option value="contains">Contains</option>
-                      </select>
+                    <option value="contains">Contains</option>
+                  </select>
                     </div>
 
                     {/* Value */}
@@ -1229,7 +1231,7 @@ function renderActionConfigBasic(
                       </label>
                       <VariableInput
                         type="input"
-                        value={condition.value || ""}
+                    value={condition.value || ""}
                         onChange={(value) => {
                           const updatedConditions = [...(config.conditions || [])];
                           updatedConditions[index] = { ...updatedConditions[index], value: value };
@@ -1239,17 +1241,17 @@ function renderActionConfigBasic(
                         allSteps={allSteps}
                         currentStepId={step.id}
                         procedureTrigger={procedureTrigger}
-                      />
-                    </div>
+                  />
+                </div>
 
                     {/* Next Step */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                         If True, Go To <span className="text-rose-500">*</span>
               </label>
-                      <select
+                <select
                         value={condition.nextStepId || ""}
-                        onChange={(e) => {
+                  onChange={(e) => {
                           const updatedConditions = [...(config.conditions || [])];
                           updatedConditions[index] = {
                             ...updatedConditions[index],
@@ -1262,9 +1264,9 @@ function renderActionConfigBasic(
                         {getRoutingOptions(allSteps, step.id, false).map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
-                          </option>
-                        ))}
-                      </select>
+                      </option>
+                    ))}
+                </select>
             </div>
                   </div>
                 ))}
@@ -1337,7 +1339,7 @@ function renderActionConfigBasic(
                 <option value="numeric">Numeric Comparison</option>
                 <option value="date">Date Comparison</option>
               </select>
-            </div>
+              </div>
           </div>
 
           {/* Routing Section */}
@@ -1625,8 +1627,8 @@ function renderActionConfigSettings(
               />
               <p className="mt-1 text-xs text-slate-500">
                 Describe what information you want extracted or ask specific questions about the document.
-              </p>
-            </div>
+            </p>
+          </div>
           )}
 
           {extractionMode === "full_text" && (
@@ -1649,7 +1651,7 @@ function renderActionConfigSettings(
       return (
         <div className="space-y-6">
           <div className="space-y-4">
-            <div>
+          <div>
               <label className="block text-sm font-semibold text-slate-900 mb-2">
                 Validation Rule <span className="text-rose-500">*</span>
             </label>
@@ -2310,7 +2312,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
             )}
 
             {/* Action-specific Basic Configuration */}
-            {renderActionConfigBasic(step, availableVariablesLegacy, onUpdate, allSteps, collections, procedureTrigger)}
+            {renderActionConfigBasic(step, availableVariablesLegacy, onUpdate, allSteps, collections, templates, loadingTemplates, procedureTrigger)}
           </div>
         )}
 
