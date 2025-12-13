@@ -1062,25 +1062,34 @@ function renderActionConfigBasic(
 
     case "CALCULATE":
       return (
-          <div className="space-y-4">
+        <div className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Formula <span className="text-rose-500">*</span>
+              Math Formula <span className="text-rose-500">*</span>
             </label>
             <VariableInput
               type="input"
               value={config.formula || ""}
-                    onChange={(value) =>
+              onChange={(value) =>
                 onUpdate({ config: { ...config, formula: value || undefined } })
               }
-              placeholder="e.g., {{step_1.output.amount}} * 1.1"
+              placeholder="e.g., ( {{step_1.output.price}} * 0.09 ) + {{step_1.output.shipping}}"
               allSteps={allSteps}
               currentStepId={step.id}
               procedureTrigger={procedureTrigger}
               className="font-mono"
             />
+              <p className="mt-2 text-xs text-slate-600 bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+              <strong className="font-semibold text-blue-900">How to write a formula:</strong>
+              <br />
+              Use standard math operators: <code className="bg-white/50 px-1 rounded">+</code> (Add), <code className="bg-white/50 px-1 rounded">-</code> (Subtract), <code className="bg-white/50 px-1 rounded">*</code> (Multiply), <code className="bg-white/50 px-1 rounded">/</code> (Divide).
+              <br />
+              You can use parentheses <code className="bg-white/50 px-1 rounded">()</code> for grouping.
+              <br />
+              <span className="font-mono text-xs mt-1 block">Example: <code className="bg-white/50 px-1 rounded">( {`{{step_1.output.price}}`} * 0.09 ) + {`{{step_1.output.shipping}}`}</code></span>
+            </p>
             <p className="mt-1 text-xs text-slate-500">
-              Mathematical formula using variables. Click the <Zap className="inline h-3 w-3" /> button to insert variables.
+              Click the <Zap className="inline h-3 w-3" /> button to insert variables.
               </p>
             </div>
         </div>
@@ -2336,7 +2345,15 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
                 placeholder="e.g., invoice_total"
             />
               <p className="mt-2 text-xs text-slate-500">
-                Variable name for referencing this step's data later. Auto-generated if left blank.
+                {step.action === "CALCULATE" ? (
+                  <>
+                    The name of the result variable (e.g. &apos;final_total&apos;). You can use this name in future steps like Emails or Gateways.
+                  </>
+                ) : (
+                  <>
+                    Variable name for referencing this step&apos;s data later. Auto-generated if left blank.
+                  </>
+                )}
               </p>
           </div>
 

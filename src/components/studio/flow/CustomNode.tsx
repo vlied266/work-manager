@@ -5,7 +5,7 @@ import { Handle, Position, NodeProps, Node } from "@xyflow/react";
 import { AtomicStep } from "@/types/schema";
 import { ATOMIC_ACTION_METADATA } from "@/types/schema";
 import * as LucideIcons from "lucide-react";
-import { Edit2, Trash2, Phone, Mail, Package, Truck, FileText, Archive, Wrench, ClipboardList, Handshake, Search } from "lucide-react";
+import { Edit2, Trash2, Phone, Mail, Package, Truck, FileText, Archive, Wrench, ClipboardList, Handshake, Search, Calculator } from "lucide-react";
 
 interface CustomNodeData extends Record<string, unknown> {
   step: AtomicStep;
@@ -114,9 +114,10 @@ export const CustomNode = memo((props: NodeProps<Node<CustomNodeData>>) => {
           {step.title || "Untitled Step"}
         </h3>
 
-        {/* Output Variable (for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, AI_PARSE, DB_INSERT, HTTP_REQUEST, SEND_EMAIL, GOOGLE_SHEET, and DOC_GENERATE steps) */}
-        {(step.action === "INPUT" || step.action === "APPROVAL" || step.action === "MANUAL_TASK" || step.action === "NEGOTIATE" || step.action === "INSPECT" || step.action === "AI_PARSE" || step.action === "DB_INSERT" || step.action === "HTTP_REQUEST" || step.action === "SEND_EMAIL" || step.action === "GOOGLE_SHEET" || step.action === "DOC_GENERATE") && step.config?.outputVariableName && (
-          <p className="text-[10px] font-mono text-purple-600 font-semibold">
+        {/* Output Variable (for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, AI_PARSE, DB_INSERT, HTTP_REQUEST, SEND_EMAIL, GOOGLE_SHEET, DOC_GENERATE, and CALCULATE steps) */}
+        {(step.action === "INPUT" || step.action === "APPROVAL" || step.action === "MANUAL_TASK" || step.action === "NEGOTIATE" || step.action === "INSPECT" || step.action === "AI_PARSE" || step.action === "DB_INSERT" || step.action === "HTTP_REQUEST" || step.action === "SEND_EMAIL" || step.action === "GOOGLE_SHEET" || step.action === "DOC_GENERATE" || step.action === "CALCULATE") && step.config?.outputVariableName && (
+          <p className="text-[10px] font-mono text-purple-600 font-semibold flex items-center gap-1">
+            {step.action === "CALCULATE" && <Calculator className="h-3 w-3" />}
             Var: {step.config.outputVariableName}
           </p>
         )}
