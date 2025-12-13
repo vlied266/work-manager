@@ -7,7 +7,7 @@ import { ProcessGroup, Procedure } from "@/types/schema";
 import { DndContext, DragEndEvent, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from "@dnd-kit/core";
 import { arrayMove, useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowLeft, X, ArrowRight, GripVertical, ArrowDown, Search, Trash2, Workflow, FileText, Loader2, AlertTriangle, ChevronDown, ChevronUp, Link2, Clock } from "lucide-react";
+import { ArrowLeft, X, ArrowRight, GripVertical, ArrowDown, Search, Trash2, Workflow, FileText, Loader2, AlertTriangle, ChevronDown, ChevronUp, Link2, Clock, Play } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -22,10 +22,11 @@ interface ProcessComposerPageProps {
 export default function ProcessComposerPage({ params: paramsPromise }: ProcessComposerPageProps) {
   const { id } = use(paramsPromise);
   const router = useRouter();
-  // Get organizationId from auth context
+  // Get organizationId and userId from auth context
   const orgIdFromHook = useOrgId();
-  const { organizationId: orgIdFromContext } = useOrganization();
+  const { organizationId: orgIdFromContext, userProfile } = useOrganization();
   const organizationId = orgIdFromHook || orgIdFromContext || "default-org";
+  const userId = userProfile?.uid || "";
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [processGroup, setProcessGroup] = useState<ProcessGroup | null>(null);
   // Local state for ProcessSteps (richer than procedureSequence)
@@ -35,6 +36,7 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
   const [isActive, setIsActive] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [saving, setSaving] = useState(false);
+  const [running, setRunning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [proceduresLoading, setProceduresLoading] = useState(true);
   const [proceduresError, setProceduresError] = useState<string | null>(null);
@@ -297,6 +299,58 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
       alert("Failed to save process group. Please check the console for details.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRunProcess = async () => {
+    // Validate process exists and is saved
+    if (!processGroup || processGroup.id.startsWith("temp-")) {
+      alert("Please save the process before running it.");
+      return;
+    }
+
+    if (processSteps.length === 0) {
+      alert("Please add at least one step before running the process.");
+      return;
+    }
+
+    if (!userId) {
+      alert("Please log in to run a process.");
+      return;
+    }
+
+    setRunning(true);
+    try {
+      // Auto-save first to sync latest changes
+      await handleSaveProcess();
+
+      // Call the start process API
+      const response = await fetch("/api/process/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          processGroupId: processGroup.id,
+          organizationId: organizationId,
+          userId: userId,
+          initialInput: {}, // Empty object for now
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.details || "Failed to start process");
+      }
+
+      const result = await response.json();
+      console.log("✅ Process started successfully. ProcessRun ID:", result.processRunId);
+
+      // Show success message
+      alert(`Process Started Successfully! 🚀\n\nProcessRun ID: ${result.processRunId}`);
+    } catch (error: any) {
+      console.error("❌ Error starting process:", error);
+      alert(`Failed to start process: ${error.message || "An unexpected error occurred"}`);
+    } finally {
+      setRunning(false);
     }
   };
 
@@ -611,22 +665,43 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
               <div className="h-6 w-[1px] bg-gray-300 mx-1" />
 
               {processGroup && processGroup.id && !processGroup.id.startsWith("temp-") ? (
-                <motion.button
-                  onClick={handleSaveProcess}
-                  disabled={!processTitle.trim() || !processDescription.trim() || saving}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="rounded-full bg-[#007AFF] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#0071E3] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    <span>Save Changes</span>
-                  )}
-                </motion.button>
+                <>
+                  <motion.button
+                    onClick={handleRunProcess}
+                    disabled={processSteps.length === 0 || running || saving}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="rounded-full bg-green-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                  >
+                    {running ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>Starting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-3.5 w-3.5" />
+                        <span>Run Process</span>
+                      </>
+                    )}
+                  </motion.button>
+                  <motion.button
+                    onClick={handleSaveProcess}
+                    disabled={!processTitle.trim() || !processDescription.trim() || saving || running}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="rounded-full bg-[#007AFF] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#0071E3] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <span>Save Changes</span>
+                    )}
+                  </motion.button>
+                </>
               ) : (
                 <motion.button
                   onClick={handleCreateProcess}
