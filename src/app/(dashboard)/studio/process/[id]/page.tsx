@@ -7,7 +7,7 @@ import { ProcessGroup, Procedure } from "@/types/schema";
 import { DndContext, DragEndEvent, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from "@dnd-kit/core";
 import { arrayMove, useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowLeft, X, ArrowRight, GripVertical, ArrowDown, Search, Trash2, Workflow, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, X, ArrowRight, GripVertical, ArrowDown, Search, Trash2, Workflow, FileText, Loader2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -28,30 +28,43 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
   const [searchQuery, setSearchQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [proceduresLoading, setProceduresLoading] = useState(true);
+  const [proceduresError, setProceduresError] = useState<string | null>(null);
 
-  // Fetch All Procedures for this organization (both published and unpublished)
+  // Fetch Active/Published Procedures for this organization (Smart Toolbox)
   useEffect(() => {
+    setProceduresLoading(true);
+    setProceduresError(null);
+    
     const q = query(
       collection(db, "procedures"),
-      where("organizationId", "==", organizationId)
+      where("organizationId", "==", organizationId),
+      where("isPublished", "==", true) // Only show published procedures
     );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
         const procs = snapshot.docs
-          .map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate() || new Date(),
-            updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-            steps: doc.data().steps || [],
-          })) as Procedure[];
+          .map((doc) => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              createdAt: data.createdAt?.toDate() || new Date(),
+              updatedAt: data.updatedAt?.toDate() || new Date(),
+              steps: data.steps || [],
+              trigger: data.trigger || { type: "MANUAL" },
+            } as Procedure;
+          });
         procs.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
         setProcedures(procs);
+        setProceduresLoading(false);
       },
       (error) => {
         console.error("Error fetching procedures:", error);
+        setProceduresError("Failed to load procedures. Please try again.");
+        setProceduresLoading(false);
       }
     );
 
@@ -237,6 +250,19 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
     // Handle dropping procedure onto canvas
     if (active.data.current?.type === "procedure" && over.id === "process-timeline") {
       const procedureId = active.data.current.procedureId as string;
+      const procedureMetadata = active.data.current.procedure; // Full procedure metadata
+      
+      // Log the dropped procedure metadata for debugging
+      if (procedureMetadata) {
+        console.log("📦 Dropped procedure:", {
+          id: procedureMetadata.id,
+          title: procedureMetadata.title,
+          trigger: procedureMetadata.trigger,
+          stepCount: procedureMetadata.steps?.length || 0,
+          hasInputs: !!procedureMetadata.inputSchema,
+        });
+      }
+      
       if (!processGroup.procedureSequence.includes(procedureId)) {
         const updatedSequence = [...processGroup.procedureSequence, procedureId];
         const updated = { ...processGroup, procedureSequence: updatedSequence };
@@ -453,7 +479,13 @@ export default function ProcessComposerPage({ params: paramsPromise }: ProcessCo
         <ProcessDndContext onDragEnd={handleDragEnd}>
           <div className="grid grid-cols-[320px_1fr] gap-6 h-full">
             {/* Left Pane: Procedure Library - Floating Glass Island */}
-            <ProcedureLibrary procedures={filteredProcedures} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+            <ProcedureLibrary 
+              procedures={filteredProcedures} 
+              searchQuery={searchQuery} 
+              onSearchChange={setSearchQuery}
+              loading={proceduresLoading}
+              error={proceduresError}
+            />
 
             {/* Right Canvas: Process Flow - Floating Glass Island */}
             <ProcessTimeline
@@ -502,22 +534,26 @@ function ProcessDndContext({
   );
 }
 
-// Left Pane: Procedure Library - Apple Aesthetic
+// Left Pane: Procedure Library - Apple Aesthetic (Smart Toolbox)
 function ProcedureLibrary({
   procedures,
   searchQuery,
   onSearchChange,
+  loading,
+  error,
 }: {
   procedures: Procedure[];
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  loading: boolean;
+  error: string | null;
 }) {
   return (
     <div className="h-full overflow-hidden rounded-[2rem] bg-white/60 backdrop-blur-xl border border-white/40 shadow-2xl shadow-black/5 flex flex-col">
       {/* Header */}
       <div className="flex-shrink-0 p-6 border-b border-white/20">
-        <h2 className="text-lg font-extrabold text-slate-800 tracking-tight mb-1">Library</h2>
-        <p className="text-xs text-slate-600 mb-4">Drag to add to your process</p>
+        <h2 className="text-lg font-extrabold text-slate-800 tracking-tight mb-1">Smart Toolbox</h2>
+        <p className="text-xs text-slate-600 mb-4">Drag published procedures to build your process</p>
         
         {/* macOS Spotlight-style Search */}
         <div className="relative">
@@ -534,11 +570,22 @@ function ProcedureLibrary({
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-3">
-        {procedures.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 text-blue-500 animate-spin mb-3" />
+            <p className="text-sm text-slate-600 font-medium">Loading procedures...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <AlertTriangle className="h-12 w-12 text-rose-300 mx-auto mb-3" />
+            <p className="text-sm text-slate-600 font-medium">{error}</p>
+            <p className="text-xs text-slate-500 mt-1">Please refresh the page</p>
+          </div>
+        ) : procedures.length === 0 ? (
           <div className="text-center py-12">
             <FileText className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-sm text-slate-600 font-medium">No procedures found</p>
-            <p className="text-xs text-slate-500 mt-1">Create procedures in Studio first</p>
+            <p className="text-sm text-slate-600 font-medium">No published procedures found</p>
+            <p className="text-xs text-slate-500 mt-1">Publish procedures in Studio to add them here</p>
           </div>
         ) : (
           procedures.map((procedure) => (
@@ -550,13 +597,44 @@ function ProcedureLibrary({
   );
 }
 
-// Draggable Procedure Card - Apple Aesthetic
+// Draggable Procedure Card - Apple Aesthetic (Enhanced with Trigger Info)
 function DraggableProcedureCard({ procedure }: { procedure: Procedure }) {
+  const triggerType = procedure.trigger?.type || "MANUAL";
+  
+  // Get trigger badge color and label
+  const getTriggerBadge = () => {
+    switch (triggerType) {
+      case "WEBHOOK":
+        return { label: "Webhook", color: "bg-purple-100 text-purple-700" };
+      case "ON_FILE_CREATED":
+        return { label: "File Trigger", color: "bg-blue-100 text-blue-700" };
+      case "MANUAL":
+      default:
+        return { label: "Manual", color: "bg-slate-100 text-slate-600" };
+    }
+  };
+
+  const triggerBadge = getTriggerBadge();
+
+  // Extract input requirements from first INPUT step
+  const firstInputStep = procedure.steps.find(step => step.action === "INPUT");
+  const hasInputs = firstInputStep?.config?.fields && Array.isArray(firstInputStep.config.fields) && firstInputStep.config.fields.length > 0;
+  const inputCount = hasInputs ? firstInputStep.config.fields.length : 0;
+
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `procedure-${procedure.id}`,
     data: {
       type: "procedure",
       procedureId: procedure.id,
+      // Pass full procedure metadata for drop handling
+      procedure: {
+        id: procedure.id,
+        title: procedure.title,
+        description: procedure.description,
+        trigger: procedure.trigger,
+        steps: procedure.steps,
+        inputSchema: firstInputStep?.config || null,
+      },
     },
   });
 
@@ -583,24 +661,24 @@ function DraggableProcedureCard({ procedure }: { procedure: Procedure }) {
           <FileText className="h-5 w-5 text-blue-600" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <h4 className="text-sm font-semibold text-slate-800 tracking-tight leading-tight">{procedure.title}</h4>
-            {procedure.isPublished ? (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700">
-                Published
-              </span>
-            ) : (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">
-                Draft
-              </span>
-            )}
+            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${triggerBadge.color}`}>
+              {triggerBadge.label}
+            </span>
           </div>
           {procedure.description && (
             <p className="text-xs text-slate-600 line-clamp-2 mb-2">{procedure.description}</p>
           )}
-          <p className="text-xs text-slate-500 font-medium">
-            {procedure.steps.length} step{procedure.steps.length !== 1 ? "s" : ""}
-          </p>
+          <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+            <span>{procedure.steps.length} step{procedure.steps.length !== 1 ? "s" : ""}</span>
+            {hasInputs && (
+              <>
+                <span className="text-slate-300">•</span>
+                <span>{inputCount} input{inputCount !== 1 ? "s" : ""}</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
