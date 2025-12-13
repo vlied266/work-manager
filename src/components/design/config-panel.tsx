@@ -229,15 +229,15 @@ function renderActionConfigBasic(
         sourceOptions.push({ label: "⚡️ Start Trigger (Automated File)", value: "TRIGGER_EVENT" });
       }
       
-      // Add previous steps that can provide files
+      // Add previous steps that can provide files - RELAXED FILTER
       const currentStepIndex = allSteps.findIndex((s) => s.id === step.id);
       const previousSteps = allSteps
         .filter((s) => {
           const stepIndex = allSteps.findIndex((st) => st.id === s.id);
           if (stepIndex >= currentStepIndex) return false;
           
-          // INPUT step with file/image/document type
-          if (s.action === "INPUT" && (s.config.inputType === "file" || s.config.inputType === "image" || s.config.inputType === "document")) {
+          // Show ALL INPUT steps (relaxed - let user choose)
+          if (s.action === "INPUT") {
             return true;
           }
           
@@ -1599,7 +1599,7 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
   // Determine if Logic tab should be shown
-  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, and INSPECT (branching handled in Basic tab or by connecting to GATEWAY on canvas)
+  // Hide Logic tab for INPUT, APPROVAL, MANUAL_TASK, NEGOTIATE, INSPECT, and AI_PARSE (branching handled in Basic tab or by connecting to GATEWAY on canvas)
   const shouldShowLogicTab = step && (
     step.action !== "GATEWAY" && 
     step.action !== "VALIDATE" && 
@@ -1608,7 +1608,8 @@ export function ConfigPanel({ step, allSteps, onUpdate, validationError, procedu
     step.action !== "APPROVAL" &&
     step.action !== "MANUAL_TASK" &&
     step.action !== "NEGOTIATE" &&
-    step.action !== "INSPECT"
+    step.action !== "INSPECT" &&
+    step.action !== "AI_PARSE"
   );
   
   const [activeTab, setActiveTab] = useState<"basic" | "settings" | "logic">("basic");
@@ -2493,10 +2494,11 @@ function FieldExtractionBuilder({ fields, onChange }: FieldExtractionBuilderProp
             type="button"
             onClick={handleAddField}
             disabled={!newFieldKey.trim()}
-            className="flex-shrink-0 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+            className="flex-shrink-0 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5 shadow-sm hover:shadow-md"
+            title="Add field to extraction list"
           >
             <Plus className="h-4 w-4" />
-            Add
+            Add Field
           </button>
         </div>
       </div>
