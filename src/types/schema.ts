@@ -208,8 +208,11 @@ export interface AtomicStep {
     connectionId?: string; // Optional: ID of the Google Sheets connection/credential
     spreadsheetId?: string; // Required: Google Sheets spreadsheet ID (supports {{variable}} syntax)
     sheetName?: string; // Required: Name of the sheet/tab within the spreadsheet
-    operation?: "APPEND_ROW" | "UPDATE_ROW"; // Required: Operation type
-    columnMapping?: Record<string, string>; // Required: Maps column letters (A, B, C) or names to values (supports {{variable}} syntax)
+    operation?: "APPEND_ROW" | "UPDATE_ROW" | "LOOKUP_ROW"; // Required: Operation type
+    columnMapping?: Record<string, string>; // Required for APPEND_ROW/UPDATE_ROW: Maps column letters (A, B, C) or names to values (supports {{variable}} syntax)
+    rowNumber?: string; // Required for UPDATE_ROW: Row number to update (supports {{variable}} syntax)
+    lookupColumn?: string; // Required for LOOKUP_ROW: Column header to search in (supports {{variable}} syntax)
+    lookupValue?: string; // Required for LOOKUP_ROW: Value to find (supports {{variable}} syntax)
 
     // DOC_GENERATE
     templateId?: string; // Required: ID of the template record in the 'templates' Firestore collection

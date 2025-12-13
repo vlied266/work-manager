@@ -915,11 +915,210 @@ export async function POST(req: NextRequest) {
             break;
           }
 
-          case "GOOGLE_SHEET":
-            // Execute Google Sheet operation
-            // TODO: Implement Google Sheet logic
-            executionResult = { success: true, executed: true };
+          case "GOOGLE_SHEET": {
+            // Resolve config variables
+            const resolvedConfig = resolveConfig(
+              currentStep.config,
+              latestLogs,
+              procedure.steps,
+              updatedRun.triggerContext
+            );
+
+            const spreadsheetId = resolvedConfig.spreadsheetId;
+            const sheetName = resolvedConfig.sheetName;
+            const operation = (resolvedConfig.operation || "APPEND_ROW") as "APPEND_ROW" | "UPDATE_ROW" | "LOOKUP_ROW";
+
+            if (!spreadsheetId) {
+              throw new Error("Google Sheet 'spreadsheetId' is required.");
+            }
+
+            if (!sheetName) {
+              throw new Error("Google Sheet 'sheetName' is required.");
+            }
+
+            // Get Google integration (access token)
+            const integrationsRef = db.collection('integrations');
+            const integrationSnapshot = await integrationsRef.where('email', '!=', null).limit(1).get();
+
+            if (integrationSnapshot.empty) {
+              throw new Error("No Google integration found. Please connect your Google account first.");
+            }
+
+            const integrationDoc = integrationSnapshot.docs[0];
+            const integrationData = integrationDoc.data();
+            let accessToken = integrationData.access_token;
+            const refreshToken = integrationData.refresh_token;
+
+            if (!accessToken) {
+              throw new Error("No access token found in Google integration.");
+            }
+
+            // Helper function to refresh access token
+            const refreshAccessToken = async (refreshToken: string): Promise<string> => {
+              const clientId = process.env.GOOGLE_CLIENT_ID;
+              const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+              if (!clientId || !clientSecret) {
+                throw new Error('Google OAuth credentials not configured');
+              }
+
+              const response = await fetch('https://oauth2.googleapis.com/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                  client_id: clientId,
+                  client_secret: clientSecret,
+                  refresh_token: refreshToken,
+                  grant_type: 'refresh_token',
+                }),
+              });
+
+              if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Failed to refresh token: ${errorData.error || 'Unknown error'}`);
+              }
+
+              const tokenData = await response.json();
+              return tokenData.access_token;
+            };
+
+            // Helper function to call Google Sheets API with retry on token expiry
+            const callSheetsAPI = async (url: string, options: RequestInit): Promise<any> => {
+              try {
+                const response = await fetch(url, {
+                  ...options,
+                  headers: {
+                    ...options.headers,
+                    'Authorization': `Bearer ${accessToken}`,
+                  },
+                });
+
+                if (response.status === 401 && refreshToken) {
+                  // Token expired, refresh and retry
+                  console.log("[GOOGLE_SHEET] Access token expired. Refreshing...");
+                  accessToken = await refreshAccessToken(refreshToken);
+                  
+                  // Update token in database
+                  await integrationDoc.ref.update({
+                    access_token: accessToken,
+                    updated_at: Timestamp.now(),
+                  });
+
+                  // Retry with new token
+                  const retryResponse = await fetch(url, {
+                    ...options,
+                    headers: {
+                      ...options.headers,
+                      'Authorization': `Bearer ${accessToken}`,
+                    },
+                  });
+
+                  if (!retryResponse.ok) {
+                    const errorData = await retryResponse.json();
+                    throw new Error(`Google Sheets API error: ${errorData.error?.message || 'Unknown error'}`);
+                  }
+
+                  return await retryResponse.json();
+                }
+
+                if (!response.ok) {
+                  const errorData = await response.json();
+                  throw new Error(`Google Sheets API error: ${errorData.error?.message || 'Unknown error'}`);
+                }
+
+                return await response.json();
+              } catch (error: any) {
+                if (error.message?.includes('Failed to refresh token')) {
+                  throw new Error('Failed to refresh access token. Please reconnect your Google account.');
+                }
+                throw error;
+              }
+            };
+
+            if (operation === "LOOKUP_ROW") {
+              // LOOKUP_ROW: Read data from sheet
+              const lookupColumn = resolvedConfig.lookupColumn;
+              const lookupValue = resolvedConfig.lookupValue;
+
+              if (!lookupColumn) {
+                throw new Error("Google Sheet 'lookupColumn' is required for LOOKUP_ROW operation.");
+              }
+
+              if (!lookupValue) {
+                throw new Error("Google Sheet 'lookupValue' is required for LOOKUP_ROW operation.");
+              }
+
+              console.log(`[GOOGLE_SHEET] Looking up row: column="${lookupColumn}", value="${lookupValue}"`);
+
+              // Fetch all rows from the sheet
+              const range = `${sheetName}!A:ZZ`; // Read all columns (up to ZZ)
+              const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`;
+
+              const data = await callSheetsAPI(url, {
+                method: 'GET',
+              });
+
+              const values = data.values || [];
+
+              if (values.length === 0) {
+                throw new Error(`No data found in sheet "${sheetName}". The sheet may be empty.`);
+              }
+
+              // First row is headers
+              const headers = values[0] || [];
+              const headerIndex = headers.findIndex((h: string) => 
+                h && h.toString().trim().toLowerCase() === lookupColumn.toString().trim().toLowerCase()
+              );
+
+              if (headerIndex === -1) {
+                throw new Error(`Column "${lookupColumn}" not found in sheet "${sheetName}". Available columns: ${headers.join(', ')}`);
+              }
+
+              // Search for matching row (skip header row)
+              let foundRow: any = null;
+              let foundRowIndex = -1;
+
+              for (let i = 1; i < values.length; i++) {
+                const row = values[i];
+                const cellValue = row[headerIndex];
+                
+                // Compare values (case-insensitive string comparison)
+                if (cellValue && cellValue.toString().trim().toLowerCase() === lookupValue.toString().trim().toLowerCase()) {
+                  foundRow = row;
+                  foundRowIndex = i;
+                  break; // Found first match, stop searching
+                }
+              }
+
+              if (!foundRow) {
+                throw new Error(`Row not found: No row in column "${lookupColumn}" matches value "${lookupValue}"`);
+              }
+
+              // Build output object: Key = Header, Value = Cell Data
+              const rowData: Record<string, any> = {};
+              headers.forEach((header: string, index: number) => {
+                const cellValue = foundRow[index];
+                // Convert header to snake_case for better variable names
+                const key = header.toString().trim().toLowerCase().replace(/\s+/g, '_');
+                rowData[key] = cellValue || null;
+                // Also keep original header name for flexibility
+                rowData[header.toString().trim()] = cellValue || null;
+              });
+
+              console.log(`[GOOGLE_SHEET] ✅ Found row at index ${foundRowIndex + 1}:`, rowData);
+
+              executionResult = {
+                success: true,
+                executed: true,
+                output: rowData, // Return row data as output variables
+              };
+            } else {
+              // APPEND_ROW or UPDATE_ROW (not implemented yet, but structure is ready)
+              throw new Error(`Google Sheet operation "${operation}" is not yet implemented. Only LOOKUP_ROW is currently supported.`);
+            }
+
             break;
+          }
 
           case "CALCULATE":
             // Execute calculation
